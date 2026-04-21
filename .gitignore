@@ -1,0 +1,23 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/*.log
+*.tsbuildinfo
+
+# Backend
+backend/target/
+backend/*.log
+
+# Runtime / local data
+logs/
+mysql-data/
+
+# Local tool bundles
+tools/

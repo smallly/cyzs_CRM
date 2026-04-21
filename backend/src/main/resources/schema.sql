@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS state_store (
+  entity_type VARCHAR(64) NOT NULL,
+  entity_id VARCHAR(64) NOT NULL,
+  payload JSON NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (entity_type, entity_id)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE state_store CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: "change-me-in-real-env-change-me-in-real-env"
+    expire-days: 7
+
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/indcrm?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: crm
+    password: crm123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
