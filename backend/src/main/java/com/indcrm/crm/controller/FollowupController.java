@@ -20,7 +20,38 @@ public class FollowupController {
 
     @PostMapping
     public ApiResponse<?> create(@RequestBody CreateReq req) {
-        return ApiResponse.ok(followupService.create(sessionService.requireUser(), req.projectId(), req.content(), req.followupAt()));
+        return ApiResponse.ok(
+                followupService.create(
+                        sessionService.requireUser(),
+                        req.projectId(),
+                        req.content(),
+                        req.followupAt(),
+                        req.method(),
+                        req.contactId(),
+                        req.attachment()
+                )
+        );
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<?> update(@PathVariable String id, @RequestBody UpdateReq req) {
+        return ApiResponse.ok(
+                followupService.update(
+                        sessionService.requireUser(),
+                        id,
+                        req.content(),
+                        req.followupAt(),
+                        req.method(),
+                        req.contactId(),
+                        req.attachment()
+                )
+        );
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<?> delete(@PathVariable String id) {
+        followupService.delete(sessionService.requireUser(), id);
+        return ApiResponse.ok("ok");
     }
 
     @GetMapping
@@ -28,5 +59,6 @@ public class FollowupController {
         return ApiResponse.ok(followupService.listByProject(sessionService.requireUser(), projectId));
     }
 
-    public record CreateReq(String projectId, String content, LocalDateTime followupAt) {}
+    public record CreateReq(String projectId, String content, LocalDateTime followupAt, String method, String contactId, String attachment) {}
+    public record UpdateReq(String content, LocalDateTime followupAt, String method, String contactId, String attachment) {}
 }

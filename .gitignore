@@ -14,6 +14,7 @@ frontend/*.log
 # Backend
 backend/target/
 backend/*.log
+backend/src/main/resources/application.yml
 
 # Runtime / local data
 logs/

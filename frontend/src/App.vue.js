@@ -2,6 +2,7 @@ import { computed, reactive, ref } from "vue";
 const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 const stageOptions = ["PROSPECTING", "VISITING", "NEGOTIATING", "SIGNING", "COLLECTING", "MOVED_IN"];
 const dealTypeOptions = ["RENT", "BUY", "BOTH"];
+const followupMethodOptions = ["电话", "微信", "面谈", "邮件", "其他"];
 const projectLevelOptions = ref(["A", "B", "C"]);
 const projectSourceOptions = ref(["客户推荐", "渠道拓展", "主动来访", "老客户转介绍", "其他"]);
 const stageLabelMap = {
@@ -21,7 +22,6 @@ const menuGroups = [
         items: [
             { key: "contacts", label: "联系人" },
             { key: "projects", label: "项目列表" },
-            { key: "project-create", label: "新建项目" },
             { key: "followups", label: "跟进记录" },
             { key: "contracts", label: "合同" },
             { key: "payments", label: "回款记录" }
@@ -40,6 +40,11 @@ const menuGroups = [
 ];
 const menuLabelMap = Object.fromEntries(menuGroups.flatMap((g) => g.items.map((i) => [i.key, i.label])));
 menuLabelMap["project-detail"] = "项目详情";
+menuLabelMap["project-create"] = "新建项目";
+menuLabelMap["followup-create"] = "新建跟进";
+menuLabelMap["contact-create"] = "新建联系人";
+menuLabelMap["contact-edit"] = "编辑联系人";
+menuLabelMap["contact-detail"] = "联系人详情";
 const sidebarCollapsed = ref(false);
 const activeMenu = ref("workbench");
 const selectedProjectId = ref("");
@@ -49,6 +54,7 @@ const currentUserName = ref("");
 const currentUserSystemAdmin = ref(false);
 const errorMsg = ref("");
 const okMsg = ref("");
+let errorToastTimer = null;
 const users = ref([]);
 const contacts = ref([]);
 const projects = ref([]);
@@ -77,6 +83,13 @@ const contractDisplayById = computed(() => {
     }
     return map;
 });
+const projectDisplayById = computed(() => {
+    const map = {};
+    for (const p of projects.value) {
+        map[p.id] = p.name || p.code || p.id;
+    }
+    return map;
+});
 const selectedProject = computed(() => {
     if (!selectedProjectId.value)
         return null;
@@ -96,18 +109,41 @@ const projectDetailContactList = computed(() => {
     ]);
     return contacts.value.filter((c) => ids.has(c.id));
 });
+const selectedContact = computed(() => {
+    if (!selectedContactId.value)
+        return null;
+    return contacts.value.find((c) => c.id === selectedContactId.value) || null;
+});
+const filteredContacts = computed(() => {
+    const name = contactFilterApplied.name.trim();
+    const enterpriseName = contactFilterApplied.enterpriseName.trim();
+    const phone1 = contactFilterApplied.phone1.trim();
+    const phone2 = contactFilterApplied.phone2.trim();
+    return contacts.value.filter((c) => {
+        if (name && !(c.name || "").includes(name))
+            return false;
+        if (enterpriseName && !(c.enterpriseName || "").includes(enterpriseName))
+            return false;
+        if (phone1 && !(c.phone1 || "").includes(phone1))
+            return false;
+        if (phone2 && !(c.phone2 || "").includes(phone2))
+            return false;
+        return true;
+    });
+});
 const projectDetailContracts = computed(() => {
     if (!selectedProjectId.value)
         return [];
-    return contracts.value
-        .filter((c) => c.projectId === selectedProjectId.value)
-        .sort((a, b) => String(b.signDate || "").localeCompare(String(a.signDate || "")));
+    return sortByCreatedAtDesc(contracts.value.filter((c) => c.projectId === selectedProjectId.value));
 });
 const projectDetailPayments = computed(() => {
     const contractIds = new Set(projectDetailContracts.value.map((c) => c.id));
-    return payments.value
-        .filter((p) => contractIds.has(p.contractId))
-        .sort((a, b) => String(b.paidDate || "").localeCompare(String(a.paidDate || "")));
+    return sortByCreatedAtDesc(payments.value.filter((p) => contractIds.has(p.contractId)));
+});
+const stageDialogContracts = computed(() => {
+    if (!stageUpdateProjectId.value)
+        return [];
+    return sortByCreatedAtDesc(contracts.value.filter((c) => c.projectId === stageUpdateProjectId.value));
 });
 const firstSignDate = computed(() => {
     if (!projectDetailContracts.value.length)
@@ -122,8 +158,26 @@ const firstPaymentDate = computed(() => {
     return asc[0]?.paidDate;
 });
 const loginForm = reactive({ phone: "13800000000", password: "Admin@123" });
-const contactForm = reactive({ name: "", phone1: "", phone2: "" });
+const contactForm = reactive({
+    name: "",
+    enterpriseName: "",
+    title: "",
+    phone1: "",
+    phone2: "",
+    wechat: "",
+    email: "",
+    officePhone: "",
+    gender: "未知",
+    decisionMaker: false,
+    remark: "",
+    projectIds: []
+});
+const contactFilterForm = reactive({ name: "", enterpriseName: "", phone1: "", phone2: "" });
+const contactFilterApplied = reactive({ name: "", enterpriseName: "", phone1: "", phone2: "" });
 const contactEditingId = ref("");
+const selectedContactId = ref("");
+const contactDetailEditMode = ref(false);
+const contactCreateFixedProjectId = ref("");
 const projectForm = reactive({
     name: "",
     contactId: "",
@@ -134,10 +188,6 @@ const projectForm = reactive({
     intendedRegion: "",
     intendedAreaMin: "",
     intendedAreaMax: "",
-    firstContactAt: "",
-    firstVisitDate: "",
-    firstNegotiationDate: "",
-    movedInDate: "",
     remark: ""
 });
 const projectEditMode = ref(false);
@@ -151,7 +201,31 @@ const projectEditForm = reactive({
     intendedAreaMax: "",
     remark: ""
 });
-const followupForm = reactive({ projectId: "", content: "", followupAt: "" });
+const followupForm = reactive({ projectId: "" });
+const followupCreateForm = reactive({ projectId: "", content: "", followupAt: "", method: "", contactId: "", attachment: "" });
+const followupEditForm = reactive({ projectId: "", content: "", followupAt: "", method: "", contactId: "", attachment: "" });
+const followupEditingId = ref("");
+const followupEditDialogVisible = ref(false);
+const followupAttachmentInputRef = ref(null);
+const followupAttachmentName = ref("");
+const followupAttachmentData = ref("");
+const followupCreateFixedProjectId = ref("");
+const followupDrawerVisible = ref(false);
+const ownerTransferDialogVisible = ref(false);
+const ownerTransferProjectId = ref("");
+const ownerTransferForm = reactive({ ownerId: "", reason: "" });
+const stageUpdateDialogVisible = ref(false);
+const stageUpdateProjectId = ref("");
+const stageUpdateForm = reactive({
+    stage: "",
+    firstContactAt: "",
+    firstVisitDate: "",
+    firstNegotiationDate: "",
+    movedInDate: "",
+    remark: ""
+});
+const stageContractForm = reactive({ contractNo: "", title: "", amount: "", signDate: "" });
+const stagePaymentForm = reactive({ contractId: "", paidDate: "", amount: "", invoiceStatus: "UNISSUED" });
 const contractForm = reactive({ projectId: "", contractNo: "", title: "", amount: "", signDate: "" });
 const paymentForm = reactive({ contractId: "", paidDate: "", amount: "", invoiceStatus: "UNISSUED" });
 const scopeMode = ref("SUBTREE");
@@ -162,10 +236,24 @@ const sseEvents = ref([]);
 function setOk(msg) {
     okMsg.value = msg;
     errorMsg.value = "";
+    if (errorToastTimer) {
+        clearTimeout(errorToastTimer);
+        errorToastTimer = null;
+    }
 }
 function setError(err) {
-    errorMsg.value = err instanceof Error ? err.message : String(err);
+    const msg = err instanceof Error ? err.message : String(err);
+    errorMsg.value = msg;
     okMsg.value = "";
+    if (errorToastTimer) {
+        clearTimeout(errorToastTimer);
+    }
+    errorToastTimer = setTimeout(() => {
+        if (errorMsg.value === msg) {
+            errorMsg.value = "";
+        }
+        errorToastTimer = null;
+    }, 2000);
 }
 function getUserDisplayName(userId) {
     if (!userId)
@@ -181,6 +269,112 @@ function getContractDisplayName(contractId) {
     if (!contractId)
         return "-";
     return contractDisplayById.value[contractId] || contractId;
+}
+function getProjectDisplayName(projectId) {
+    if (!projectId)
+        return "-";
+    return projectDisplayById.value[projectId] || projectId;
+}
+function getContactLinkedProjectIds(contact) {
+    if (!contact)
+        return [];
+    const ids = new Set();
+    for (const id of contact.projectIds || []) {
+        if (id)
+            ids.add(id);
+    }
+    for (const p of projects.value) {
+        if (p.contactId === contact.id)
+            ids.add(p.id);
+    }
+    return Array.from(ids);
+}
+function getContactLinkedProjectNames(contact) {
+    const ids = getContactLinkedProjectIds(contact);
+    if (!ids.length)
+        return "-";
+    return ids.map((id) => getProjectDisplayName(id)).join("，");
+}
+function getContactsByProject(projectId) {
+    if (!projectId)
+        return [];
+    return contacts.value.filter((c) => getContactLinkedProjectIds(c).includes(projectId));
+}
+function parseFollowupAttachment(raw) {
+    if (!raw)
+        return null;
+    const text = String(raw).trim();
+    if (!text)
+        return null;
+    try {
+        const parsed = JSON.parse(text);
+        if (parsed && parsed.name)
+            return { name: parsed.name, data: parsed.data };
+    }
+    catch {
+        // ignore
+    }
+    return { name: text };
+}
+function getFollowupAttachmentName(f) {
+    return parseFollowupAttachment(f.attachment)?.name || "-";
+}
+function getFollowupAttachmentHref(f) {
+    const parsed = parseFollowupAttachment(f.attachment);
+    if (!parsed)
+        return "";
+    if (parsed.data)
+        return parsed.data;
+    const name = parsed.name.trim();
+    if (name.startsWith("http://") || name.startsWith("https://"))
+        return name;
+    return "";
+}
+function getFollowupAttachmentPreviewSrc(f) {
+    const parsed = parseFollowupAttachment(f.attachment);
+    if (!parsed)
+        return "";
+    if (parsed.data)
+        return parsed.data;
+    return getFollowupAttachmentHref(f);
+}
+function isFollowupAttachmentImage(f) {
+    const parsed = parseFollowupAttachment(f.attachment);
+    if (!parsed)
+        return false;
+    if (parsed.data && /^data:image\//.test(parsed.data))
+        return true;
+    const name = parsed.name.toLowerCase();
+    if (/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/.test(name))
+        return true;
+    const href = getFollowupAttachmentHref(f).toLowerCase();
+    return /\.(png|jpg|jpeg|gif|webp|bmp|svg)(\?.*)?$/.test(href);
+}
+function hasFollowupAttachment(f) {
+    return parseFollowupAttachment(f.attachment) !== null;
+}
+function triggerFollowupAttachmentPick() {
+    followupAttachmentInputRef.value?.click();
+}
+function onFollowupAttachmentChange(event) {
+    const target = event.target;
+    const file = target.files?.[0];
+    if (!file) {
+        followupAttachmentName.value = "";
+        followupAttachmentData.value = "";
+        followupCreateForm.attachment = "";
+        return;
+    }
+    followupAttachmentName.value = file.name;
+    // 先写入文件名，避免用户快速提交时附件为空
+    followupCreateForm.attachment = JSON.stringify({ name: file.name });
+    const reader = new FileReader();
+    reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        followupAttachmentData.value = dataUrl;
+        followupCreateForm.attachment = JSON.stringify({ name: file.name, data: dataUrl });
+    };
+    reader.readAsDataURL(file);
 }
 function getProjectContactsDisplay(project) {
     const ids = Array.from(new Set([...(project.contactIds || []), ...(project.contactId ? [project.contactId] : [])]));
@@ -206,8 +400,6 @@ function formatAreaRange(project) {
     if (min === null && max === null)
         return "-";
     if (min !== null && max !== null) {
-        if (min === max)
-            return formatAreaNum(min);
         return formatAreaNum(min) + " - " + formatAreaNum(max);
     }
     if (min !== null)
@@ -229,6 +421,21 @@ function formatDateTime(value) {
     if (!value)
         return "-";
     return String(value).replace("T", " ").slice(0, 19);
+}
+function formatDateTimeLocalInput(value) {
+    if (!value)
+        return "";
+    const normalized = String(value).trim().replace(" ", "T");
+    return normalized.slice(0, 16);
+}
+function getTimeValue(value) {
+    if (value === null || value === undefined || value === "")
+        return 0;
+    const t = new Date(value).getTime();
+    return Number.isFinite(t) ? t : 0;
+}
+function sortByCreatedAtDesc(rows) {
+    return [...rows].sort((a, b) => getTimeValue(b.createdAt) - getTimeValue(a.createdAt));
 }
 function getStageFieldLabel(stageCode) {
     switch (stageCode) {
@@ -296,10 +503,6 @@ function resetProjectForm() {
     projectForm.intendedRegion = "";
     projectForm.intendedAreaMin = "";
     projectForm.intendedAreaMax = "";
-    projectForm.firstContactAt = "";
-    projectForm.firstVisitDate = "";
-    projectForm.firstNegotiationDate = "";
-    projectForm.movedInDate = "";
     projectForm.remark = "";
 }
 function openCreateProjectPage() {
@@ -332,13 +535,56 @@ function openProjectDetailPage(projectId) {
     void loadProjectDetailFollowups(projectId);
 }
 function jumpToContactFromDetail() {
-    activeMenu.value = "contacts";
+    contactEditingId.value = "";
+    contactDetailEditMode.value = false;
+    resetContactForm();
+    if (selectedProjectId.value) {
+        contactCreateFixedProjectId.value = selectedProjectId.value;
+        contactForm.projectIds = [selectedProjectId.value];
+    }
+    else {
+        contactCreateFixedProjectId.value = "";
+    }
+    activeMenu.value = "contact-create";
 }
 function jumpToFollowupFromDetail() {
     if (!selectedProjectId.value)
         return;
-    followupForm.projectId = selectedProjectId.value;
-    activeMenu.value = "followups";
+    followupCreateFixedProjectId.value = selectedProjectId.value;
+    followupCreateForm.projectId = selectedProjectId.value;
+    resetFollowupCreateForm(false);
+    activeMenu.value = "followup-create";
+}
+function openFollowupDrawerFromDetail() {
+    if (!selectedProjectId.value)
+        return;
+    followupCreateFixedProjectId.value = selectedProjectId.value;
+    followupCreateForm.projectId = selectedProjectId.value;
+    resetFollowupCreateForm(false);
+    followupDrawerVisible.value = true;
+}
+function closeFollowupDrawer() {
+    followupDrawerVisible.value = false;
+}
+function openFollowupEditDialog(followup) {
+    followupEditingId.value = followup.id;
+    followupEditForm.projectId = followup.projectId || "";
+    followupEditForm.content = followup.content || "";
+    followupEditForm.followupAt = formatDateTimeLocalInput(followup.followupAt);
+    followupEditForm.method = followup.method || "";
+    followupEditForm.contactId = followup.contactId || "";
+    followupEditForm.attachment = followup.attachment || "";
+    followupEditDialogVisible.value = true;
+}
+function closeFollowupEditDialog() {
+    followupEditDialogVisible.value = false;
+    followupEditingId.value = "";
+    followupEditForm.projectId = "";
+    followupEditForm.content = "";
+    followupEditForm.followupAt = "";
+    followupEditForm.method = "";
+    followupEditForm.contactId = "";
+    followupEditForm.attachment = "";
 }
 function jumpToContractFromDetail() {
     if (!selectedProjectId.value)
@@ -398,6 +644,7 @@ function logout() {
     currentUserName.value = "";
     currentUserSystemAdmin.value = false;
     selectedProjectId.value = "";
+    selectedContactId.value = "";
     users.value = [];
     contacts.value = [];
     projects.value = [];
@@ -422,7 +669,7 @@ async function loadAll() {
 }
 async function loadUsers() {
     const data = await api("/api/users");
-    users.value = data.map((u) => ({ ...u, systemAdminStr: u.systemAdmin ? "true" : "false" }));
+    users.value = sortByCreatedAtDesc(data).map((u) => ({ ...u, systemAdminStr: u.systemAdmin ? "true" : "false" }));
 }
 async function updateRole(u) {
     try {
@@ -473,7 +720,9 @@ function parseDictText(raw) {
     return Array.from(unique);
 }
 function parseAreaInput(raw, label) {
-    const value = raw.trim();
+    if (raw === null || raw === undefined)
+        return null;
+    const value = (typeof raw === "string" ? raw : String(raw)).trim();
     if (!value)
         return null;
     const n = Number(value);
@@ -536,7 +785,7 @@ async function saveDictOptions() {
 }
 async function loadContacts() {
     try {
-        contacts.value = await api("/api/contacts");
+        contacts.value = sortByCreatedAtDesc(await api("/api/contacts"));
     }
     catch (e) {
         setError(e);
@@ -544,35 +793,191 @@ async function loadContacts() {
 }
 function resetContactForm() {
     contactForm.name = "";
+    contactForm.enterpriseName = "";
+    contactForm.title = "";
     contactForm.phone1 = "";
     contactForm.phone2 = "";
+    contactForm.wechat = "";
+    contactForm.email = "";
+    contactForm.officePhone = "";
+    contactForm.gender = "未知";
+    contactForm.decisionMaker = false;
+    contactForm.remark = "";
+    contactForm.projectIds = [];
+}
+function fillContactForm(contact) {
+    contactForm.name = contact.name || "";
+    contactForm.enterpriseName = contact.enterpriseName || "";
+    contactForm.title = contact.title || "";
+    contactForm.phone1 = contact.phone1 || "";
+    contactForm.phone2 = contact.phone2 || "";
+    contactForm.wechat = contact.wechat || "";
+    contactForm.email = contact.email || "";
+    contactForm.officePhone = contact.officePhone || "";
+    contactForm.gender = contact.gender || "未知";
+    contactForm.decisionMaker = !!contact.decisionMaker;
+    contactForm.remark = contact.remark || "";
+    contactForm.projectIds = getContactLinkedProjectIds(contact);
+}
+function applyContactFilters() {
+    contactFilterApplied.name = contactFilterForm.name.trim();
+    contactFilterApplied.enterpriseName = contactFilterForm.enterpriseName.trim();
+    contactFilterApplied.phone1 = contactFilterForm.phone1.trim();
+    contactFilterApplied.phone2 = contactFilterForm.phone2.trim();
+}
+function resetContactFilters() {
+    contactFilterForm.name = "";
+    contactFilterForm.enterpriseName = "";
+    contactFilterForm.phone1 = "";
+    contactFilterForm.phone2 = "";
+    applyContactFilters();
+}
+function resetFollowupCreateForm(resetProject = true) {
+    if (resetProject) {
+        followupCreateFixedProjectId.value = "";
+        followupCreateForm.projectId = "";
+    }
+    followupCreateForm.content = "";
+    followupCreateForm.method = "";
+    followupCreateForm.contactId = "";
+    followupCreateForm.attachment = "";
+    followupAttachmentName.value = "";
+    followupAttachmentData.value = "";
+    if (followupAttachmentInputRef.value) {
+        followupAttachmentInputRef.value.value = "";
+    }
+    followupCreateForm.followupAt = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+function resetFollowupCreateFormAction() {
+    resetFollowupCreateForm();
+}
+function openCreateFollowupPage() {
+    followupDrawerVisible.value = false;
+    followupCreateFixedProjectId.value = "";
+    resetFollowupCreateForm();
+    activeMenu.value = "followup-create";
+}
+function openCreateContactPage() {
+    contactEditingId.value = "";
+    contactDetailEditMode.value = false;
+    contactCreateFixedProjectId.value = "";
+    resetContactForm();
+    activeMenu.value = "contact-create";
+}
+function cancelContactCreate() {
+    contactCreateFixedProjectId.value = "";
+    resetContactForm();
+    activeMenu.value = "contacts";
 }
 function startContactEdit(contact) {
     contactEditingId.value = contact.id;
-    contactForm.name = contact.name || "";
-    contactForm.phone1 = contact.phone1 || "";
-    contactForm.phone2 = contact.phone2 || "";
+    contactDetailEditMode.value = false;
+    contactCreateFixedProjectId.value = "";
+    fillContactForm(contact);
+    activeMenu.value = "contact-edit";
 }
-function cancelContactEdit() {
+function openContactDetailPage(contactId) {
+    selectedContactId.value = contactId;
+    contactDetailEditMode.value = false;
+    activeMenu.value = "contact-detail";
+}
+function startContactEditInDetail() {
+    if (!selectedContact.value)
+        return;
+    contactEditingId.value = selectedContact.value.id;
+    fillContactForm(selectedContact.value);
+    contactDetailEditMode.value = true;
+}
+function cancelContactEditInDetail() {
+    contactDetailEditMode.value = false;
     contactEditingId.value = "";
     resetContactForm();
 }
+function cancelContactEdit() {
+    contactEditingId.value = "";
+    contactDetailEditMode.value = false;
+    contactCreateFixedProjectId.value = "";
+    resetContactForm();
+    activeMenu.value = "contacts";
+}
+function buildContactPayload() {
+    const name = contactForm.name.trim();
+    const enterpriseName = contactForm.enterpriseName.trim();
+    const title = contactForm.title.trim();
+    const phone1 = contactForm.phone1.trim();
+    const phone2 = contactForm.phone2.trim();
+    const wechat = contactForm.wechat.trim();
+    const email = contactForm.email.trim();
+    const officePhone = contactForm.officePhone.trim();
+    const gender = contactForm.gender || "未知";
+    const decisionMaker = !!contactForm.decisionMaker;
+    const remark = contactForm.remark.trim();
+    const projectIds = contactCreateFixedProjectId.value
+        ? [contactCreateFixedProjectId.value]
+        : contactForm.projectIds.map((id) => String(id || "").trim()).filter(Boolean);
+    if (!name)
+        return setError("请填写姓名"), null;
+    if (!phone1)
+        return setError("请填写手机号1"), null;
+    if (!projectIds.length)
+        return setError("请至少选择一个关联项目"), null;
+    return { name, enterpriseName, title, phone1, phone2, wechat, email, officePhone, gender, decisionMaker, remark, projectIds };
+}
 async function saveContact() {
     try {
-        if (contactEditingId.value) {
-            await api("/api/contacts/" + contactEditingId.value, {
-                method: "PUT",
-                body: JSON.stringify(contactForm)
-            });
-            setOk("联系人已更新");
-            contactEditingId.value = "";
-        }
-        else {
-            await api("/api/contacts", { method: "POST", body: JSON.stringify(contactForm) });
-            setOk("联系人已创建");
-        }
+        const payload = buildContactPayload();
+        if (!payload)
+            return;
+        await api("/api/contacts", {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        setOk("联系人已创建");
         resetContactForm();
-        await loadContacts();
+        await Promise.all([loadContacts(), loadProjects()]);
+        activeMenu.value = "contacts";
+    }
+    catch (e) {
+        setError(e);
+    }
+}
+async function saveContactEdit() {
+    try {
+        if (!contactEditingId.value)
+            return setError("未选择要编辑的联系人");
+        const payload = buildContactPayload();
+        if (!payload)
+            return;
+        await api("/api/contacts/" + contactEditingId.value, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+        });
+        setOk("联系人已更新");
+        contactEditingId.value = "";
+        resetContactForm();
+        await Promise.all([loadContacts(), loadProjects()]);
+        activeMenu.value = "contacts";
+    }
+    catch (e) {
+        setError(e);
+    }
+}
+async function saveContactInDetail() {
+    try {
+        if (!contactEditingId.value)
+            return setError("未选择要编辑的联系人");
+        const payload = buildContactPayload();
+        if (!payload)
+            return;
+        await api("/api/contacts/" + contactEditingId.value, {
+            method: "PUT",
+            body: JSON.stringify(payload)
+        });
+        setOk("联系人已更新");
+        await Promise.all([loadContacts(), loadProjects()]);
+        contactDetailEditMode.value = false;
+        contactEditingId.value = "";
+        resetContactForm();
     }
     catch (e) {
         setError(e);
@@ -590,7 +995,7 @@ async function deleteContact(id) {
 }
 async function loadProjects() {
     try {
-        projects.value = await api("/api/projects");
+        projects.value = sortByCreatedAtDesc(await api("/api/projects"));
     }
     catch (e) {
         setError(e);
@@ -623,14 +1028,6 @@ async function createProject() {
             payload.intendedAreaMin = intendedAreaMin;
         if (intendedAreaMax !== null)
             payload.intendedAreaMax = intendedAreaMax;
-        if (projectForm.firstContactAt)
-            payload.firstContactAt = new Date(projectForm.firstContactAt).toISOString().slice(0, 19);
-        if (projectForm.firstVisitDate)
-            payload.firstVisitDate = projectForm.firstVisitDate;
-        if (projectForm.firstNegotiationDate)
-            payload.firstNegotiationDate = projectForm.firstNegotiationDate;
-        if (projectForm.movedInDate)
-            payload.movedInDate = projectForm.movedInDate;
         if (projectForm.remark)
             payload.remark = projectForm.remark;
         await api("/api/projects", { method: "POST", body: JSON.stringify(payload) });
@@ -684,8 +1081,9 @@ async function changeProjectStage(p) {
 async function updateSelectedProjectStage() {
     if (!selectedProject.value)
         return;
+    const project = selectedProject.value;
     const stageText = stageOptions.map((stage, index) => String(index + 1) + "." + stageLabelMap[stage]).join("  ");
-    const currentIndex = Math.max(0, stageOptions.indexOf(selectedProject.value.stage));
+    const currentIndex = Math.max(0, stageOptions.indexOf(project.stage));
     const input = prompt("请选择阶段编号：" + stageText, String(currentIndex + 1));
     if (!input)
         return;
@@ -699,27 +1097,316 @@ async function updateSelectedProjectStage() {
     }
     if (!nextStage)
         return setError("阶段输入无效");
-    selectedProject.value.stage = nextStage;
-    await changeProjectStage(selectedProject.value);
-}
-async function transferProjectOwner(p) {
-    const newOwnerId = prompt("请输入新负责人用户ID", p.ownerId);
-    if (!newOwnerId)
-        return;
-    const reason = prompt("请输入转移原因（可选）", "") || "";
+    const payload = { stage: nextStage };
+    if (nextStage === "VISITING" && !project.firstVisitDate) {
+        const v = prompt("请输入首次带看日期（YYYY-MM-DD）", "");
+        if (!v)
+            return setError("首次带看日期必填");
+        payload.firstVisitDate = v;
+    }
+    if (nextStage === "NEGOTIATING" && !project.firstNegotiationDate) {
+        const v = prompt("请输入首次谈判日期（YYYY-MM-DD）", "");
+        if (!v)
+            return setError("首次谈判日期必填");
+        payload.firstNegotiationDate = v;
+    }
+    if (nextStage === "MOVED_IN" && !project.movedInDate) {
+        const v = prompt("请输入入驻日期（YYYY-MM-DD）", "");
+        if (!v)
+            return setError("入驻日期必填");
+        payload.movedInDate = v;
+    }
+    if (stageOptions.indexOf(nextStage) > currentIndex + 1) {
+        const reason = prompt("本次为跳级推进，请填写原因（必填）", "");
+        if (!reason || !reason.trim())
+            return setError("跳级推进必须填写原因");
+        payload.remark = reason.trim();
+    }
     try {
-        await api("/api/projects/" + p.id + "/owner", { method: "PUT", body: JSON.stringify({ ownerId: newOwnerId, reason }) });
-        setOk("负责人已转移");
+        await api("/api/projects/" + project.id + "/stage", { method: "PUT", body: JSON.stringify(payload) });
+        setOk("项目阶段已更新");
         await loadProjects();
     }
     catch (e) {
         setError(e);
     }
 }
-async function transferSelectedProjectOwner() {
+function openOwnerTransferDialog(project) {
+    ownerTransferProjectId.value = project.id;
+    ownerTransferForm.ownerId = project.ownerId || "";
+    ownerTransferForm.reason = "";
+    ownerTransferDialogVisible.value = true;
+}
+function openSelectedProjectOwnerDialog() {
     if (!selectedProject.value)
         return;
-    await transferProjectOwner(selectedProject.value);
+    openOwnerTransferDialog(selectedProject.value);
+}
+function closeOwnerTransferDialog() {
+    ownerTransferDialogVisible.value = false;
+    ownerTransferProjectId.value = "";
+    ownerTransferForm.ownerId = "";
+    ownerTransferForm.reason = "";
+}
+async function submitOwnerTransfer() {
+    if (!ownerTransferProjectId.value)
+        return;
+    if (!ownerTransferForm.ownerId)
+        return setError("请选择新负责人");
+    try {
+        await api("/api/projects/" + ownerTransferProjectId.value + "/owner", {
+            method: "PUT",
+            body: JSON.stringify({ ownerId: ownerTransferForm.ownerId, reason: ownerTransferForm.reason || "" })
+        });
+        setOk("负责人已转移");
+        closeOwnerTransferDialog();
+        await loadProjects();
+    }
+    catch (e) {
+        setError(e);
+    }
+}
+function openStageUpdateDialog(project) {
+    stageUpdateProjectId.value = project.id;
+    // 初始化选择下一个阶段（当前阶段的下一个）
+    const currentIndex = stageOptions.indexOf(project.stage);
+    const nextIndex = Math.min(currentIndex + 1, stageOptions.length - 1);
+    stageUpdateForm.stage = stageOptions[nextIndex];
+    stageUpdateForm.firstContactAt = project.firstContactAt ? String(project.firstContactAt).slice(0, 10) : "";
+    stageUpdateForm.firstVisitDate = project.firstVisitDate || "";
+    stageUpdateForm.firstNegotiationDate = project.firstNegotiationDate || "";
+    stageUpdateForm.movedInDate = project.movedInDate || "";
+    stageUpdateForm.remark = "";
+    stageContractForm.contractNo = "";
+    stageContractForm.title = "";
+    stageContractForm.amount = "";
+    stageContractForm.signDate = "";
+    stagePaymentForm.contractId = "";
+    stagePaymentForm.paidDate = "";
+    stagePaymentForm.amount = "";
+    stagePaymentForm.invoiceStatus = "UNISSUED";
+    onStageChange();
+    stageUpdateDialogVisible.value = true;
+}
+function closeStageUpdateDialog() {
+    stageUpdateDialogVisible.value = false;
+    stageUpdateProjectId.value = "";
+    stageUpdateForm.stage = "";
+    stageUpdateForm.firstContactAt = "";
+    stageUpdateForm.firstVisitDate = "";
+    stageUpdateForm.firstNegotiationDate = "";
+    stageUpdateForm.movedInDate = "";
+    stageUpdateForm.remark = "";
+    stageContractForm.contractNo = "";
+    stageContractForm.title = "";
+    stageContractForm.amount = "";
+    stageContractForm.signDate = "";
+    stagePaymentForm.contractId = "";
+    stagePaymentForm.paidDate = "";
+    stagePaymentForm.amount = "";
+    stagePaymentForm.invoiceStatus = "UNISSUED";
+}
+function onStageChange() {
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return;
+    const targetStage = stageUpdateForm.stage;
+    const targetStageIndex = stageOptions.indexOf(targetStage);
+    const visitingIndex = stageOptions.indexOf("VISITING");
+    const negotiatingIndex = stageOptions.indexOf("NEGOTIATING");
+    const movedInIndex = stageOptions.indexOf("MOVED_IN");
+    if (targetStage === "COLLECTING" && !stagePaymentForm.contractId && stageDialogContracts.value.length > 0) {
+        stagePaymentForm.contractId = stageDialogContracts.value[0].id;
+    }
+    if (targetStageIndex >= visitingIndex && !project.firstVisitDate && !stageUpdateForm.firstVisitDate) {
+        const today = new Date().toISOString().split('T')[0];
+        stageUpdateForm.firstVisitDate = today;
+    }
+    if (targetStageIndex >= negotiatingIndex && !project.firstNegotiationDate && !stageUpdateForm.firstNegotiationDate) {
+        const today = new Date().toISOString().split('T')[0];
+        stageUpdateForm.firstNegotiationDate = today;
+    }
+    if (targetStageIndex >= movedInIndex && !project.movedInDate && !stageUpdateForm.movedInDate) {
+        const today = new Date().toISOString().split('T')[0];
+        stageUpdateForm.movedInDate = today;
+    }
+    if (targetStage === "PROSPECTING" && !project.firstContactAt && !stageUpdateForm.firstContactAt) {
+        const today = new Date().toISOString().split('T')[0];
+        stageUpdateForm.firstContactAt = today;
+    }
+}
+const availableStages = computed(() => {
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return [...stageOptions];
+    const currentIndex = stageOptions.indexOf(project.stage);
+    // 只返回当前阶段之后的阶段（不包括当前阶段）
+    return [...stageOptions].filter((stage, index) => index > currentIndex);
+});
+const needsFirstContactAt = computed(() => {
+    if (!stageUpdateForm.stage)
+        return false;
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return false;
+    return stageUpdateForm.stage === "PROSPECTING" && !project.firstContactAt;
+});
+const needsFirstVisitDate = computed(() => {
+    if (!stageUpdateForm.stage)
+        return false;
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return false;
+    const targetStageIndex = stageOptions.indexOf(stageUpdateForm.stage);
+    const visitingIndex = stageOptions.indexOf("VISITING");
+    return targetStageIndex >= visitingIndex && !project.firstVisitDate;
+});
+const needsFirstNegotiationDate = computed(() => {
+    if (!stageUpdateForm.stage)
+        return false;
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return false;
+    const targetStageIndex = stageOptions.indexOf(stageUpdateForm.stage);
+    const negotiatingIndex = stageOptions.indexOf("NEGOTIATING");
+    return targetStageIndex >= negotiatingIndex && !project.firstNegotiationDate;
+});
+const needsMovedInDate = computed(() => {
+    if (!stageUpdateForm.stage)
+        return false;
+    return stageUpdateForm.stage === "MOVED_IN";
+});
+const isSkippedStage = computed(() => {
+    if (!stageUpdateForm.stage)
+        return false;
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return false;
+    const currentIndex = stageOptions.indexOf(project.stage);
+    const targetIndex = stageOptions.indexOf(stageUpdateForm.stage);
+    return targetIndex > currentIndex + 1;
+});
+const stageTargetIsSigning = computed(() => stageUpdateForm.stage === "SIGNING");
+const stageTargetIsCollecting = computed(() => stageUpdateForm.stage === "COLLECTING");
+function getStageIndexText(stage) {
+    const index = stageOptions.indexOf(stage);
+    if (index === -1)
+        return "";
+    return `第${index + 1}阶段`;
+}
+async function submitStageUpdate() {
+    if (!stageUpdateProjectId.value)
+        return setError("请选择项目");
+    if (!stageUpdateForm.stage)
+        return setError("请选择阶段");
+    const project = projects.value.find(p => p.id === stageUpdateProjectId.value);
+    if (!project)
+        return setError("项目不存在");
+    if (needsFirstContactAt.value && !stageUpdateForm.firstContactAt)
+        return setError("请选择首次建联时间");
+    if (needsFirstVisitDate.value && !stageUpdateForm.firstVisitDate)
+        return setError("请选择首次带看日期");
+    if (needsFirstNegotiationDate.value && !stageUpdateForm.firstNegotiationDate)
+        return setError("请选择首次谈判日期");
+    if (needsMovedInDate.value && !stageUpdateForm.movedInDate)
+        return setError("请选择入驻日期");
+    const stagePatchPayload = { stage: stageUpdateForm.stage };
+    if (stageUpdateForm.firstContactAt)
+        stagePatchPayload.firstContactAt = stageUpdateForm.firstContactAt + "T00:00:00";
+    if (stageUpdateForm.firstVisitDate)
+        stagePatchPayload.firstVisitDate = stageUpdateForm.firstVisitDate;
+    if (stageUpdateForm.firstNegotiationDate)
+        stagePatchPayload.firstNegotiationDate = stageUpdateForm.firstNegotiationDate;
+    if (stageUpdateForm.movedInDate)
+        stagePatchPayload.movedInDate = stageUpdateForm.movedInDate;
+    if (isSkippedStage.value && stageUpdateForm.remark?.trim())
+        stagePatchPayload.remark = stageUpdateForm.remark.trim();
+    if (stageUpdateForm.stage === "SIGNING") {
+        const contractNo = stageContractForm.contractNo.trim();
+        const title = stageContractForm.title.trim();
+        const amount = Number(stageContractForm.amount);
+        const signDate = stageContractForm.signDate;
+        if (!contractNo)
+            return setError("请填写合同编号");
+        if (!title)
+            return setError("请填写合同标题");
+        if (!Number.isFinite(amount) || amount <= 0)
+            return setError("请填写有效的合同金额");
+        if (!signDate)
+            return setError("请选择签约日期");
+        try {
+            await api("/api/contracts", {
+                method: "POST",
+                body: JSON.stringify({
+                    projectId: stageUpdateProjectId.value,
+                    contractNo,
+                    title,
+                    amount,
+                    signDate
+                })
+            });
+            setOk("合同已创建，项目已自动更新至签约阶段");
+            closeStageUpdateDialog();
+            await Promise.all([loadProjects(), loadContracts(), loadPayments()]);
+            return;
+        }
+        catch (e) {
+            setError(e);
+            return;
+        }
+    }
+    if (stageUpdateForm.stage === "COLLECTING") {
+        const contractId = stagePaymentForm.contractId.trim();
+        const paidDate = stagePaymentForm.paidDate;
+        const amount = Number(stagePaymentForm.amount);
+        const invoiceStatus = stagePaymentForm.invoiceStatus || "UNISSUED";
+        if (!contractId)
+            return setError("请选择关联合同");
+        if (!paidDate)
+            return setError("请选择回款日期");
+        if (!Number.isFinite(amount) || amount <= 0)
+            return setError("请填写有效的回款金额");
+        try {
+            await api("/api/payments", {
+                method: "POST",
+                body: JSON.stringify({
+                    contractId,
+                    paidDate,
+                    amount,
+                    invoiceStatus
+                })
+            });
+            setOk("回款已登记，项目已自动更新至回款阶段");
+            closeStageUpdateDialog();
+            await Promise.all([loadProjects(), loadContracts(), loadPayments()]);
+            return;
+        }
+        catch (e) {
+            setError(e);
+            return;
+        }
+    }
+    if (isSkippedStage.value) {
+        if (!stageUpdateForm.remark || !stageUpdateForm.remark.trim()) {
+            return setError("跳级推进必须填写原因");
+        }
+        stagePatchPayload.remark = stageUpdateForm.remark.trim();
+    }
+    try {
+        await api("/api/projects/" + stageUpdateProjectId.value + "/stage", {
+            method: "PUT",
+            body: JSON.stringify(stagePatchPayload)
+        });
+        setOk("项目阶段已更新");
+        closeStageUpdateDialog();
+        await loadProjects();
+        if (selectedProjectId.value === stageUpdateProjectId.value) {
+            await loadProjectDetailFollowups(stageUpdateProjectId.value);
+        }
+    }
+    catch (e) {
+        setError(e);
+    }
 }
 async function deleteProject(id) {
     try {
@@ -733,21 +1420,100 @@ async function deleteProject(id) {
 }
 async function createFollowup() {
     try {
+        const projectId = followupCreateFixedProjectId.value || followupCreateForm.projectId;
+        const content = followupCreateForm.content.trim();
+        const followupAt = followupCreateForm.followupAt;
+        const method = followupCreateForm.method.trim();
+        const contactId = followupCreateForm.contactId.trim();
+        const attachment = String(followupCreateForm.attachment || "").trim();
+        if (!projectId)
+            return setError("请选择关联项目");
+        if (!content)
+            return setError("请填写跟进内容");
+        if (!followupAt)
+            return setError("请填写跟进时间");
         await api("/api/followups", {
             method: "POST",
             body: JSON.stringify({
-                projectId: followupForm.projectId,
-                content: followupForm.content,
-                followupAt: followupForm.followupAt ? new Date(followupForm.followupAt).toISOString().slice(0, 19) : null
+                projectId,
+                content,
+                followupAt: new Date(followupAt).toISOString().slice(0, 19),
+                method: method || null,
+                contactId: contactId || null,
+                attachment: attachment || null
             })
         });
         setOk("跟进记录已创建");
-        followupForm.content = "";
+        if (followupCreateFixedProjectId.value && selectedProjectId.value === projectId) {
+            await loadProjectDetailFollowups(projectId);
+            activeMenu.value = "project-detail";
+            projectDetailTab.value = "followups";
+            followupDrawerVisible.value = false;
+            resetFollowupCreateForm(false);
+            return;
+        }
+        followupForm.projectId = projectId;
         await loadFollowupsByProject();
         await loadProjects();
-        if (selectedProjectId.value && followupForm.projectId === selectedProjectId.value) {
-            await loadProjectDetailFollowups(selectedProjectId.value);
+        resetFollowupCreateForm();
+        activeMenu.value = "followups";
+    }
+    catch (e) {
+        setError(e);
+    }
+}
+async function saveFollowupEdit() {
+    try {
+        if (!followupEditingId.value)
+            return setError("未选择要编辑的跟进记录");
+        const content = followupEditForm.content.trim();
+        const followupAt = followupEditForm.followupAt;
+        const method = followupEditForm.method.trim();
+        const contactId = followupEditForm.contactId.trim();
+        const attachment = String(followupEditForm.attachment || "").trim();
+        if (!content)
+            return setError("请填写跟进内容");
+        if (!followupAt)
+            return setError("请填写跟进时间");
+        await api("/api/followups/" + followupEditingId.value, {
+            method: "PUT",
+            body: JSON.stringify({
+                content,
+                followupAt: new Date(followupAt).toISOString().slice(0, 19),
+                method: method || null,
+                contactId: contactId || null,
+                attachment: attachment || null
+            })
+        });
+        setOk("跟进记录已更新");
+        const projectId = followupEditForm.projectId;
+        closeFollowupEditDialog();
+        if (projectId && followupForm.projectId === projectId) {
+            await loadFollowupsByProject();
         }
+        if (projectId && selectedProjectId.value === projectId) {
+            await loadProjectDetailFollowups(projectId);
+        }
+        await loadProjects();
+    }
+    catch (e) {
+        setError(e);
+    }
+}
+async function deleteFollowup(followup) {
+    const ok = confirm("确认删除该跟进记录吗？");
+    if (!ok)
+        return;
+    try {
+        await api("/api/followups/" + followup.id, { method: "DELETE" });
+        setOk("跟进记录已删除");
+        if (followupForm.projectId === followup.projectId) {
+            await loadFollowupsByProject();
+        }
+        if (selectedProjectId.value === followup.projectId) {
+            await loadProjectDetailFollowups(followup.projectId);
+        }
+        await loadProjects();
     }
     catch (e) {
         setError(e);
@@ -757,7 +1523,7 @@ async function loadFollowupsByProject() {
     if (!followupForm.projectId)
         return (followups.value = []);
     try {
-        followups.value = await api("/api/followups?projectId=" + encodeURIComponent(followupForm.projectId));
+        followups.value = sortByCreatedAtDesc(await api("/api/followups?projectId=" + encodeURIComponent(followupForm.projectId)));
     }
     catch (e) {
         setError(e);
@@ -769,7 +1535,7 @@ async function loadProjectDetailFollowups(projectId) {
         return;
     }
     try {
-        projectDetailFollowups.value = await api("/api/followups?projectId=" + encodeURIComponent(projectId));
+        projectDetailFollowups.value = sortByCreatedAtDesc(await api("/api/followups?projectId=" + encodeURIComponent(projectId)));
     }
     catch (e) {
         projectDetailFollowups.value = [];
@@ -778,7 +1544,7 @@ async function loadProjectDetailFollowups(projectId) {
 }
 async function loadContracts() {
     try {
-        contracts.value = await api("/api/contracts");
+        contracts.value = sortByCreatedAtDesc(await api("/api/contracts"));
     }
     catch (e) {
         setError(e);
@@ -801,7 +1567,7 @@ async function createContract() {
 }
 async function loadPayments() {
     try {
-        payments.value = await api("/api/payments");
+        payments.value = sortByCreatedAtDesc(await api("/api/payments"));
     }
     catch (e) {
         setError(e);
@@ -822,7 +1588,7 @@ async function createPayment() {
 }
 async function loadAudit() {
     try {
-        auditLogs.value = await api("/api/audit-logs");
+        auditLogs.value = sortByCreatedAtDesc(await api("/api/audit-logs"));
     }
     catch (e) {
         setError(e);
@@ -956,12 +1722,6 @@ if (__VLS_ctx.token) {
 __VLS_asFunctionalElement(__VLS_intrinsicElements.section, __VLS_intrinsicElements.section)({
     ...{ class: "page" },
 });
-if (__VLS_ctx.errorMsg) {
-    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-        ...{ class: "error-banner" },
-    });
-    (__VLS_ctx.errorMsg);
-}
 if (!__VLS_ctx.token) {
     __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
         ...{ class: "card login-card" },
@@ -1099,7 +1859,7 @@ else {
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-            ...{ class: "form-grid cols-3" },
+            ...{ class: "form-grid cols-4" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
             ...{ class: "field" },
@@ -1108,9 +1868,9 @@ else {
             ...{ class: "field-label" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            placeholder: "请输入姓名",
+            placeholder: "请输入姓名关键词",
         });
-        (__VLS_ctx.contactForm.name);
+        (__VLS_ctx.contactFilterForm.name);
         __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
             ...{ class: "field" },
         });
@@ -1118,9 +1878,9 @@ else {
             ...{ class: "field-label" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            placeholder: "请输入手机号1",
+            placeholder: "请输入企业关键词",
         });
-        (__VLS_ctx.contactForm.phone1);
+        (__VLS_ctx.contactFilterForm.enterpriseName);
         __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
             ...{ class: "field" },
         });
@@ -1128,22 +1888,33 @@ else {
             ...{ class: "field-label" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            placeholder: "请输入手机号2",
+            placeholder: "请输入手机号1关键词",
         });
-        (__VLS_ctx.contactForm.phone2);
+        (__VLS_ctx.contactFilterForm.phone1);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入手机号2关键词",
+        });
+        (__VLS_ctx.contactFilterForm.phone2);
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "row" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-            ...{ onClick: (__VLS_ctx.saveContact) },
+            ...{ onClick: (__VLS_ctx.applyContactFilters) },
         });
-        (__VLS_ctx.contactEditingId ? "保存编辑" : "新增联系人");
-        if (__VLS_ctx.contactEditingId) {
-            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-                ...{ onClick: (__VLS_ctx.cancelContactEdit) },
-                ...{ class: "secondary" },
-            });
-        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.resetContactFilters) },
+            ...{ class: "secondary" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.openCreateContactPage) },
+            ...{ class: "secondary" },
+        });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
             ...{ onClick: (__VLS_ctx.loadContacts) },
             ...{ class: "secondary" },
@@ -1162,34 +1933,56 @@ else {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.tbody, __VLS_intrinsicElements.tbody)({});
-        for (const [c] of __VLS_getVForSourceType((__VLS_ctx.contacts))) {
+        for (const [c] of __VLS_getVForSourceType((__VLS_ctx.filteredContacts))) {
             __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({
                 key: (c.id),
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (c.id);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                ...{ onClick: (...[$event]) => {
+                        if (!!(!__VLS_ctx.token))
+                            return;
+                        if (!(__VLS_ctx.activeMenu === 'contacts'))
+                            return;
+                        __VLS_ctx.openContactDetailPage(c.id);
+                    } },
+                ...{ class: "row-link-btn" },
+            });
+            (c.name || "-");
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (c.tenantId || "-");
+            (c.enterpriseName || "-");
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (c.name);
+            (c.title || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            (__VLS_ctx.getContactLinkedProjectNames(c));
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             (c.phone1);
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             (c.phone2 || "-");
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (c.ownerId || "-");
+            (c.id);
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (c.creatorId || "-");
+            (c.tenantId || "-");
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (c.deleted ? "true" : "false");
+            (__VLS_ctx.getUserDisplayName(c.ownerId));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            (__VLS_ctx.getUserDisplayName(c.creatorId));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            (c.deleted ? "是" : "否");
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             (__VLS_ctx.formatDateTime(c.createdAt));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            (__VLS_ctx.formatDateTime(c.updatedAt));
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             (__VLS_ctx.formatDateTime(c.deletedAt));
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                ...{ class: "row" },
+                ...{ class: "row list-action-row" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -1199,7 +1992,7 @@ else {
                             return;
                         __VLS_ctx.startContactEdit(c);
                     } },
-                ...{ class: "secondary" },
+                ...{ class: "secondary list-action-btn" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -1209,7 +2002,749 @@ else {
                             return;
                         __VLS_ctx.deleteContact(c.id);
                     } },
+                ...{ class: "secondary list-action-btn" },
+            });
+        }
+        if (__VLS_ctx.filteredContacts.length === 0) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({});
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
+                colspan: "15",
+                ...{ class: "muted" },
+            });
+        }
+    }
+    if (__VLS_ctx.activeMenu === 'contact-create') {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "card" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-4" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入姓名",
+        });
+        (__VLS_ctx.contactForm.name);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入企业名称",
+        });
+        (__VLS_ctx.contactForm.enterpriseName);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入职位",
+        });
+        (__VLS_ctx.contactForm.title);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入手机号1",
+        });
+        (__VLS_ctx.contactForm.phone1);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入手机号2",
+        });
+        (__VLS_ctx.contactForm.phone2);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入微信号",
+        });
+        (__VLS_ctx.contactForm.wechat);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入邮箱",
+        });
+        (__VLS_ctx.contactForm.email);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入办公电话",
+        });
+        (__VLS_ctx.contactForm.officePhone);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.contactForm.gender),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "未知",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "男",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "女",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.contactForm.projectIds),
+            multiple: true,
+            disabled: (!!__VLS_ctx.contactCreateFixedProjectId),
+        });
+        for (const [p] of __VLS_getVForSourceType((__VLS_ctx.projects))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (p.id),
+                value: (p.id),
+            });
+            (p.name || "-");
+            (p.code || p.id);
+        }
+        if (__VLS_ctx.contactCreateFixedProjectId) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "muted" },
+            });
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.contactForm.decisionMaker),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: (false),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: (true),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入备注",
+        });
+        (__VLS_ctx.contactForm.remark);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.saveContact) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.cancelContactCreate) },
+            ...{ class: "secondary" },
+        });
+    }
+    if (__VLS_ctx.activeMenu === 'contact-edit') {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "card" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-4" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入姓名",
+        });
+        (__VLS_ctx.contactForm.name);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入企业名称",
+        });
+        (__VLS_ctx.contactForm.enterpriseName);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入职位",
+        });
+        (__VLS_ctx.contactForm.title);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入手机号1",
+        });
+        (__VLS_ctx.contactForm.phone1);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入手机号2",
+        });
+        (__VLS_ctx.contactForm.phone2);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入微信号",
+        });
+        (__VLS_ctx.contactForm.wechat);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入邮箱",
+        });
+        (__VLS_ctx.contactForm.email);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入办公电话",
+        });
+        (__VLS_ctx.contactForm.officePhone);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.contactForm.gender),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "未知",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "男",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "女",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.contactForm.projectIds),
+            multiple: true,
+        });
+        for (const [p] of __VLS_getVForSourceType((__VLS_ctx.projects))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (p.id),
+                value: (p.id),
+            });
+            (p.name || "-");
+            (p.code || p.id);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.contactForm.decisionMaker),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: (false),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: (true),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入备注",
+        });
+        (__VLS_ctx.contactForm.remark);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.saveContactEdit) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.cancelContactEdit) },
+            ...{ class: "secondary" },
+        });
+    }
+    if (__VLS_ctx.activeMenu === 'contact-detail') {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "card" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        if (__VLS_ctx.selectedContact && !__VLS_ctx.contactDetailEditMode) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                ...{ onClick: (__VLS_ctx.startContactEditInDetail) },
                 ...{ class: "secondary" },
+            });
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (...[$event]) => {
+                    if (!!(!__VLS_ctx.token))
+                        return;
+                    if (!(__VLS_ctx.activeMenu === 'contact-detail'))
+                        return;
+                    __VLS_ctx.activeMenu = 'contacts';
+                } },
+            ...{ class: "secondary" },
+        });
+        if (__VLS_ctx.selectedContact && !__VLS_ctx.contactDetailEditMode) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-grid" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.name || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.enterpriseName || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.title || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.phone1 || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.phone2 || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.getContactLinkedProjectNames(__VLS_ctx.selectedContact));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.wechat || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.email || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.officePhone || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.gender || "未知");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.decisionMaker ? "是" : "否");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.remark || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.id || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.tenantId || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.getUserDisplayName(__VLS_ctx.selectedContact.ownerId));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.getUserDisplayName(__VLS_ctx.selectedContact.creatorId));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedContact.deleted ? "是" : "否");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.formatDateTime(__VLS_ctx.selectedContact.createdAt));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.formatDateTime(__VLS_ctx.selectedContact.updatedAt));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.formatDateTime(__VLS_ctx.selectedContact.deletedAt));
+        }
+        else if (__VLS_ctx.selectedContact && __VLS_ctx.contactDetailEditMode) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "form-grid cols-4" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入姓名",
+            });
+            (__VLS_ctx.contactForm.name);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入企业名称",
+            });
+            (__VLS_ctx.contactForm.enterpriseName);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入职位",
+            });
+            (__VLS_ctx.contactForm.title);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入手机号1",
+            });
+            (__VLS_ctx.contactForm.phone1);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入手机号2",
+            });
+            (__VLS_ctx.contactForm.phone2);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入微信号",
+            });
+            (__VLS_ctx.contactForm.wechat);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入邮箱",
+            });
+            (__VLS_ctx.contactForm.email);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入办公电话",
+            });
+            (__VLS_ctx.contactForm.officePhone);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+                value: (__VLS_ctx.contactForm.gender),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "未知",
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "男",
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "女",
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+                value: (__VLS_ctx.contactForm.projectIds),
+                multiple: true,
+            });
+            for (const [p] of __VLS_getVForSourceType((__VLS_ctx.projects))) {
+                __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                    key: (p.id),
+                    value: (p.id),
+                });
+                (p.name || "-");
+                (p.code || p.id);
+            }
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+                value: (__VLS_ctx.contactForm.decisionMaker),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: (false),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: (true),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入备注",
+            });
+            (__VLS_ctx.contactForm.remark);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "row" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                ...{ onClick: (__VLS_ctx.saveContactInDetail) },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                ...{ onClick: (__VLS_ctx.cancelContactEditInDetail) },
+                ...{ class: "secondary" },
+            });
+        }
+        else {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+                ...{ class: "muted" },
+                ...{ style: {} },
             });
         }
     }
@@ -1295,7 +2830,7 @@ else {
             }
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                ...{ class: "row" },
+                ...{ class: "row list-action-row" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -1303,8 +2838,9 @@ else {
                             return;
                         if (!(__VLS_ctx.activeMenu === 'projects'))
                             return;
-                        __VLS_ctx.changeProjectStage(p);
+                        __VLS_ctx.openStageUpdateDialog(p);
                     } },
+                ...{ class: "list-action-btn" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -1312,9 +2848,9 @@ else {
                             return;
                         if (!(__VLS_ctx.activeMenu === 'projects'))
                             return;
-                        __VLS_ctx.transferProjectOwner(p);
+                        __VLS_ctx.openOwnerTransferDialog(p);
                     } },
-                ...{ class: "secondary" },
+                ...{ class: "secondary list-action-btn" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -1324,7 +2860,7 @@ else {
                             return;
                         __VLS_ctx.deleteProject(p.id);
                     } },
-                ...{ class: "secondary" },
+                ...{ class: "secondary list-action-btn" },
             });
         }
     }
@@ -1351,7 +2887,7 @@ else {
         });
         if (__VLS_ctx.contacts.length === 0) {
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                ...{ class: "error-banner" },
+                ...{ class: "inline-tip" },
                 ...{ style: {} },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
@@ -1375,7 +2911,7 @@ else {
             ...{ class: "field" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
+            ...{ class: "field-label required" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
             placeholder: "请输入项目名称",
@@ -1385,7 +2921,7 @@ else {
             ...{ class: "field" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
+            ...{ class: "field-label required" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
             value: (__VLS_ctx.projectForm.contactId),
@@ -1405,7 +2941,7 @@ else {
             ...{ class: "field" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
+            ...{ class: "field-label required" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
             value: (__VLS_ctx.projectForm.ownerId),
@@ -1437,16 +2973,6 @@ else {
             });
             (__VLS_ctx.dealTypeLabelMap[x]);
         }
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-            ...{ class: "field" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            type: "datetime-local",
-        });
-        (__VLS_ctx.projectForm.firstContactAt);
         __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
             ...{ class: "field" },
         });
@@ -1532,36 +3058,6 @@ else {
             ...{ class: "field-label" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            type: "date",
-        });
-        (__VLS_ctx.projectForm.firstVisitDate);
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-            ...{ class: "field" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            type: "date",
-        });
-        (__VLS_ctx.projectForm.firstNegotiationDate);
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-            ...{ class: "field" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            type: "date",
-        });
-        (__VLS_ctx.projectForm.movedInDate);
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-            ...{ class: "field" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
             placeholder: "请输入备注",
         });
         (__VLS_ctx.projectForm.remark);
@@ -1580,6 +3076,9 @@ else {
         if (__VLS_ctx.selectedProject) {
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
                 ...{ class: "project-detail-page" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-hero-sticky" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
                 ...{ class: "card project-hero-card" },
@@ -1628,7 +3127,15 @@ else {
                 ...{ class: "project-hero-actions" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-                ...{ onClick: (__VLS_ctx.updateSelectedProjectStage) },
+                ...{ onClick: (...[$event]) => {
+                        if (!!(!__VLS_ctx.token))
+                            return;
+                        if (!(__VLS_ctx.activeMenu === 'project-detail'))
+                            return;
+                        if (!(__VLS_ctx.selectedProject))
+                            return;
+                        __VLS_ctx.openStageUpdateDialog(__VLS_ctx.selectedProject);
+                    } },
                 ...{ class: "secondary project-stage-btn" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
@@ -1636,7 +3143,7 @@ else {
                 ...{ class: "secondary" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-                ...{ onClick: (__VLS_ctx.transferSelectedProjectOwner) },
+                ...{ onClick: (__VLS_ctx.openSelectedProjectOwnerDialog) },
                 ...{ class: "secondary" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
@@ -1689,209 +3196,89 @@ else {
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
                 ...{ class: "project-base-title" },
             });
-            if (__VLS_ctx.projectEditMode) {
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-edit-wrap" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "form-grid cols-4" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-                    placeholder: "请输入项目名称",
-                });
-                (__VLS_ctx.projectEditForm.name);
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
-                    value: (__VLS_ctx.projectEditForm.dealType),
-                });
-                for (const [t] of __VLS_getVForSourceType((__VLS_ctx.dealTypeOptions))) {
-                    __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
-                        key: (t),
-                        value: (t),
-                    });
-                    (__VLS_ctx.dealTypeLabelMap[t]);
-                }
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
-                    value: (__VLS_ctx.projectEditForm.level),
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
-                    value: "",
-                });
-                for (const [level] of __VLS_getVForSourceType((__VLS_ctx.projectLevelOptions))) {
-                    __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
-                        key: (level),
-                        value: (level),
-                    });
-                    (level);
-                }
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
-                    value: (__VLS_ctx.projectEditForm.source),
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
-                    value: "",
-                });
-                for (const [sourceOption] of __VLS_getVForSourceType((__VLS_ctx.projectSourceOptions))) {
-                    __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
-                        key: (sourceOption),
-                        value: (sourceOption),
-                    });
-                    (sourceOption);
-                }
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-                    placeholder: "请输入意向区域",
-                });
-                (__VLS_ctx.projectEditForm.intendedRegion);
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-                    type: "number",
-                    min: "0",
-                    placeholder: "例如 1000",
-                });
-                (__VLS_ctx.projectEditForm.intendedAreaMin);
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-                    type: "number",
-                    min: "0",
-                    placeholder: "例如 3000",
-                });
-                (__VLS_ctx.projectEditForm.intendedAreaMax);
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-                    ...{ class: "field" },
-                    ...{ style: {} },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "field-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-                    placeholder: "请输入备注",
-                });
-                (__VLS_ctx.projectEditForm.remark);
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "row" },
-                    ...{ style: {} },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-                    ...{ onClick: (__VLS_ctx.saveProjectEdit) },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-                    ...{ onClick: (__VLS_ctx.cancelProjectEdit) },
-                    ...{ class: "secondary" },
-                });
-            }
-            else {
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-grid" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.selectedProject.level || "-");
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.selectedProject.dealType ? __VLS_ctx.dealTypeLabelMap[__VLS_ctx.selectedProject.dealType] : "-");
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.selectedProject.intendedRegion || "-");
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.formatAreaRange(__VLS_ctx.selectedProject));
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.selectedProject.source || "-");
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.selectedProject.remark || "-");
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                    ...{ class: "project-base-item" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-label" },
-                });
-                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-                    ...{ class: "base-value" },
-                });
-                (__VLS_ctx.formatDateTime(__VLS_ctx.selectedProject.lastFollowupAt));
-            }
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-grid" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.getUserDisplayName(__VLS_ctx.selectedProject.ownerId));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedProject.level || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedProject.dealType ? __VLS_ctx.dealTypeLabelMap[__VLS_ctx.selectedProject.dealType] : "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedProject.intendedRegion || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.formatAreaRange(__VLS_ctx.selectedProject));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedProject.source || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.selectedProject.remark || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "project-base-item" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "base-value" },
+            });
+            (__VLS_ctx.formatDateTime(__VLS_ctx.selectedProject.lastFollowupAt));
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
                 ...{ class: "card" },
             });
@@ -1988,6 +3375,22 @@ else {
                             key: (c.id),
                         });
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                            ...{ onClick: (...[$event]) => {
+                                    if (!!(!__VLS_ctx.token))
+                                        return;
+                                    if (!(__VLS_ctx.activeMenu === 'project-detail'))
+                                        return;
+                                    if (!(__VLS_ctx.selectedProject))
+                                        return;
+                                    if (!(__VLS_ctx.projectDetailTab === 'contact'))
+                                        return;
+                                    if (!(__VLS_ctx.projectDetailContactList.length))
+                                        return;
+                                    __VLS_ctx.openContactDetailPage(c.id);
+                                } },
+                            ...{ class: "row-link-btn" },
+                        });
                         (c.name || "-");
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
                         (c.phone1 || "-");
@@ -2021,7 +3424,7 @@ else {
                     ...{ class: "detail-list-actions-inline" },
                 });
                 __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-                    ...{ onClick: (__VLS_ctx.jumpToFollowupFromDetail) },
+                    ...{ onClick: (__VLS_ctx.openFollowupDrawerFromDetail) },
                     ...{ class: "secondary" },
                 });
                 if (__VLS_ctx.projectDetailFollowups.length) {
@@ -2055,14 +3458,125 @@ else {
                         });
                         (__VLS_ctx.formatDateTime(f.createdAt || f.followupAt));
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                            ...{ class: "followup-head-actions" },
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                            ...{ onClick: (...[$event]) => {
+                                    if (!!(!__VLS_ctx.token))
+                                        return;
+                                    if (!(__VLS_ctx.activeMenu === 'project-detail'))
+                                        return;
+                                    if (!(__VLS_ctx.selectedProject))
+                                        return;
+                                    if (!(__VLS_ctx.projectDetailTab === 'followups'))
+                                        return;
+                                    if (!(__VLS_ctx.projectDetailFollowups.length))
+                                        return;
+                                    __VLS_ctx.openFollowupEditDialog(f);
+                                } },
+                            ...{ class: "icon-action-btn" },
+                            title: "编辑",
+                            'aria-label': "编辑",
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.svg, __VLS_intrinsicElements.svg)({
+                            viewBox: "0 0 24 24",
+                            'aria-hidden': "true",
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.path)({
+                            d: "M4 20h4l10-10-4-4L4 16v4zm13-13 2 2",
+                            fill: "none",
+                            stroke: "currentColor",
+                            'stroke-width': "2",
+                            'stroke-linecap': "round",
+                            'stroke-linejoin': "round",
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                            ...{ onClick: (...[$event]) => {
+                                    if (!!(!__VLS_ctx.token))
+                                        return;
+                                    if (!(__VLS_ctx.activeMenu === 'project-detail'))
+                                        return;
+                                    if (!(__VLS_ctx.selectedProject))
+                                        return;
+                                    if (!(__VLS_ctx.projectDetailTab === 'followups'))
+                                        return;
+                                    if (!(__VLS_ctx.projectDetailFollowups.length))
+                                        return;
+                                    __VLS_ctx.deleteFollowup(f);
+                                } },
+                            ...{ class: "icon-action-btn" },
+                            title: "删除",
+                            'aria-label': "删除",
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.svg, __VLS_intrinsicElements.svg)({
+                            viewBox: "0 0 24 24",
+                            'aria-hidden': "true",
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.path)({
+                            d: "M4 7h16M9 7V5h6v2m-7 0 1 12h6l1-12",
+                            fill: "none",
+                            stroke: "currentColor",
+                            'stroke-width': "2",
+                            'stroke-linecap': "round",
+                            'stroke-linejoin': "round",
+                        });
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
                             ...{ class: "followup-body" },
                         });
                         (f.content || "-");
+                        if (__VLS_ctx.hasFollowupAttachment(f)) {
+                            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                                ...{ class: "followup-attachments" },
+                            });
+                            if (__VLS_ctx.isFollowupAttachmentImage(f) && __VLS_ctx.getFollowupAttachmentPreviewSrc(f)) {
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.a, __VLS_intrinsicElements.a)({
+                                    ...{ class: "followup-attachment-tile image" },
+                                    href: (__VLS_ctx.getFollowupAttachmentHref(f) || __VLS_ctx.getFollowupAttachmentPreviewSrc(f)),
+                                    target: "_blank",
+                                    rel: "noopener noreferrer",
+                                });
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.img)({
+                                    src: (__VLS_ctx.getFollowupAttachmentPreviewSrc(f)),
+                                    alt: (__VLS_ctx.getFollowupAttachmentName(f)),
+                                });
+                            }
+                            else if (__VLS_ctx.getFollowupAttachmentHref(f)) {
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.a, __VLS_intrinsicElements.a)({
+                                    ...{ class: "followup-attachment-tile file" },
+                                    href: (__VLS_ctx.getFollowupAttachmentHref(f)),
+                                    target: "_blank",
+                                    rel: "noopener noreferrer",
+                                });
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                                    ...{ class: "file-mark" },
+                                });
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                                    ...{ class: "file-name" },
+                                });
+                                (__VLS_ctx.getFollowupAttachmentName(f));
+                            }
+                            else {
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                                    ...{ class: "followup-attachment-tile file" },
+                                });
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                                    ...{ class: "file-mark" },
+                                });
+                                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                                    ...{ class: "file-name" },
+                                });
+                                (__VLS_ctx.getFollowupAttachmentName(f));
+                            }
+                        }
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
                             ...{ class: "followup-foot" },
                         });
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
                         (__VLS_ctx.formatDateTime(f.followupAt));
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+                        (f.method || "-");
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+                        (__VLS_ctx.getContactDisplayName(f.contactId));
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
                         (__VLS_ctx.getStageLabel(__VLS_ctx.selectedProject?.stage));
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
@@ -2107,6 +3621,7 @@ else {
                 __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
                 __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
                 __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+                __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
                 if (__VLS_ctx.projectDetailContracts.length) {
                     __VLS_asFunctionalElement(__VLS_intrinsicElements.tbody, __VLS_intrinsicElements.tbody)({});
                     for (const [c] of __VLS_getVForSourceType((__VLS_ctx.projectDetailContracts))) {
@@ -2124,6 +3639,8 @@ else {
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
                         (__VLS_ctx.getUserDisplayName(c.creatorId || c.ownerId));
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+                        (__VLS_ctx.formatDateTime(c.createdAt));
+                        __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
                         __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                             ...{ class: "row-link-btn" },
                         });
@@ -2134,7 +3651,7 @@ else {
                     __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({});
                     __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({
                         ...{ class: "empty-row" },
-                        colspan: "6",
+                        colspan: "7",
                     });
                 }
             }
@@ -2230,9 +3747,19 @@ else {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "card" },
         });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-            ...{ class: "form-grid cols-3" },
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.openCreateFollowupPage) },
+            ...{ class: "secondary" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-2" },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
             ...{ class: "field" },
@@ -2252,33 +3779,10 @@ else {
                 value: (p.id),
             });
             (p.name);
-            (p.id);
+            (p.code || p.id);
         }
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-            ...{ class: "field" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            placeholder: "请输入跟进内容",
-        });
-        (__VLS_ctx.followupForm.content);
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
-            ...{ class: "field" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
-            ...{ class: "field-label" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-            type: "datetime-local",
-        });
-        (__VLS_ctx.followupForm.followupAt);
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
             ...{ class: "row" },
-        });
-        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
-            ...{ onClick: (__VLS_ctx.createFollowup) },
         });
         __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
             ...{ onClick: (__VLS_ctx.loadFollowupsByProject) },
@@ -2287,6 +3791,10 @@ else {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.table, __VLS_intrinsicElements.table)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.thead, __VLS_intrinsicElements.thead)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.tr, __VLS_intrinsicElements.tr)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.th, __VLS_intrinsicElements.th)({});
@@ -2302,12 +3810,200 @@ else {
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             (f.code);
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (f.projectId);
+            (__VLS_ctx.getProjectDisplayName(f.projectId));
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             (f.content);
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
-            (f.followupAt);
+            (f.method || "-");
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            (__VLS_ctx.getContactDisplayName(f.contactId));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            if (__VLS_ctx.getFollowupAttachmentHref(f)) {
+                __VLS_asFunctionalElement(__VLS_intrinsicElements.a, __VLS_intrinsicElements.a)({
+                    href: (__VLS_ctx.getFollowupAttachmentHref(f)),
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                });
+                (__VLS_ctx.getFollowupAttachmentName(f));
+            }
+            else {
+                (__VLS_ctx.getFollowupAttachmentName(f));
+            }
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            (__VLS_ctx.formatDateTime(f.followupAt));
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "row list-action-row" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                ...{ onClick: (...[$event]) => {
+                        if (!!(!__VLS_ctx.token))
+                            return;
+                        if (!(__VLS_ctx.activeMenu === 'followups'))
+                            return;
+                        __VLS_ctx.openFollowupEditDialog(f);
+                    } },
+                ...{ class: "list-action-btn" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+                ...{ onClick: (...[$event]) => {
+                        if (!!(!__VLS_ctx.token))
+                            return;
+                        if (!(__VLS_ctx.activeMenu === 'followups'))
+                            return;
+                        __VLS_ctx.deleteFollowup(f);
+                    } },
+                ...{ class: "secondary list-action-btn" },
+            });
         }
+    }
+    if (__VLS_ctx.activeMenu === 'followup-create') {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "card" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (...[$event]) => {
+                    if (!!(!__VLS_ctx.token))
+                        return;
+                    if (!(__VLS_ctx.activeMenu === 'followup-create'))
+                        return;
+                    __VLS_ctx.activeMenu = 'followups';
+                } },
+            ...{ class: "secondary" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-3" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupCreateForm.projectId),
+            disabled: (!!__VLS_ctx.followupCreateFixedProjectId),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [p] of __VLS_getVForSourceType((__VLS_ctx.projects))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (p.id),
+                value: (p.id),
+            });
+            (p.name);
+            (p.code || p.id);
+        }
+        if (__VLS_ctx.followupCreateFixedProjectId) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "muted" },
+            });
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            type: "datetime-local",
+        });
+        (__VLS_ctx.followupCreateForm.followupAt);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupCreateForm.method),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [m] of __VLS_getVForSourceType((__VLS_ctx.followupMethodOptions))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (m),
+                value: (m),
+            });
+            (m);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupCreateForm.contactId),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [c] of __VLS_getVForSourceType((__VLS_ctx.getContactsByProject(__VLS_ctx.followupCreateForm.projectId)))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (c.id),
+                value: (c.id),
+            });
+            (c.name || "-");
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.textarea, __VLS_intrinsicElements.textarea)({
+            value: (__VLS_ctx.followupCreateForm.content),
+            rows: "4",
+            placeholder: "请输入跟进内容",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            ...{ onChange: (__VLS_ctx.onFollowupAttachmentChange) },
+            ref: "followupAttachmentInputRef",
+            type: "file",
+            ...{ style: {} },
+        });
+        /** @type {typeof __VLS_ctx.followupAttachmentInputRef} */ ;
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.triggerFollowupAttachmentPick) },
+            type: "button",
+            ...{ class: "secondary" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "muted" },
+        });
+        (__VLS_ctx.followupAttachmentName || "未选择文件");
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.createFollowup) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.resetFollowupCreateFormAction) },
+            ...{ class: "secondary" },
+        });
     }
     if (__VLS_ctx.activeMenu === 'contracts') {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
@@ -2580,7 +4276,7 @@ else {
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.td, __VLS_intrinsicElements.td)({});
             __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
-                ...{ class: "row" },
+                ...{ class: "row list-action-row" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -2590,6 +4286,7 @@ else {
                             return;
                         __VLS_ctx.updateRole(u);
                     } },
+                ...{ class: "list-action-btn" },
             });
             __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
                 ...{ onClick: (...[$event]) => {
@@ -2599,7 +4296,7 @@ else {
                             return;
                         __VLS_ctx.updateStatus(u);
                     } },
-                ...{ class: "secondary" },
+                ...{ class: "secondary list-action-btn" },
             });
         }
     }
@@ -2754,6 +4451,685 @@ else {
             (item);
         }
     }
+    if (__VLS_ctx.stageUpdateDialogVisible) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "modal-mask" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "modal-card" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h3, __VLS_intrinsicElements.h3)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-2" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            ...{ onChange: (__VLS_ctx.onStageChange) },
+            value: (__VLS_ctx.stageUpdateForm.stage),
+        });
+        for (const [stage] of __VLS_getVForSourceType((__VLS_ctx.availableStages))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (stage),
+                value: (stage),
+            });
+            (__VLS_ctx.stageLabelMap[stage]);
+            (__VLS_ctx.getStageIndexText(stage));
+        }
+        if (__VLS_ctx.stageTargetIsSigning) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "muted" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入合同编号",
+            });
+            (__VLS_ctx.stageContractForm.contractNo);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                placeholder: "请输入合同标题",
+            });
+            (__VLS_ctx.stageContractForm.title);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "number",
+                min: "0",
+                placeholder: "请输入合同金额",
+            });
+            (__VLS_ctx.stageContractForm.amount);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "date",
+            });
+            (__VLS_ctx.stageContractForm.signDate);
+        }
+        else if (__VLS_ctx.stageTargetIsCollecting) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+                ...{ class: "muted" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+                value: (__VLS_ctx.stagePaymentForm.contractId),
+                disabled: (__VLS_ctx.stageDialogContracts.length === 0),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "",
+            });
+            for (const [c] of __VLS_getVForSourceType((__VLS_ctx.stageDialogContracts))) {
+                __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                    key: (c.id),
+                    value: (c.id),
+                });
+                (c.contractNo || c.title || c.id);
+            }
+            if (__VLS_ctx.stageDialogContracts.length === 0) {
+                __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                    ...{ class: "muted" },
+                });
+            }
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "date",
+            });
+            (__VLS_ctx.stagePaymentForm.paidDate);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "number",
+                min: "0",
+                placeholder: "请输入回款金额",
+            });
+            (__VLS_ctx.stagePaymentForm.amount);
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+                value: (__VLS_ctx.stagePaymentForm.invoiceStatus),
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "UNISSUED",
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "ISSUED",
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                value: "NOT_REQUIRED",
+            });
+        }
+        else if (__VLS_ctx.needsFirstContactAt) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "date",
+            });
+            (__VLS_ctx.stageUpdateForm.firstContactAt);
+        }
+        if (!__VLS_ctx.stageTargetIsSigning && !__VLS_ctx.stageTargetIsCollecting && __VLS_ctx.needsFirstVisitDate) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "date",
+            });
+            (__VLS_ctx.stageUpdateForm.firstVisitDate);
+        }
+        if (!__VLS_ctx.stageTargetIsSigning && !__VLS_ctx.stageTargetIsCollecting && __VLS_ctx.needsFirstNegotiationDate) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "date",
+            });
+            (__VLS_ctx.stageUpdateForm.firstNegotiationDate);
+        }
+        if (!__VLS_ctx.stageTargetIsSigning && !__VLS_ctx.stageTargetIsCollecting && __VLS_ctx.needsMovedInDate) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+                type: "date",
+            });
+            (__VLS_ctx.stageUpdateForm.movedInDate);
+        }
+        if (!__VLS_ctx.stageTargetIsSigning && !__VLS_ctx.stageTargetIsCollecting && __VLS_ctx.isSkippedStage) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+                ...{ class: "field" },
+                ...{ style: {} },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+                ...{ class: "field-label required" },
+            });
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.textarea, __VLS_intrinsicElements.textarea)({
+                value: (__VLS_ctx.stageUpdateForm.remark),
+                rows: "3",
+                placeholder: "请说明跳级推进的原因",
+            });
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.submitStageUpdate) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.closeStageUpdateDialog) },
+            ...{ class: "secondary" },
+        });
+    }
+    if (__VLS_ctx.ownerTransferDialogVisible) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "modal-mask" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "modal-card" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h3, __VLS_intrinsicElements.h3)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-1" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.ownerTransferForm.ownerId),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [u] of __VLS_getVForSourceType((__VLS_ctx.users))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (u.id),
+                value: (u.id),
+            });
+            (u.name);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "可填写更换原因",
+        });
+        (__VLS_ctx.ownerTransferForm.reason);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.submitOwnerTransfer) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.closeOwnerTransferDialog) },
+            ...{ class: "secondary" },
+        });
+    }
+    if (__VLS_ctx.followupEditDialogVisible) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "modal-mask" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "modal-card" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h3, __VLS_intrinsicElements.h3)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-2" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            value: (__VLS_ctx.getProjectDisplayName(__VLS_ctx.followupEditForm.projectId)),
+            disabled: true,
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            type: "datetime-local",
+        });
+        (__VLS_ctx.followupEditForm.followupAt);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupEditForm.method),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [m] of __VLS_getVForSourceType((__VLS_ctx.followupMethodOptions))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (m),
+                value: (m),
+            });
+            (m);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupEditForm.contactId),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [c] of __VLS_getVForSourceType((__VLS_ctx.getContactsByProject(__VLS_ctx.followupEditForm.projectId)))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (c.id),
+                value: (c.id),
+            });
+            (c.name || "-");
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.textarea, __VLS_intrinsicElements.textarea)({
+            value: (__VLS_ctx.followupEditForm.content),
+            rows: "4",
+            placeholder: "请输入跟进内容",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.saveFollowupEdit) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.closeFollowupEditDialog) },
+            ...{ class: "secondary" },
+        });
+    }
+    if (__VLS_ctx.followupDrawerVisible) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ onClick: (__VLS_ctx.closeFollowupDrawer) },
+            ...{ class: "drawer-mask" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.aside, __VLS_intrinsicElements.aside)({
+            ...{ class: "drawer-panel" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "drawer-header" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h3, __VLS_intrinsicElements.h3)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.closeFollowupDrawer) },
+            ...{ class: "secondary drawer-close-btn" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "drawer-body" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-1" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupCreateForm.projectId),
+            disabled: (true),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [p] of __VLS_getVForSourceType((__VLS_ctx.projects))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (p.id),
+                value: (p.id),
+            });
+            (p.name);
+            (p.code || p.id);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "muted" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            type: "datetime-local",
+        });
+        (__VLS_ctx.followupCreateForm.followupAt);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupCreateForm.method),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [m] of __VLS_getVForSourceType((__VLS_ctx.followupMethodOptions))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (m),
+                value: (m),
+            });
+            (m);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.followupCreateForm.contactId),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [c] of __VLS_getVForSourceType((__VLS_ctx.getContactsByProject(__VLS_ctx.followupCreateForm.projectId)))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (c.id),
+                value: (c.id),
+            });
+            (c.name || "-");
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.textarea, __VLS_intrinsicElements.textarea)({
+            value: (__VLS_ctx.followupCreateForm.content),
+            rows: "5",
+            placeholder: "请输入跟进内容",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "row" },
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            ...{ onChange: (__VLS_ctx.onFollowupAttachmentChange) },
+            ref: "followupAttachmentInputRef",
+            type: "file",
+            ...{ style: {} },
+        });
+        /** @type {typeof __VLS_ctx.followupAttachmentInputRef} */ ;
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.triggerFollowupAttachmentPick) },
+            type: "button",
+            ...{ class: "secondary" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "muted" },
+        });
+        (__VLS_ctx.followupAttachmentName || "未选择文件");
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "drawer-footer" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.createFollowup) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (...[$event]) => {
+                    if (!!(!__VLS_ctx.token))
+                        return;
+                    if (!(__VLS_ctx.followupDrawerVisible))
+                        return;
+                    __VLS_ctx.resetFollowupCreateForm(false);
+                } },
+            ...{ class: "secondary" },
+        });
+    }
+    if (__VLS_ctx.projectEditMode) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ onClick: (__VLS_ctx.cancelProjectEdit) },
+            ...{ class: "drawer-mask" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.aside, __VLS_intrinsicElements.aside)({
+            ...{ class: "drawer-panel" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "drawer-header" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.h3, __VLS_intrinsicElements.h3)({
+            ...{ style: {} },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.cancelProjectEdit) },
+            ...{ class: "secondary drawer-close-btn" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "drawer-body" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "form-grid cols-1" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label required" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入项目名称",
+        });
+        (__VLS_ctx.projectEditForm.name);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.projectEditForm.dealType),
+        });
+        for (const [t] of __VLS_getVForSourceType((__VLS_ctx.dealTypeOptions))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (t),
+                value: (t),
+            });
+            (__VLS_ctx.dealTypeLabelMap[t]);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.projectEditForm.level),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [level] of __VLS_getVForSourceType((__VLS_ctx.projectLevelOptions))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (level),
+                value: (level),
+            });
+            (level);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            value: (__VLS_ctx.projectEditForm.source),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [sourceOption] of __VLS_getVForSourceType((__VLS_ctx.projectSourceOptions))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (sourceOption),
+                value: (sourceOption),
+            });
+            (sourceOption);
+        }
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入意向区域",
+        });
+        (__VLS_ctx.projectEditForm.intendedRegion);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            type: "number",
+            min: "0",
+            placeholder: "例如 1000",
+        });
+        (__VLS_ctx.projectEditForm.intendedAreaMin);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            type: "number",
+            min: "0",
+            placeholder: "例如 3000",
+        });
+        (__VLS_ctx.projectEditForm.intendedAreaMax);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            ...{ class: "field-label" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+            placeholder: "请输入备注",
+        });
+        (__VLS_ctx.projectEditForm.remark);
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "drawer-footer" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.saveProjectEdit) },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.button, __VLS_intrinsicElements.button)({
+            ...{ onClick: (__VLS_ctx.cancelProjectEdit) },
+            ...{ class: "secondary" },
+        });
+    }
+}
+if (__VLS_ctx.errorMsg) {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "toast toast-error" },
+    });
+    (__VLS_ctx.errorMsg);
 }
 /** @type {__VLS_StyleScopedClasses['layout']} */ ;
 /** @type {__VLS_StyleScopedClasses['sidebar']} */ ;
@@ -2777,7 +5153,6 @@ else {
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['page']} */ ;
-/** @type {__VLS_StyleScopedClasses['error-banner']} */ ;
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
 /** @type {__VLS_StyleScopedClasses['login-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
@@ -2805,33 +5180,6 @@ else {
 /** @type {__VLS_StyleScopedClasses['row']} */ ;
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
 /** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
-/** @type {__VLS_StyleScopedClasses['cols-3']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['card']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['link-btn']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['card']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['error-banner']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
-/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
 /** @type {__VLS_StyleScopedClasses['cols-4']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
@@ -2841,6 +5189,209 @@ else {
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['row-link-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['link-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['inline-tip']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-4']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
@@ -2851,12 +5402,6 @@ else {
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['radio-group']} */ ;
 /** @type {__VLS_StyleScopedClasses['radio-item']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
@@ -2868,6 +5413,7 @@ else {
 /** @type {__VLS_StyleScopedClasses['row']} */ ;
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-detail-page']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-hero-sticky']} */ ;
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-hero-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-hero-top']} */ ;
@@ -2902,28 +5448,10 @@ else {
 /** @type {__VLS_StyleScopedClasses['project-base-card']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-base-header']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-base-title']} */ ;
-/** @type {__VLS_StyleScopedClasses['project-edit-wrap']} */ ;
-/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
-/** @type {__VLS_StyleScopedClasses['cols-4']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['field']} */ ;
-/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
-/** @type {__VLS_StyleScopedClasses['row']} */ ;
-/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-base-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['base-value']} */ ;
 /** @type {__VLS_StyleScopedClasses['project-base-item']} */ ;
 /** @type {__VLS_StyleScopedClasses['base-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['base-value']} */ ;
@@ -2958,6 +5486,7 @@ else {
 /** @type {__VLS_StyleScopedClasses['detail-list-title']} */ ;
 /** @type {__VLS_StyleScopedClasses['detail-list-actions-inline']} */ ;
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['row-link-btn']} */ ;
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['detail-panel']} */ ;
 /** @type {__VLS_StyleScopedClasses['detail-list-toolbar']} */ ;
@@ -2973,7 +5502,21 @@ else {
 /** @type {__VLS_StyleScopedClasses['followup-head-title']} */ ;
 /** @type {__VLS_StyleScopedClasses['followup-user']} */ ;
 /** @type {__VLS_StyleScopedClasses['followup-time']} */ ;
+/** @type {__VLS_StyleScopedClasses['followup-head-actions']} */ ;
+/** @type {__VLS_StyleScopedClasses['icon-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['icon-action-btn']} */ ;
 /** @type {__VLS_StyleScopedClasses['followup-body']} */ ;
+/** @type {__VLS_StyleScopedClasses['followup-attachments']} */ ;
+/** @type {__VLS_StyleScopedClasses['followup-attachment-tile']} */ ;
+/** @type {__VLS_StyleScopedClasses['image']} */ ;
+/** @type {__VLS_StyleScopedClasses['followup-attachment-tile']} */ ;
+/** @type {__VLS_StyleScopedClasses['file']} */ ;
+/** @type {__VLS_StyleScopedClasses['file-mark']} */ ;
+/** @type {__VLS_StyleScopedClasses['file-name']} */ ;
+/** @type {__VLS_StyleScopedClasses['followup-attachment-tile']} */ ;
+/** @type {__VLS_StyleScopedClasses['file']} */ ;
+/** @type {__VLS_StyleScopedClasses['file-mark']} */ ;
+/** @type {__VLS_StyleScopedClasses['file-name']} */ ;
 /** @type {__VLS_StyleScopedClasses['followup-foot']} */ ;
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['detail-panel']} */ ;
@@ -2998,14 +5541,43 @@ else {
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
 /** @type {__VLS_StyleScopedClasses['cols-3']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['row']} */ ;
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
@@ -3039,7 +5611,10 @@ else {
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
 /** @type {__VLS_StyleScopedClasses['row']} */ ;
 /** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
 /** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['list-action-btn']} */ ;
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
 /** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
 /** @type {__VLS_StyleScopedClasses['cols-2']} */ ;
@@ -3065,12 +5640,149 @@ else {
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['event-box']} */ ;
 /** @type {__VLS_StyleScopedClasses['event-item']} */ ;
+/** @type {__VLS_StyleScopedClasses['modal-mask']} */ ;
+/** @type {__VLS_StyleScopedClasses['modal-card']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['modal-mask']} */ ;
+/** @type {__VLS_StyleScopedClasses['modal-card']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['modal-mask']} */ ;
+/** @type {__VLS_StyleScopedClasses['modal-card']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-2']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-mask']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-panel']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-header']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-close-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-body']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['row']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-footer']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-mask']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-panel']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-header']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-close-btn']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-body']} */ ;
+/** @type {__VLS_StyleScopedClasses['form-grid']} */ ;
+/** @type {__VLS_StyleScopedClasses['cols-1']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['required']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field-label']} */ ;
+/** @type {__VLS_StyleScopedClasses['drawer-footer']} */ ;
+/** @type {__VLS_StyleScopedClasses['secondary']} */ ;
+/** @type {__VLS_StyleScopedClasses['toast']} */ ;
+/** @type {__VLS_StyleScopedClasses['toast-error']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
         return {
             stageOptions: stageOptions,
             dealTypeOptions: dealTypeOptions,
+            followupMethodOptions: followupMethodOptions,
             projectLevelOptions: projectLevelOptions,
             projectSourceOptions: projectSourceOptions,
             stageLabelMap: stageLabelMap,
@@ -3096,15 +5808,33 @@ const __VLS_self = (await import('vue')).defineComponent({
             selectedProject: selectedProject,
             projectStageCurrentIndex: projectStageCurrentIndex,
             projectDetailContactList: projectDetailContactList,
+            selectedContact: selectedContact,
+            filteredContacts: filteredContacts,
             projectDetailContracts: projectDetailContracts,
             projectDetailPayments: projectDetailPayments,
+            stageDialogContracts: stageDialogContracts,
             loginForm: loginForm,
             contactForm: contactForm,
-            contactEditingId: contactEditingId,
+            contactFilterForm: contactFilterForm,
+            contactDetailEditMode: contactDetailEditMode,
+            contactCreateFixedProjectId: contactCreateFixedProjectId,
             projectForm: projectForm,
             projectEditMode: projectEditMode,
             projectEditForm: projectEditForm,
             followupForm: followupForm,
+            followupCreateForm: followupCreateForm,
+            followupEditForm: followupEditForm,
+            followupEditDialogVisible: followupEditDialogVisible,
+            followupAttachmentInputRef: followupAttachmentInputRef,
+            followupAttachmentName: followupAttachmentName,
+            followupCreateFixedProjectId: followupCreateFixedProjectId,
+            followupDrawerVisible: followupDrawerVisible,
+            ownerTransferDialogVisible: ownerTransferDialogVisible,
+            ownerTransferForm: ownerTransferForm,
+            stageUpdateDialogVisible: stageUpdateDialogVisible,
+            stageUpdateForm: stageUpdateForm,
+            stageContractForm: stageContractForm,
+            stagePaymentForm: stagePaymentForm,
             contractForm: contractForm,
             paymentForm: paymentForm,
             scopeMode: scopeMode,
@@ -3112,7 +5842,18 @@ const __VLS_self = (await import('vue')).defineComponent({
             sseConnected: sseConnected,
             sseEvents: sseEvents,
             getUserDisplayName: getUserDisplayName,
+            getContactDisplayName: getContactDisplayName,
             getContractDisplayName: getContractDisplayName,
+            getProjectDisplayName: getProjectDisplayName,
+            getContactLinkedProjectNames: getContactLinkedProjectNames,
+            getContactsByProject: getContactsByProject,
+            getFollowupAttachmentName: getFollowupAttachmentName,
+            getFollowupAttachmentHref: getFollowupAttachmentHref,
+            getFollowupAttachmentPreviewSrc: getFollowupAttachmentPreviewSrc,
+            isFollowupAttachmentImage: isFollowupAttachmentImage,
+            hasFollowupAttachment: hasFollowupAttachment,
+            triggerFollowupAttachmentPick: triggerFollowupAttachmentPick,
+            onFollowupAttachmentChange: onFollowupAttachmentChange,
             getProjectContactsDisplay: getProjectContactsDisplay,
             formatAreaRange: formatAreaRange,
             formatAmount: formatAmount,
@@ -3129,7 +5870,10 @@ const __VLS_self = (await import('vue')).defineComponent({
             cancelProjectEdit: cancelProjectEdit,
             openProjectDetailPage: openProjectDetailPage,
             jumpToContactFromDetail: jumpToContactFromDetail,
-            jumpToFollowupFromDetail: jumpToFollowupFromDetail,
+            openFollowupDrawerFromDetail: openFollowupDrawerFromDetail,
+            closeFollowupDrawer: closeFollowupDrawer,
+            openFollowupEditDialog: openFollowupEditDialog,
+            closeFollowupEditDialog: closeFollowupEditDialog,
             jumpToContractFromDetail: jumpToContractFromDetail,
             jumpToPaymentFromDetail: jumpToPaymentFromDetail,
             doLogin: doLogin,
@@ -3144,19 +5888,46 @@ const __VLS_self = (await import('vue')).defineComponent({
             loadDictOptions: loadDictOptions,
             saveDictOptions: saveDictOptions,
             loadContacts: loadContacts,
+            applyContactFilters: applyContactFilters,
+            resetContactFilters: resetContactFilters,
+            resetFollowupCreateForm: resetFollowupCreateForm,
+            resetFollowupCreateFormAction: resetFollowupCreateFormAction,
+            openCreateFollowupPage: openCreateFollowupPage,
+            openCreateContactPage: openCreateContactPage,
+            cancelContactCreate: cancelContactCreate,
             startContactEdit: startContactEdit,
+            openContactDetailPage: openContactDetailPage,
+            startContactEditInDetail: startContactEditInDetail,
+            cancelContactEditInDetail: cancelContactEditInDetail,
             cancelContactEdit: cancelContactEdit,
             saveContact: saveContact,
+            saveContactEdit: saveContactEdit,
+            saveContactInDetail: saveContactInDetail,
             deleteContact: deleteContact,
             loadProjects: loadProjects,
             createProject: createProject,
             saveProjectEdit: saveProjectEdit,
-            changeProjectStage: changeProjectStage,
-            updateSelectedProjectStage: updateSelectedProjectStage,
-            transferProjectOwner: transferProjectOwner,
-            transferSelectedProjectOwner: transferSelectedProjectOwner,
+            openOwnerTransferDialog: openOwnerTransferDialog,
+            openSelectedProjectOwnerDialog: openSelectedProjectOwnerDialog,
+            closeOwnerTransferDialog: closeOwnerTransferDialog,
+            submitOwnerTransfer: submitOwnerTransfer,
+            openStageUpdateDialog: openStageUpdateDialog,
+            closeStageUpdateDialog: closeStageUpdateDialog,
+            onStageChange: onStageChange,
+            availableStages: availableStages,
+            needsFirstContactAt: needsFirstContactAt,
+            needsFirstVisitDate: needsFirstVisitDate,
+            needsFirstNegotiationDate: needsFirstNegotiationDate,
+            needsMovedInDate: needsMovedInDate,
+            isSkippedStage: isSkippedStage,
+            stageTargetIsSigning: stageTargetIsSigning,
+            stageTargetIsCollecting: stageTargetIsCollecting,
+            getStageIndexText: getStageIndexText,
+            submitStageUpdate: submitStageUpdate,
             deleteProject: deleteProject,
             createFollowup: createFollowup,
+            saveFollowupEdit: saveFollowupEdit,
+            deleteFollowup: deleteFollowup,
             loadFollowupsByProject: loadFollowupsByProject,
             loadContracts: loadContracts,
             createContract: createContract,

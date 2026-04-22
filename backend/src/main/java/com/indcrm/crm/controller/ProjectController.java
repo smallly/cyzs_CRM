@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -37,10 +38,10 @@ public class ProjectController {
                 req.intendedRegion(),
                 resolveAreaMin(req.intendedAreaMin(), req.intendedAreaMax(), req.intendedArea()),
                 resolveAreaMax(req.intendedAreaMin(), req.intendedAreaMax(), req.intendedArea()),
-                req.firstContactAt(),
-                req.firstVisitDate(),
-                req.firstNegotiationDate(),
-                req.movedInDate(),
+                parseLocalDateTime(req.firstContactAt()),
+                parseLocalDate(req.firstVisitDate()),
+                parseLocalDate(req.firstNegotiationDate()),
+                parseLocalDate(req.movedInDate()),
                 req.remark()
         ));
     }
@@ -68,7 +69,18 @@ public class ProjectController {
 
     @PutMapping("/{id}/stage")
     public ApiResponse<?> stage(@PathVariable String id, @RequestBody StageReq req) {
-        return ApiResponse.ok(projectService.updateStage(sessionService.requireUser(), id, req.stage()));
+        return ApiResponse.ok(
+                projectService.updateStage(
+                        sessionService.requireUser(),
+                        id,
+                        req.stage(),
+                        parseLocalDateTime(req.firstContactAt()),
+                        parseLocalDate(req.firstVisitDate()),
+                        parseLocalDate(req.firstNegotiationDate()),
+                        parseLocalDate(req.movedInDate()),
+                        req.remark()
+                )
+        );
     }
 
     @PutMapping("/{id}/owner")
@@ -95,10 +107,10 @@ public class ProjectController {
             Double intendedAreaMax,
             // legacy single-value field
             Double intendedArea,
-            LocalDateTime firstContactAt,
-            LocalDate firstVisitDate,
-            LocalDate firstNegotiationDate,
-            LocalDate movedInDate,
+            String firstContactAt,
+            String firstVisitDate,
+            String firstNegotiationDate,
+            String movedInDate,
             String remark
     ) {}
 
@@ -115,7 +127,14 @@ public class ProjectController {
             String remark
     ) {}
 
-    public record StageReq(ProjectStage stage) {}
+    public record StageReq(
+            ProjectStage stage,
+            String firstContactAt,
+            String firstVisitDate,
+            String firstNegotiationDate,
+            String movedInDate,
+            String remark
+    ) {}
     public record TransferReq(@NotBlank String ownerId, String reason) {}
 
     private Double resolveAreaMin(Double min, Double max, Double legacyArea) {
@@ -130,5 +149,32 @@ public class ProjectController {
             return max;
         }
         return legacyArea;
+    }
+
+    private LocalDate parseLocalDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseLocalDateTime(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String raw = value.trim().replace(' ', 'T');
+        try {
+            return LocalDateTime.parse(raw);
+        } catch (DateTimeParseException ex) {
+            try {
+                return LocalDate.parse(raw).atStartOfDay();
+            } catch (DateTimeParseException ignored) {
+                return null;
+            }
+        }
     }
 }

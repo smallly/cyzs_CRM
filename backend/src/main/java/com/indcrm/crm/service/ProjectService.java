@@ -164,7 +164,16 @@ public class ProjectService {
         return p;
     }
 
-    public Project updateStage(User actor, String projectId, ProjectStage stage) {
+    public Project updateStage(
+            User actor,
+            String projectId,
+            ProjectStage stage,
+            LocalDateTime firstContactAt,
+            LocalDate firstVisitDate,
+            LocalDate firstNegotiationDate,
+            LocalDate movedInDate,
+            String remark
+    ) {
         Project p = mustGet(actor.tenantId, projectId);
         if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
             throw new BizException(ErrorCode.AUTH_403, "No permission to update stage");
@@ -174,6 +183,30 @@ public class ProjectService {
         }
         if (stage.ordinal() < p.stage.ordinal()) {
             throw new BizException(ErrorCode.BIZ_422, "Stage cannot move backward");
+        }
+        if (firstContactAt != null) p.firstContactAt = firstContactAt;
+        if (firstVisitDate != null) p.firstVisitDate = firstVisitDate;
+        if (firstNegotiationDate != null) p.firstNegotiationDate = firstNegotiationDate;
+        if (movedInDate != null) p.movedInDate = movedInDate;
+
+        boolean skipped = stage.ordinal() > p.stage.ordinal() + 1;
+        if (skipped && (remark == null || remark.isBlank())) {
+            throw new BizException(ErrorCode.BIZ_422, "Skipping stages requires remark");
+        }
+        if (stage == ProjectStage.PROSPECTING && p.firstContactAt == null) {
+            throw new BizException(ErrorCode.BIZ_422, "firstContactAt is required for PROSPECTING");
+        }
+        if (stage.ordinal() >= ProjectStage.VISITING.ordinal() && p.firstVisitDate == null) {
+            throw new BizException(ErrorCode.BIZ_422, "firstVisitDate is required for VISITING stage and above");
+        }
+        if (stage.ordinal() >= ProjectStage.NEGOTIATING.ordinal() && p.firstNegotiationDate == null) {
+            throw new BizException(ErrorCode.BIZ_422, "firstNegotiationDate is required for NEGOTIATING stage and above");
+        }
+        if (stage == ProjectStage.MOVED_IN && p.movedInDate == null) {
+            throw new BizException(ErrorCode.BIZ_422, "movedInDate is required for MOVED_IN");
+        }
+        if (skipped) {
+            p.remark = (p.remark == null || p.remark.isBlank()) ? remark.trim() : (p.remark + "\n[跳级原因] " + remark.trim());
         }
         p.stage = stage;
         auditService.log(actor, "PROJECT_STAGE", "Project", p.id, stage.name());

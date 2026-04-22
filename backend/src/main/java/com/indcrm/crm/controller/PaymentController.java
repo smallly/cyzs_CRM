@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -24,7 +25,7 @@ public class PaymentController {
         return ApiResponse.ok(paymentService.create(
                 sessionService.requireUser(),
                 req.contractId(),
-                req.paidDate(),
+                parseLocalDate(req.paidDate()),
                 req.amount(),
                 req.invoiceStatus()
         ));
@@ -35,5 +36,16 @@ public class PaymentController {
         return ApiResponse.ok(paymentService.list(sessionService.requireUser()));
     }
 
-    public record CreateReq(String contractId, LocalDate paidDate, BigDecimal amount, String invoiceStatus) {}
+    public record CreateReq(String contractId, String paidDate, BigDecimal amount, String invoiceStatus) {}
+
+    private LocalDate parseLocalDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException ex) {
+            return null;
+        }
+    }
 }
