@@ -13,8 +13,10 @@ public class Payment {
     public String code;
     public LocalDate paidDate;
     public BigDecimal amount;
+    public String payerName;
     public String invoiceStatus;
     public String voucher;
+    public String remark;
     public boolean deleted;
     public LocalDateTime createdAt;
     public LocalDateTime deletedAt;

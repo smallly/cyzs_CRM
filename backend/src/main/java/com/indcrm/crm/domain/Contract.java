@@ -13,7 +13,12 @@ public class Contract {
     public String contractNo;
     public String title;
     public BigDecimal amount;
+    public BigDecimal estimatedCommission;
     public LocalDate signDate;
+    public LocalDate leaseStartDate;
+    public LocalDate leaseEndDate;
+    public Integer leaseTermMonths;
+    public String paymentTerms;
     public String attachment;
     public boolean deleted;
     public LocalDateTime createdAt;

@@ -3,7 +3,10 @@
     "allow": [
       "Bash(grep -E \"\\\\.vue$|\\\\.ts$|\\\\.js$\")",
       "Bash(npm run:*)",
-      "Bash(curl -s http://localhost:5173)"
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(npm install:*)",
+      "Bash(ls src/*.ts)",
+      "Bash(ls -la views/modules/*.vue)"
     ]
   }
 }

@@ -25,7 +25,20 @@ public class ContractService {
         this.auditService = auditService;
     }
 
-    public Contract create(User actor, String projectId, String contractNo, String title, BigDecimal amount, LocalDate signDate, String attachment) {
+    public Contract create(
+            User actor,
+            String projectId,
+            String contractNo,
+            String title,
+            BigDecimal amount,
+            LocalDate signDate,
+            BigDecimal estimatedCommission,
+            LocalDate leaseStartDate,
+            LocalDate leaseEndDate,
+            Integer leaseTermMonths,
+            String paymentTerms,
+            String attachment
+    ) {
         Project p = store.projects.get(projectId);
         if (p == null || p.deleted || !actor.tenantId.equals(p.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "项目不存在");
@@ -53,6 +66,11 @@ public class ContractService {
         c.title = title;
         c.amount = amount;
         c.signDate = signDate;
+        c.estimatedCommission = estimatedCommission;
+        c.leaseStartDate = leaseStartDate;
+        c.leaseEndDate = leaseEndDate;
+        c.leaseTermMonths = leaseTermMonths;
+        c.paymentTerms = normalizeNullable(paymentTerms);
         c.attachment = requireAttachment(attachment);
         c.createdAt = LocalDateTime.now();
         store.contracts.put(c.id, c);

@@ -29,6 +29,11 @@ public class ContractController {
                 req.title(),
                 req.amount(),
                 parseLocalDate(req.signDate()),
+                req.estimatedCommission(),
+                parseLocalDate(req.leaseStartDate()),
+                parseLocalDate(req.leaseEndDate()),
+                req.leaseTermMonths(),
+                req.paymentTerms(),
                 req.attachment()
         ));
     }
@@ -38,7 +43,19 @@ public class ContractController {
         return ApiResponse.ok(contractService.list(sessionService.requireUser()));
     }
 
-    public record CreateReq(String projectId, String contractNo, String title, BigDecimal amount, String signDate, String attachment) {}
+    public record CreateReq(
+            String projectId,
+            String contractNo,
+            String title,
+            BigDecimal amount,
+            String signDate,
+            BigDecimal estimatedCommission,
+            String leaseStartDate,
+            String leaseEndDate,
+            Integer leaseTermMonths,
+            String paymentTerms,
+            String attachment
+    ) {}
 
     private LocalDate parseLocalDate(String value) {
         if (value == null || value.isBlank()) {

@@ -27,7 +27,16 @@ public class PaymentService {
         this.auditService = auditService;
     }
 
-    public Payment create(User actor, String contractId, LocalDate paidDate, BigDecimal amount, String invoiceStatus, String voucher) {
+    public Payment create(
+            User actor,
+            String contractId,
+            LocalDate paidDate,
+            BigDecimal amount,
+            String payerName,
+            String invoiceStatus,
+            String voucher,
+            String remark
+    ) {
         Contract c = store.contracts.get(contractId);
         if (c == null || c.deleted || !actor.tenantId.equals(c.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "合同不存在");
@@ -44,8 +53,10 @@ public class PaymentService {
         p.code = codeService.next(actor.tenantId);
         p.paidDate = paidDate;
         p.amount = amount;
+        p.payerName = normalizeNullable(payerName);
         p.invoiceStatus = invoiceStatus;
         p.voucher = normalizeNullable(voucher);
+        p.remark = normalizeNullable(remark);
         p.createdAt = LocalDateTime.now();
         store.payments.put(p.id, p);
 

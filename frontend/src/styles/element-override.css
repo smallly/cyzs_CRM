@@ -1,0 +1,362 @@
+/* 覆盖Element Plus主题色，匹配原有CRM设计风格 */
+
+:root {
+  --el-color-primary: #2f5cf6;
+  --el-color-primary-light-3: #57a0ff;
+  --el-color-primary-light-5: #eff4ff;
+  --el-color-primary-light-7: #d6e3ff;
+  --el-color-primary-light-8: #dbe6fb;
+  --el-color-primary-light-9: #eff4ff;
+  --el-color-primary-dark-2: #1d4ed8;
+}
+
+/* 侧边栏样式 - 浅色背景 */
+.app-layout .el-aside {
+  background: #f7f9fc;
+  border-right: 1px solid #e2e8f0;
+  color: #1f2937;
+}
+
+/* 侧边栏菜单样式 - 完全匹配设计规范 */
+
+/* 菜单整体容器 */
+.app-layout .el-menu {
+  background: transparent;
+  border-right: none;
+  padding-top: 6px;
+}
+
+/* 菜单分组标题 */
+.app-layout .el-menu-item-group__title {
+  font-size: 12px;
+  letter-spacing: 0;
+  color: #64748b;
+  margin: 8px 8px 6px;
+  font-weight: 600;
+  padding-left: 12px;
+  line-height: 1;
+}
+
+/* 菜单项 */
+.app-layout .el-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #334155;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  height: auto;
+  line-height: 1.5;
+  transition: all 0.15s ease;
+}
+
+/* 菜单项 hover */
+.app-layout .el-menu-item:hover {
+  border-color: #dbe6fb;
+  background: #eff4ff;
+  color: #1e293b;
+}
+
+/* 菜单项 active */
+.app-layout .el-menu-item.is-active {
+  background: linear-gradient(135deg, #2f5cf6, #1d4ed8);
+  border-color: #2f5cf6;
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(47, 92, 246, 0.24);
+}
+
+/* 菜单项前的圆点图标 */
+.app-layout .el-menu-item .el-icon {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.7;
+  margin-right: 0;
+  color: inherit;
+}
+
+/* active状态下圆点颜色 */
+.app-layout .el-menu-item.is-active .el-icon {
+  opacity: 1;
+  background: currentColor;
+}
+
+/* 菜单项文字 */
+.app-layout .el-menu-item span {
+  flex: 1;
+}
+
+/* 折叠状态下的菜单 */
+.app-layout .el-menu.el-menu--collapse {
+  width: 54px;
+}
+
+.app-layout .el-menu--collapse .el-menu-item {
+  padding: 10px 12px;
+  justify-content: center;
+}
+
+.app-layout .el-menu--collapse .el-menu-item .el-icon {
+  width: 5px;
+  height: 5px;
+  margin-right: 0;
+}
+
+.app-layout .el-menu--collapse .el-menu-item span {
+  display: none;
+}
+
+/* 菜单分组容器 */
+.app-layout .el-menu-item-group {
+  margin-bottom: 10px;
+}
+
+/* 去除Element Plus默认的菜单项高亮背景 */
+.app-layout .el-menu-item::before,
+.app-layout .el-menu-item::after {
+  display: none;
+}
+
+/* 卡片样式 - 匹配原有设计 */
+.el-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.el-card__header {
+  padding: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.el-card__body {
+  padding: 14px;
+}
+
+/* 按钮样式 - 匹配原有设计 */
+.el-button--primary {
+  background: linear-gradient(135deg, #2f5cf6, #1d4ed8);
+  border-color: #2f5cf6;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(47, 92, 246, 0.2);
+}
+
+.el-button--primary:hover {
+  background: linear-gradient(135deg, #57a0ff, #2f5cf6);
+  border-color: #57a0ff;
+}
+
+.el-button--default {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  border-radius: 8px;
+}
+
+.el-button--default:hover {
+  border-color: #dbe6fb;
+  background: #eff4ff;
+  color: #1e293b;
+}
+
+.el-button--danger {
+  background: #fff;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.el-button--danger:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* 表格样式 - 匹配原有设计 */
+.el-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.el-table th.el-table__cell {
+  background: #f7f9fc;
+  color: #334155;
+  font-weight: 600;
+}
+
+.el-table td.el-table__cell {
+  color: #1f2937;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background: #f7f9fc;
+}
+
+/* 输入框样式 */
+.el-input__wrapper {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.el-input__wrapper:hover {
+  border-color: #dbe6fb;
+}
+
+.el-input__wrapper.is-focus {
+  border-color: #2f5cf6;
+  box-shadow: 0 0 0 2px rgba(47, 92, 246, 0.1);
+}
+
+/* Select选择器样式 */
+.el-select .el-input__wrapper {
+  border: 1px solid #e2e8f0;
+}
+
+/* Tag标签样式 */
+.el-tag {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.el-tag--success {
+  background: #eff4ff;
+  border-color: #d6e3ff;
+  color: #1e3a8a;
+}
+
+.el-tag--warning {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.el-tag--danger {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.el-tag--info {
+  background: #f7f9fc;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+/* 表单样式 */
+.el-form-item__label {
+  font-weight: 500;
+  color: #334155;
+}
+
+/* 统计卡片样式 - WorkbenchPage */
+.stat-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* 面包屑样式 */
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Header样式 */
+.app-header {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Main区域样式 */
+.app-main {
+  background: radial-gradient(circle at 0 0, #ecf4ff 0%, #f7f9fc 35%, #f3f5f9 100%);
+  padding: 14px;
+}
+
+/* Alert提示样式 */
+.el-alert--info {
+  background: #eff4ff;
+  border: 1px solid #d6e3ff;
+}
+
+/* Drawer抽屉样式 */
+.el-drawer__header {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 14px;
+}
+
+.el-drawer__body {
+  padding: 14px;
+}
+
+/* Dialog对话框样式 */
+.el-dialog {
+  border-radius: 12px;
+}
+
+.el-dialog__header {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 14px;
+}
+
+/* Pagination分页样式 */
+.el-pagination.is-background .el-pager li:not(.is-disabled).is-active {
+  background: #2f5cf6;
+}
+
+/* Upload上传组件样式 */
+.el-upload-dragger {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+/* Descriptions描述列表样式 */
+.el-descriptions {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.el-descriptions__label {
+  background: #f7f9fc;
+  font-weight: 600;
+}
+
+/* Message消息提示样式 */
+.el-message--success {
+  background: #eff4ff;
+  border: 1px solid #d6e3ff;
+}
+
+.el-message--error {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+}
+
+/* 确认框MessageBox样式 */
+.el-message-box {
+  border-radius: 12px;
+}
