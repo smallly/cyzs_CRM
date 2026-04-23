@@ -11,6 +11,7 @@ public class User {
     public BizRole bizRole;
     public boolean systemAdmin;
     public UserStatus status;
+    public String deptId;
     public String managerId;
     public LocalDateTime createdAt;
 }

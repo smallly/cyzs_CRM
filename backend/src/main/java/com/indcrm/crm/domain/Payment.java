@@ -14,6 +14,7 @@ public class Payment {
     public LocalDate paidDate;
     public BigDecimal amount;
     public String invoiceStatus;
+    public String voucher;
     public boolean deleted;
     public LocalDateTime createdAt;
     public LocalDateTime deletedAt;

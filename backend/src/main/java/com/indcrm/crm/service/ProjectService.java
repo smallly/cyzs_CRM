@@ -125,6 +125,14 @@ public class ProjectService {
         return list;
     }
 
+    public Project getDetail(User actor, String projectId) {
+        Project p = mustGet(actor.tenantId, projectId);
+        if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "No permission to view project");
+        }
+        return p;
+    }
+
     public Project updateBasicInfo(
             User actor,
             String projectId,

@@ -25,5 +25,6 @@ function Stop-ByPort {
 }
 
 Stop-ByPort -Port 5173 -Name "Frontend"
+Stop-ByPort -Port 5174 -Name "Vendor Frontend"
 Stop-ByPort -Port 8080 -Name "Backend"
 Stop-ByPort -Port 3306 -Name "MySQL"

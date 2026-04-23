@@ -81,21 +81,42 @@ public class FollowupService {
         return followup;
     }
 
-    public List<Followup> listByProject(User actor, String projectId) {
-        Project project = store.projects.get(projectId);
-        if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
-            throw new BizException(ErrorCode.BIZ_422, "Project does not exist");
-        }
-        if (!permissionService.canOperateByOwner(actor, project.ownerId)) {
-            throw new BizException(ErrorCode.AUTH_403, "No permission to view followups");
-        }
+    public List<Followup> list(User actor, String projectId) {
+        String normalizedProjectId = normalizeNullable(projectId);
         List<Followup> list = new ArrayList<>();
-        for (Followup followup : store.followups.values()) {
-            if (!followup.deleted && actor.tenantId.equals(followup.tenantId) && projectId.equals(followup.projectId)) {
+        if (normalizedProjectId != null) {
+            Project project = store.projects.get(normalizedProjectId);
+            if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
+                throw new BizException(ErrorCode.BIZ_422, "Project does not exist");
+            }
+            if (!permissionService.canOperateByOwner(actor, project.ownerId)) {
+                throw new BizException(ErrorCode.AUTH_403, "No permission to view followups");
+            }
+            for (Followup followup : store.followups.values()) {
+                if (!followup.deleted && actor.tenantId.equals(followup.tenantId) && normalizedProjectId.equals(followup.projectId)) {
+                    list.add(followup);
+                }
+            }
+        } else {
+            for (Followup followup : store.followups.values()) {
+                if (followup.deleted || !actor.tenantId.equals(followup.tenantId)) {
+                    continue;
+                }
+                Project project = store.projects.get(followup.projectId);
+                if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
+                    continue;
+                }
+                if (!permissionService.canOperateByOwner(actor, project.ownerId)) {
+                    continue;
+                }
                 list.add(followup);
             }
         }
-        list.sort((a, b) -> b.followupAt.compareTo(a.followupAt));
+        list.sort((a, b) -> {
+            LocalDateTime left = a.followupAt == null ? LocalDateTime.MIN : a.followupAt;
+            LocalDateTime right = b.followupAt == null ? LocalDateTime.MIN : b.followupAt;
+            return right.compareTo(left);
+        });
         return list;
     }
 

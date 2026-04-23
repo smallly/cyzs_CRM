@@ -25,7 +25,7 @@ public class ContractService {
         this.auditService = auditService;
     }
 
-    public Contract create(User actor, String projectId, String contractNo, String title, BigDecimal amount, LocalDate signDate) {
+    public Contract create(User actor, String projectId, String contractNo, String title, BigDecimal amount, LocalDate signDate, String attachment) {
         Project p = store.projects.get(projectId);
         if (p == null || p.deleted || !actor.tenantId.equals(p.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "项目不存在");
@@ -53,6 +53,7 @@ public class ContractService {
         c.title = title;
         c.amount = amount;
         c.signDate = signDate;
+        c.attachment = requireAttachment(attachment);
         c.createdAt = LocalDateTime.now();
         store.contracts.put(c.id, c);
 
@@ -80,5 +81,21 @@ public class ContractService {
             throw new BizException(ErrorCode.BIZ_422, "合同不存在");
         }
         return c;
+    }
+
+    private String requireAttachment(String attachment) {
+        String normalized = normalizeNullable(attachment);
+        if (normalized == null) {
+            throw new BizException(ErrorCode.BIZ_422, "合同附件不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeNullable(String text) {
+        if (text == null) {
+            return null;
+        }
+        String trimmed = text.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

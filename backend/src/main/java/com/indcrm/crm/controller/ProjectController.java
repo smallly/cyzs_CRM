@@ -51,6 +51,11 @@ public class ProjectController {
         return ApiResponse.ok(projectService.list(sessionService.requireUser()));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<?> detail(@PathVariable String id) {
+        return ApiResponse.ok(projectService.getDetail(sessionService.requireUser(), id));
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<?> update(@PathVariable String id, @RequestBody UpdateReq req) {
         return ApiResponse.ok(projectService.updateBasicInfo(

@@ -34,6 +34,7 @@ public class StateStorePersistenceService {
         loadFollowups();
         loadContracts();
         loadPayments();
+        loadDepartments();
         loadScopeConfigs();
         loadProjectDictConfigs();
         loadAuditLogs();
@@ -54,6 +55,7 @@ public class StateStorePersistenceService {
         saveMap("Followup", store.followups);
         saveMap("Contract", store.contracts);
         saveMap("Payment", store.payments);
+        saveMap("Department", store.departments);
         saveMap("ScopeConfig", store.scopeConfigs);
         saveMap("ProjectDictConfig", store.projectDictConfigs);
         saveMap("AuditLog", store.auditLogs);
@@ -81,6 +83,10 @@ public class StateStorePersistenceService {
 
     private void loadPayments() {
         loadEntity("Payment", Payment.class, store.payments);
+    }
+
+    private void loadDepartments() {
+        loadEntity("Department", Department.class, store.departments);
     }
 
     private void loadScopeConfigs() {

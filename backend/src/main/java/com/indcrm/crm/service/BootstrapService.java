@@ -1,6 +1,8 @@
 package com.indcrm.crm.service;
 
 import com.indcrm.crm.domain.BizRole;
+import com.indcrm.crm.domain.Department;
+import com.indcrm.crm.domain.DepartmentStatus;
 import com.indcrm.crm.domain.User;
 import com.indcrm.crm.domain.UserStatus;
 import com.indcrm.crm.repo.InMemoryStore;
@@ -28,6 +30,7 @@ public class BootstrapService {
     @PostConstruct
     public void init() {
         if (!store.users.isEmpty()) {
+            ensureDefaultDepartmentForExistingUsers();
             normalizeSeedUserNames();
             return;
         }
@@ -44,6 +47,18 @@ public class BootstrapService {
         admin.createdAt = LocalDateTime.now();
         store.users.put(admin.id, admin);
 
+        Department rootDept = new Department();
+        rootDept.id = UUID.randomUUID().toString();
+        rootDept.tenantId = admin.tenantId;
+        rootDept.name = "总部";
+        rootDept.status = DepartmentStatus.ENABLED;
+        rootDept.headUserId = admin.id;
+        rootDept.createdAt = LocalDateTime.now();
+        rootDept.updatedAt = rootDept.createdAt;
+        store.departments.put(rootDept.id, rootDept);
+        admin.deptId = rootDept.id;
+        admin.managerId = null;
+
         User sales = new User();
         sales.id = UUID.randomUUID().toString();
         sales.tenantId = "tenant-a";
@@ -53,9 +68,75 @@ public class BootstrapService {
         sales.bizRole = BizRole.SALES;
         sales.systemAdmin = false;
         sales.status = UserStatus.ENABLED;
+        sales.deptId = rootDept.id;
         sales.managerId = admin.id;
         sales.createdAt = LocalDateTime.now();
         store.users.put(sales.id, sales);
+    }
+
+    private void ensureDefaultDepartmentForExistingUsers() {
+        if (!store.departments.isEmpty()) {
+            for (User user : store.users.values()) {
+                if (user != null && user.deptId == null) {
+                    user.deptId = findAnyEnabledDeptId(user.tenantId);
+                }
+                if (user != null && user.managerId == null && user.deptId != null) {
+                    Department dept = store.departments.get(user.deptId);
+                    if (dept != null && user.tenantId.equals(dept.tenantId) && dept.headUserId != null && !dept.headUserId.equals(user.id)) {
+                        user.managerId = dept.headUserId;
+                    }
+                }
+            }
+            return;
+        }
+        // Compatible with old state: no department data persisted yet.
+        for (User user : store.users.values()) {
+            if (user == null) continue;
+            String deptId = ensureTenantRootDept(user.tenantId, user.id);
+            if (user.deptId == null) {
+                user.deptId = deptId;
+            }
+            if (user.managerId == null) {
+                Department dept = store.departments.get(user.deptId);
+                if (dept != null && dept.headUserId != null && !dept.headUserId.equals(user.id)) {
+                    user.managerId = dept.headUserId;
+                }
+            }
+        }
+    }
+
+    private String findAnyEnabledDeptId(String tenantId) {
+        for (Department dept : store.departments.values()) {
+            if (dept != null && tenantId.equals(dept.tenantId) && dept.status == DepartmentStatus.ENABLED) {
+                return dept.id;
+            }
+        }
+        return null;
+    }
+
+    private String ensureTenantRootDept(String tenantId, String fallbackHeadUserId) {
+        for (Department dept : store.departments.values()) {
+            if (dept != null && tenantId.equals(dept.tenantId) && dept.parentId == null) {
+                if (dept.status == null) {
+                    dept.status = DepartmentStatus.ENABLED;
+                }
+                if (dept.updatedAt == null) {
+                    dept.updatedAt = LocalDateTime.now();
+                }
+                return dept.id;
+            }
+        }
+        Department dept = new Department();
+        dept.id = UUID.randomUUID().toString();
+        dept.tenantId = tenantId;
+        dept.name = "默认部门";
+        dept.parentId = null;
+        dept.headUserId = fallbackHeadUserId;
+        dept.status = DepartmentStatus.ENABLED;
+        dept.createdAt = LocalDateTime.now();
+        dept.updatedAt = dept.createdAt;
+        store.departments.put(dept.id, dept);
+        return dept.id;
     }
 
     private void normalizeSeedUserNames() {

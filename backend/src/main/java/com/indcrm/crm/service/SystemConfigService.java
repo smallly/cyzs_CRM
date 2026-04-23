@@ -31,7 +31,13 @@ public class SystemConfigService {
 
     public DataScopeMode getMode(String tenantId) {
         ScopeConfig config = store.scopeConfigs.get(tenantId);
-        return config == null ? DataScopeMode.SUBTREE : config.mode;
+        if (config == null || config.mode == null) {
+            return DataScopeMode.DEPT_AND_SUBTREE;
+        }
+        if (config.mode == DataScopeMode.SUBTREE) {
+            return DataScopeMode.DEPT_AND_SUBTREE;
+        }
+        return config.mode;
     }
 
     public void setMode(String tenantId, DataScopeMode mode) {

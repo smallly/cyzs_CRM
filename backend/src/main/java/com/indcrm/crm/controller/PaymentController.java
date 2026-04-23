@@ -27,7 +27,8 @@ public class PaymentController {
                 req.contractId(),
                 parseLocalDate(req.paidDate()),
                 req.amount(),
-                req.invoiceStatus()
+                req.invoiceStatus(),
+                req.voucher()
         ));
     }
 
@@ -36,7 +37,7 @@ public class PaymentController {
         return ApiResponse.ok(paymentService.list(sessionService.requireUser()));
     }
 
-    public record CreateReq(String contractId, String paidDate, BigDecimal amount, String invoiceStatus) {}
+    public record CreateReq(String contractId, String paidDate, BigDecimal amount, String invoiceStatus, String voucher) {}
 
     private LocalDate parseLocalDate(String value) {
         if (value == null || value.isBlank()) {

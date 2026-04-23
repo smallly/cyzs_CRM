@@ -5,7 +5,6 @@ import com.indcrm.crm.domain.BizRole;
 import com.indcrm.crm.domain.UserStatus;
 import com.indcrm.crm.service.SessionService;
 import com.indcrm.crm.service.UserService;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +37,13 @@ public class UserController {
         return ApiResponse.ok(null);
     }
 
+    @PutMapping("/{id}/department")
+    public ApiResponse<Void> setDepartment(@PathVariable("id") String id, @RequestBody DeptReq req) {
+        userService.setDepartment(sessionService.requireUser(), id, req.deptId());
+        return ApiResponse.ok(null);
+    }
+
     public record StatusReq(UserStatus status) {}
     public record RoleReq(BizRole bizRole, boolean systemAdmin) {}
+    public record DeptReq(String deptId) {}
 }

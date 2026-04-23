@@ -55,8 +55,8 @@ public class FollowupController {
     }
 
     @GetMapping
-    public ApiResponse<?> list(@RequestParam String projectId) {
-        return ApiResponse.ok(followupService.listByProject(sessionService.requireUser(), projectId));
+    public ApiResponse<?> list(@RequestParam(required = false) String projectId) {
+        return ApiResponse.ok(followupService.list(sessionService.requireUser(), projectId));
     }
 
     public record CreateReq(String projectId, String content, LocalDateTime followupAt, String method, String contactId, String attachment) {}

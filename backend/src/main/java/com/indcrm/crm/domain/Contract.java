@@ -14,6 +14,7 @@ public class Contract {
     public String title;
     public BigDecimal amount;
     public LocalDate signDate;
+    public String attachment;
     public boolean deleted;
     public LocalDateTime createdAt;
     public LocalDateTime deletedAt;

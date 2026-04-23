@@ -53,15 +53,23 @@ if (-not (Test-PortListening -Port 8080)) {
 }
 
 if (-not (Test-PortListening -Port 5173)) {
-    Start-Process -FilePath "npm.cmd" -ArgumentList "run dev -- --host 0.0.0.0 --port 5173" -WorkingDirectory $frontendDir -RedirectStandardOutput (Join-Path $logDir "frontend.out.log") -RedirectStandardError (Join-Path $logDir "frontend.err.log") -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath "npm.cmd" -ArgumentList "run dev:saas" -WorkingDirectory $frontendDir -RedirectStandardOutput (Join-Path $logDir "frontend-saas.out.log") -RedirectStandardError (Join-Path $logDir "frontend-saas.err.log") -WindowStyle Hidden | Out-Null
     if (-not (Wait-Port -Port 5173 -Seconds 30)) {
-        throw "Frontend failed to start on 5173. See logs\frontend.err.log"
+        throw "SaaS frontend failed to start on 5173. See logs\frontend-saas.err.log"
+    }
+}
+
+if (-not (Test-PortListening -Port 5174)) {
+    Start-Process -FilePath "npm.cmd" -ArgumentList "run dev:vendor" -WorkingDirectory $frontendDir -RedirectStandardOutput (Join-Path $logDir "frontend-vendor.out.log") -RedirectStandardError (Join-Path $logDir "frontend-vendor.err.log") -WindowStyle Hidden | Out-Null
+    if (-not (Wait-Port -Port 5174 -Seconds 30)) {
+        throw "Vendor frontend failed to start on 5174. See logs\frontend-vendor.err.log"
     }
 }
 
 Write-Host ""
 Write-Host "All services are up."
-Write-Host "Frontend: http://localhost:5173"
+Write-Host "SaaS Frontend  : http://localhost:5173"
+Write-Host "Vendor Frontend: http://localhost:5174"
 Write-Host "Backend : http://localhost:8080"
 Write-Host "MySQL   : 127.0.0.1:3306 / db=indcrm"
 Write-Host "Login   : 13800000000 / Admin@123"

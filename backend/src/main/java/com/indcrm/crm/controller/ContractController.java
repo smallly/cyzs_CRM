@@ -28,7 +28,8 @@ public class ContractController {
                 req.contractNo(),
                 req.title(),
                 req.amount(),
-                parseLocalDate(req.signDate())
+                parseLocalDate(req.signDate()),
+                req.attachment()
         ));
     }
 
@@ -37,7 +38,7 @@ public class ContractController {
         return ApiResponse.ok(contractService.list(sessionService.requireUser()));
     }
 
-    public record CreateReq(String projectId, String contractNo, String title, BigDecimal amount, String signDate) {}
+    public record CreateReq(String projectId, String contractNo, String title, BigDecimal amount, String signDate, String attachment) {}
 
     private LocalDate parseLocalDate(String value) {
         if (value == null || value.isBlank()) {

@@ -15,6 +15,7 @@ public class InMemoryStore {
     public final Map<String, Followup> followups = new ConcurrentHashMap<>();
     public final Map<String, Contract> contracts = new ConcurrentHashMap<>();
     public final Map<String, Payment> payments = new ConcurrentHashMap<>();
+    public final Map<String, Department> departments = new ConcurrentHashMap<>();
     public final Map<String, ScopeConfig> scopeConfigs = new ConcurrentHashMap<>();
     public final Map<String, ProjectDictConfig> projectDictConfigs = new ConcurrentHashMap<>();
     public final Map<String, AuditLog> auditLogs = new ConcurrentHashMap<>();
