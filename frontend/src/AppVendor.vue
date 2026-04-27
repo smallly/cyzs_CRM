@@ -3,7 +3,7 @@
     <div class="vendor-login-card">
       <div class="vendor-login-head">
         <div class="vendor-mark large">VP</div>
-        <h2>厂商平台登录</h2>
+        <h2>超管平台登录</h2>
         <p>SaaS 运营管理后台</p>
       </div>
       <el-form class="vendor-login-form" label-width="0">
@@ -28,7 +28,7 @@
       <div class="vendor-brand">
         <div class="vendor-mark">VP</div>
         <div>
-          <div class="vendor-title">厂商平台</div>
+          <div class="vendor-title">超管平台</div>
           <div class="vendor-sub">SaaS 开通管理</div>
         </div>
       </div>
@@ -39,7 +39,7 @@
 
     <el-container>
       <el-header class="vendor-header">
-        <div>厂商平台</div>
+        <div>超管平台</div>
         <div class="vendor-header-right">
           <el-tag type="info">Vendor: {{ vendorUrl }}</el-tag>
           <el-tag type="success">SaaS: {{ saasUrl }}</el-tag>
@@ -409,7 +409,7 @@ async function handleLogin() {
     await authStore.login(loginForm.phone.trim(), loginForm.password.trim())
     authStore.saveToStorage()
     if (!authStore.vendorAdmin) {
-      ElMessage.error('您没有厂商平台访问权限')
+      ElMessage.error('您没有超管平台访问权限')
       authStore.logout()
       return
     }
