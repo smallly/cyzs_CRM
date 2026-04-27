@@ -72,6 +72,17 @@
 6. 不确定先问  
 - 遇到需求缺失、字段含义不清、权限口径冲突，必须先问用户。
 
+7. **Git 版本管理（强制）**
+- **每次改动代码后必须提交并推送到远程仓库。**
+- 流程：`git add -A` → `git commit -m "type: subject"` → `git push origin <current-branch>`
+- commit message 格式：`<type>: <subject>`
+  - `feat`: 新功能
+  - `fix`: 修复 bug
+  - `refactor`: 重构
+  - `docs`: 文档更新
+  - `chore`: 构建/工具改动
+- 若推送失败（网络问题），记录原因并在下次交互开始时优先重试推送。
+
 ---
 
 ## 五、代码改动后必须同步的文档
