@@ -262,6 +262,16 @@ CREATE TABLE IF NOT EXISTS payments (
   KEY idx_payments_deleted (tenant_id, deleted)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='回款表';
 
+CREATE TABLE IF NOT EXISTS tenant_orders (
+  id VARCHAR(64) NOT NULL COMMENT '订单ID',
+  tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
+  start_time DATE DEFAULT NULL COMMENT '开始日期',
+  expire_time DATE DEFAULT NULL COMMENT '到期日期',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_orders_tenant (tenant_id)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='租户订单记录表';
+
 CREATE TABLE IF NOT EXISTS scope_configs (
   tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
   mode VARCHAR(32) NOT NULL DEFAULT 'SELF' COMMENT '数据范围模式: SELF/ SUBORDINATES',

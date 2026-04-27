@@ -85,6 +85,12 @@ public class VendorTenantController {
         return ApiResponse.ok(vendorTenantService.renewTenant(tenantId, days));
     }
 
+    @GetMapping("/{tenantId}/orders")
+    public ApiResponse<?> listOrders(@PathVariable("tenantId") String tenantId) {
+        requireVendorAdmin();
+        return ApiResponse.ok(vendorTenantService.listOrders(tenantId));
+    }
+
     public record OpenTenantReq(
             @NotBlank String tenantName,
             String tenantId,

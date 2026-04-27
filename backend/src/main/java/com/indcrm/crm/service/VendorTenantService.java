@@ -6,10 +6,12 @@ import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
 import com.indcrm.crm.mapper.DepartmentMapper;
 import com.indcrm.crm.mapper.TenantMapper;
+import com.indcrm.crm.mapper.TenantOrderMapper;
 import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,11 +25,13 @@ public class VendorTenantService {
     private final UserMapper userMapper;
     private final DepartmentMapper departmentMapper;
     private final TenantMapper tenantMapper;
+    private final TenantOrderMapper tenantOrderMapper;
 
-    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper) {
+    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper) {
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
         this.tenantMapper = tenantMapper;
+        this.tenantOrderMapper = tenantOrderMapper;
     }
 
     @Transactional
@@ -96,6 +100,14 @@ public class VendorTenantService {
         tenant.updatedAt = now;
         tenantMapper.insert(tenant);
 
+        TenantOrder order = new TenantOrder();
+        order.id = UUID.randomUUID().toString();
+        order.tenantId = tenantId;
+        order.startTime = LocalDate.now();
+        order.expireTime = tenant.expireAt != null ? tenant.expireAt.toLocalDate() : null;
+        order.createdAt = now;
+        tenantOrderMapper.insert(order);
+
         return new TenantOpenResult(
                 tenant.id,
                 tenant.name,
@@ -107,6 +119,12 @@ public class VendorTenantService {
                 tenant.status.name(),
                 tenant.expireAt,
                 tenant.createdAt
+        );
+    }
+
+    public List<TenantOrder> listOrders(String tenantId) {
+        return tenantOrderMapper.selectList(
+                new QueryWrapper<TenantOrder>().eq("tenant_id", tenantId).orderByDesc("created_at")
         );
     }
 
@@ -177,6 +195,15 @@ public class VendorTenantService {
             tenant.status = TenantStatus.ACTIVE;
         }
         tenantMapper.updateById(tenant);
+
+        TenantOrder order = new TenantOrder();
+        order.id = UUID.randomUUID().toString();
+        order.tenantId = tenantId;
+        order.startTime = base.toLocalDate();
+        order.expireTime = tenant.expireAt != null ? tenant.expireAt.toLocalDate() : null;
+        order.createdAt = now;
+        tenantOrderMapper.insert(order);
+
         return toSummary(tenant);
     }
 
