@@ -85,7 +85,34 @@
 
 ---
 
-## 五、代码改动后必须同步的文档
+## 五、代码变更原则与技术约定
+
+### 1. 变更原则
+- **最小改动**：只改必要文件，不批量格式化无关代码
+- **编译优先**：任何 Java 改动后必须 `mvn clean compile` 通过
+- **测试优先**：改动后必须 `mvn test` 通过（或标记 `@Disabled` 并注明原因）
+- **不回退功能**：修复 bug 时确保不破坏已有接口契约
+
+### 2. 后端约定（Spring Boot 3.2 + MyBatis-Plus 3.5.9）
+- 实体类用 `public` 字段（非 private + getter），配合 `@TableField` 映射
+- QueryWrapper 用字符串列名：`Wrappers.<Entity>query().eq("column", value)`，不用 lambda 方法引用（因无 getter）
+- 新增实体必须同步：实体类 → Mapper 接口 → `schema.sql` → Service 改写
+- `InMemoryStore` 仅保留 `dailySeq`，所有业务数据走数据库
+- `List<String>` 字段用 JSON 类型列 + `JsonListTypeHandler`
+- 软删除统一用 `deleted TINYINT(1)` + `deleted_at DATETIME`
+
+### 3. 前端约定（Vue3 + TS + Vite）
+- 遵循现有目录结构：`views/modules/`（业务模块）、`views/pages/`（独立页面）
+- API 调用统一走 `src/api/http.ts`，HTTP 200 但 `code != 0` 会抛 Error
+
+### 4. 数据库约定
+- 主键统一 `VARCHAR(64)`，用 UUID
+- 唯一性约束必须包含 `tenant_id`
+- 所有业务表强制携带 `tenant_id`
+
+---
+
+## 六、代码改动后必须同步的文档
 
 > 只要代码改动涉及需求变更、范围变化、项目状态变化，必须同步更新以下文档。
 
@@ -106,7 +133,7 @@
 
 ---
 
-## 六、本地启动
+## 七、本地启动
 
 ### 方式一：一键启动（Windows，推荐）
 1. 根目录执行：`.\start-dev.ps1`
@@ -124,7 +151,7 @@
 
 ---
 
-## 七、环境变量
+## 八、环境变量
 
 ### 前端
 - `VITE_API_BASE_URL`：后端 API 地址  
