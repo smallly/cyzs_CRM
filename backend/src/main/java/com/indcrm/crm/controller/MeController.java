@@ -1,9 +1,12 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.domain.User;
 import com.indcrm.crm.service.ProfileService;
 import com.indcrm.crm.service.SessionService;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/me")
@@ -14,6 +17,20 @@ public class MeController {
     public MeController(SessionService sessionService, ProfileService profileService) {
         this.sessionService = sessionService;
         this.profileService = profileService;
+    }
+
+    @GetMapping
+    public ApiResponse<?> me() {
+        User user = sessionService.requireUser();
+        return ApiResponse.ok(Map.of(
+                "userId", user.id,
+                "name", user.name == null ? "" : user.name,
+                "phone", user.phone == null ? "" : user.phone,
+                "tenantId", user.tenantId == null ? "" : user.tenantId,
+                "bizRole", user.bizRole == null ? "" : user.bizRole.name(),
+                "systemAdmin", user.systemAdmin,
+                "vendorAdmin", user.vendorAdmin
+        ));
     }
 
     @PutMapping("/profile")

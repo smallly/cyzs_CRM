@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd /c \"cd /d d:\\\\AI\\\\saas_CRM\\\\backend && mvn spring-boot:run\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_OwningProcess -Force -ErrorAction SilentlyContinue }\")",
+      "Bash(powershell -Command \"netstat -ano | findstr :8080\")",
+      "Bash(powershell -Command \"Stop-Process -Id 34096 -Force\")",
+      "Bash(where mvn:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\\\Program Files'' -Filter ''mvn.cmd'' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName\")",
+      "Bash(powershell -Command \"if \\(Test-Path ''D:\\\\maven\\\\bin\\\\mvn.cmd''\\) { ''D:\\\\maven\\\\bin\\\\mvn.cmd'' } elseif \\(Test-Path ''C:\\\\maven\\\\bin\\\\mvn.cmd''\\) { ''C:\\\\maven\\\\bin\\\\mvn.cmd'' } elseif \\(Test-Path ''D:\\\\tools\\\\maven\\\\bin\\\\mvn.cmd''\\) { ''D:\\\\tools\\\\maven\\\\bin\\\\mvn.cmd'' } elseif \\(Test-Path \"\"$env:MAVEN_HOME\\\\bin\\\\mvn.cmd\"\"\\) { \"\"$env:MAVEN_HOME\\\\bin\\\\mvn.cmd\"\" } else { ''not found'' }\")"
+    ]
+  }
+}

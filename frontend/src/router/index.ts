@@ -116,6 +116,12 @@ const routes: RouteRecordRaw[] = [
         name: 'DictSettings',
         component: () => import('../views/pages/DictSettingsPage.vue'),
         meta: { title: '数据字典' }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/pages/ProfilePage.vue'),
+        meta: { title: '个人中心' }
       }
     ]
   }

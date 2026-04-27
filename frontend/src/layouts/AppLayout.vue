@@ -88,6 +88,10 @@
                     </div>
                   </div>
                 </el-dropdown-item>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  <span>个人中心</span>
+                </el-dropdown-item>
                 <el-dropdown-item command="change-password">
                   <el-icon><Lock /></el-icon>
                   <span>修改密码</span>
@@ -273,6 +277,10 @@ function handleUserCommand(command: string | number | object) {
   }
   if (command === 'change-password') {
     openChangePasswordDialog()
+    return
+  }
+  if (command === 'profile') {
+    router.push('/profile')
   }
 }
 

@@ -1,5 +1,29 @@
 ﻿<template>
-  <el-container class="vendor-layout">
+  <div v-if="!isLoggedIn" class="vendor-login-page">
+    <div class="vendor-login-card">
+      <div class="vendor-login-head">
+        <div class="vendor-mark large">VP</div>
+        <h2>厂商平台登录</h2>
+        <p>SaaS 运营管理后台</p>
+      </div>
+      <el-form class="vendor-login-form" label-width="0">
+        <el-form-item>
+          <el-input v-model="loginForm.phone" placeholder="请输入手机号" :prefix-icon="User" />
+        </el-form-item>
+        <el-form-item>
+          <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" show-password :prefix-icon="Lock" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" class="vendor-login-btn" :loading="loginLoading" @click="handleLogin">
+            登录
+          </el-button>
+        </el-form-item>
+      </el-form>
+      <div class="vendor-login-tip">默认超管账号：admin / admin123</div>
+    </div>
+  </div>
+
+  <el-container v-else class="vendor-layout">
     <el-aside class="vendor-aside" width="240px">
       <div class="vendor-brand">
         <div class="vendor-mark">VP</div>
@@ -19,6 +43,23 @@
         <div class="vendor-header-right">
           <el-tag type="info">Vendor: {{ vendorUrl }}</el-tag>
           <el-tag type="success">SaaS: {{ saasUrl }}</el-tag>
+          <el-dropdown trigger="click" @command="handleLogout">
+            <div class="vendor-user-trigger">
+              <span class="vendor-user-avatar">{{ userAvatarText }}</span>
+              <span class="vendor-user-name">{{ authStore.userName || '用户' }}</span>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item disabled>
+                  <div style="font-size:13px;color:#64748b">{{ authStore.phone || authStore.userId }}</div>
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">
+                  <el-icon><SwitchButton /></el-icon>
+                  <span>退出登录</span>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
 
@@ -271,7 +312,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createApiClient } from './api/http'
+import { useAuthStore } from './stores/auth'
+import { Lock, User, SwitchButton } from '@element-plus/icons-vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from './api/page'
 
 interface TenantSummary {
@@ -300,10 +342,22 @@ interface TenantOpenResult {
   createdAt: string
 }
 
-const api = createApiClient(() => '')
+const authStore = useAuthStore()
+authStore.restoreFromStorage()
+
 const host = window.location.hostname || 'localhost'
 const vendorUrl = computed(() => `http://${host}:5174`)
 const saasUrl = computed(() => `http://${host}:5173`)
+
+const isLoggedIn = computed(() => authStore.isLoggedIn && authStore.vendorAdmin)
+
+const loginForm = reactive({ phone: 'admin', password: 'admin123' })
+const loginLoading = ref(false)
+
+const userAvatarText = computed(() => {
+  const name = (authStore.userName || '').trim()
+  return name ? name.charAt(0).toUpperCase() : 'U'
+})
 
 const loading = ref(false)
 const page = ref(1)
@@ -340,8 +394,39 @@ const renewForm = reactive({
 })
 
 onMounted(() => {
-  void loadTenants()
+  if (isLoggedIn.value) {
+    void loadTenants()
+  }
 })
+
+async function handleLogin() {
+  if (!loginForm.phone.trim() || !loginForm.password.trim()) {
+    ElMessage.warning('请输入手机号和密码')
+    return
+  }
+  loginLoading.value = true
+  try {
+    await authStore.login(loginForm.phone.trim(), loginForm.password.trim())
+    authStore.saveToStorage()
+    if (!authStore.vendorAdmin) {
+      ElMessage.error('您没有厂商平台访问权限')
+      authStore.logout()
+      return
+    }
+    ElMessage.success('登录成功')
+    void loadTenants()
+  } catch (error: any) {
+    ElMessage.error(error.message || '登录失败')
+  } finally {
+    loginLoading.value = false
+  }
+}
+
+function handleLogout() {
+  authStore.logout()
+  authStore.saveToStorage()
+  ElMessage.success('已退出登录')
+}
 
 function openDialog() {
   openDialogVisible.value = true
@@ -352,7 +437,7 @@ async function openOrderDialog(row: TenantSummary) {
   orderDialogVisible.value = true
   orderLoading.value = true
   try {
-    orderRecords.value = await api<any[]>(`/api/vendor/tenants/${row.tenantId}/orders`)
+    orderRecords.value = await authStore.api<any[]>(`/api/vendor/tenants/${row.tenantId}/orders`)
   } catch (error: any) {
     ElMessage.error(error?.message || '订单记录加载失败')
     orderRecords.value = []
@@ -384,7 +469,7 @@ async function submitRenew() {
 
   renewing.value = true
   try {
-    await api(`/api/vendor/tenants/${renewTarget.value.tenantId}/renew`, {
+    await authStore.api(`/api/vendor/tenants/${renewTarget.value.tenantId}/renew`, {
       method: 'PUT',
       body: JSON.stringify({
         startTime: renewForm.startTime,
@@ -414,7 +499,7 @@ async function checkAdminPhoneExists() {
 
   checkingAdminPhone.value = true
   try {
-    adminPhoneExists.value = await api<boolean>(`/api/vendor/tenants/admin-phone-exists?phone=${encodeURIComponent(phone)}`)
+    adminPhoneExists.value = await authStore.api<boolean>(`/api/vendor/tenants/admin-phone-exists?phone=${encodeURIComponent(phone)}`)
   } catch (error: any) {
     ElMessage.error(error?.message || '手机号校验失败')
   } finally {
@@ -426,7 +511,7 @@ async function loadTenants() {
   loading.value = true
   try {
     const query = buildPageQuery(page.value, pageSize.value)
-    const res = await api<PageResult<TenantSummary> | TenantSummary[]>(`/api/vendor/tenants?${query}`)
+    const res = await authStore.api<PageResult<TenantSummary> | TenantSummary[]>(`/api/vendor/tenants?${query}`)
     const pageData = normalizePageResult<TenantSummary>(res)
     tenants.value = pageData.records
     total.value = pageData.total
@@ -451,7 +536,7 @@ function handleSizeChange(nextSize: number) {
 async function toggleTenantStatus(row: TenantSummary) {
   const target = row.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE'
   try {
-    await api(`/api/vendor/tenants/${row.tenantId}/status`, {
+    await authStore.api(`/api/vendor/tenants/${row.tenantId}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status: target })
     })
@@ -478,7 +563,7 @@ async function openTenant() {
 
   creating.value = true
   try {
-    const created = await api<TenantOpenResult>('/api/vendor/tenants', {
+    const created = await authStore.api<TenantOpenResult>('/api/vendor/tenants', {
       method: 'POST',
       body: JSON.stringify({
         tenantName: form.tenantName.trim(),
@@ -682,5 +767,101 @@ function formatDateTime(value?: string) {
 
 .open-form .el-form-item:last-child {
   margin-bottom: 0;
+}
+
+.vendor-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef4ff 0%, #dfe9ff 42%, #d4e2ff 100%);
+}
+
+.vendor-login-card {
+  width: min(420px, 92%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(201, 216, 245, 0.9);
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  box-shadow: 0 18px 38px rgba(20, 44, 96, 0.13);
+}
+
+.vendor-login-head {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.vendor-login-head .vendor-mark.large {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 20px;
+  margin: 0 auto 12px;
+}
+
+.vendor-login-head h2 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  color: #122043;
+}
+
+.vendor-login-head p {
+  margin: 0;
+  font-size: 14px;
+  color: #6a7897;
+}
+
+.vendor-login-form .el-input__wrapper {
+  height: 44px;
+  border-radius: 10px;
+}
+
+.vendor-login-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.vendor-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.vendor-user-trigger:hover {
+  background: #f8fafc;
+  border-color: #dbe6fb;
+}
+
+.vendor-user-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2f5cf6, #4f8bff);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vendor-user-name {
+  font-size: 14px;
+  color: #334155;
+}
+
+.vendor-login-tip {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #6a7897;
 }
 </style>

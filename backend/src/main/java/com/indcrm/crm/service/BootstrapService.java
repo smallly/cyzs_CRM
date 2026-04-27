@@ -18,9 +18,13 @@ import java.util.UUID;
 @Component
 @DependsOn("stateStorePersistenceService")
 public class BootstrapService {
-    private static final String DEFAULT_ADMIN_PHONE = "13800000000";
+    private static final String DEFAULT_VENDOR_ADMIN_PHONE = "admin";
+    private static final String DEFAULT_VENDOR_ADMIN_PASSWORD = "admin123";
+    private static final String DEFAULT_VENDOR_ADMIN_NAME = "\u8d85\u7ba1\u7ba1\u7406\u5458";
+    private static final String DEFAULT_SAAS_ADMIN_PHONE = "13800000000";
+    private static final String DEFAULT_SAAS_ADMIN_PASSWORD = "Admin@123";
+    private static final String DEFAULT_SAAS_ADMIN_NAME = "\u7cfb\u7edf\u7ba1\u7406\u5458";
     private static final String DEFAULT_SALES_PHONE = "13800000001";
-    private static final String DEFAULT_ADMIN_NAME = "\u7cfb\u7edf\u7ba1\u7406\u5458";
     private static final String DEFAULT_SALES_NAME = "\u9500\u552eA";
 
     private final UserMapper userMapper;
@@ -67,6 +71,7 @@ public class BootstrapService {
     @PostConstruct
     @Transactional
     public void init() {
+        ensureVendorAdminExists();
         if (userMapper.selectCount(null) > 0) {
             ensureTenantsForExistingUsers();
             ensureDefaultDepartmentForExistingUsers();
@@ -76,6 +81,30 @@ public class BootstrapService {
             seedData();
         }
         migrateBusinessEntitiesFromStateStore();
+    }
+
+    private void ensureVendorAdminExists() {
+        User existing = userMapper.selectOne(
+                new QueryWrapper<User>().eq("phone", DEFAULT_VENDOR_ADMIN_PHONE)
+        );
+        if (existing != null) {
+            return;
+        }
+        User vendorAdmin = new User();
+        vendorAdmin.id = UUID.randomUUID().toString();
+        vendorAdmin.tenantId = "vendor-default";
+        vendorAdmin.phone = DEFAULT_VENDOR_ADMIN_PHONE;
+        vendorAdmin.password = DEFAULT_VENDOR_ADMIN_PASSWORD;
+        vendorAdmin.name = DEFAULT_VENDOR_ADMIN_NAME;
+        vendorAdmin.lastTenantId = vendorAdmin.tenantId;
+        vendorAdmin.bizRole = BizRole.PROJECT_ADMIN;
+        vendorAdmin.systemAdmin = true;
+        vendorAdmin.vendorAdmin = true;
+        vendorAdmin.status = UserStatus.ENABLED;
+        vendorAdmin.createdAt = LocalDateTime.now();
+        userMapper.insert(vendorAdmin);
+        ensureTenantExists(vendorAdmin.tenantId, "超管平台", vendorAdmin.id, vendorAdmin.phone, vendorAdmin.createdAt);
+        seedPhoneAuthentication(vendorAdmin);
     }
 
     private void migrateBusinessEntitiesFromStateStore() {
@@ -107,35 +136,55 @@ public class BootstrapService {
     }
 
     private void seedData() {
-        User admin = new User();
-        admin.id = UUID.randomUUID().toString();
-        admin.tenantId = "tenant-a";
-        admin.phone = DEFAULT_ADMIN_PHONE;
-        admin.password = "Admin@123";
-        admin.name = DEFAULT_ADMIN_NAME;
-        admin.lastTenantId = admin.tenantId;
-        admin.bizRole = BizRole.PROJECT_ADMIN;
-        admin.systemAdmin = true;
-        admin.status = UserStatus.ENABLED;
-        admin.createdAt = LocalDateTime.now();
-        userMapper.insert(admin);
-        ensureTenantExists(admin.tenantId, "默认租户", admin.id, admin.phone, admin.createdAt);
+        // 创建超管平台管理员 (admin / admin123)
+        User vendorAdmin = new User();
+        vendorAdmin.id = UUID.randomUUID().toString();
+        vendorAdmin.tenantId = "vendor-default";
+        vendorAdmin.phone = DEFAULT_VENDOR_ADMIN_PHONE;
+        vendorAdmin.password = DEFAULT_VENDOR_ADMIN_PASSWORD;
+        vendorAdmin.name = DEFAULT_VENDOR_ADMIN_NAME;
+        vendorAdmin.lastTenantId = vendorAdmin.tenantId;
+        vendorAdmin.bizRole = BizRole.PROJECT_ADMIN;
+        vendorAdmin.systemAdmin = true;
+        vendorAdmin.vendorAdmin = true;
+        vendorAdmin.status = UserStatus.ENABLED;
+        vendorAdmin.createdAt = LocalDateTime.now();
+        userMapper.insert(vendorAdmin);
+        ensureTenantExists(vendorAdmin.tenantId, "超管平台", vendorAdmin.id, vendorAdmin.phone, vendorAdmin.createdAt);
+        seedPhoneAuthentication(vendorAdmin);
+
+        // 创建 SaaS 平台管理员 (13800000000 / Admin@123)
+        User saasAdmin = new User();
+        saasAdmin.id = UUID.randomUUID().toString();
+        saasAdmin.tenantId = "tenant-a";
+        saasAdmin.phone = DEFAULT_SAAS_ADMIN_PHONE;
+        saasAdmin.password = DEFAULT_SAAS_ADMIN_PASSWORD;
+        saasAdmin.name = DEFAULT_SAAS_ADMIN_NAME;
+        saasAdmin.lastTenantId = saasAdmin.tenantId;
+        saasAdmin.bizRole = BizRole.PROJECT_ADMIN;
+        saasAdmin.systemAdmin = true;
+        saasAdmin.vendorAdmin = false;
+        saasAdmin.status = UserStatus.ENABLED;
+        saasAdmin.createdAt = LocalDateTime.now();
+        userMapper.insert(saasAdmin);
+        ensureTenantExists(saasAdmin.tenantId, "默认租户", saasAdmin.id, saasAdmin.phone, saasAdmin.createdAt);
 
         Department rootDept = new Department();
         rootDept.id = UUID.randomUUID().toString();
-        rootDept.tenantId = admin.tenantId;
+        rootDept.tenantId = saasAdmin.tenantId;
         rootDept.name = "总部";
         rootDept.status = DepartmentStatus.ENABLED;
-        rootDept.headUserId = admin.id;
+        rootDept.headUserId = saasAdmin.id;
         rootDept.createdAt = LocalDateTime.now();
         rootDept.updatedAt = rootDept.createdAt;
         departmentMapper.insert(rootDept);
-        admin.deptId = rootDept.id;
-        admin.managerId = null;
-        userMapper.updateById(admin);
-        seedTenantUser(admin, rootDept.id, rootDept.id.equals(admin.deptId));
-        seedPhoneAuthentication(admin);
+        saasAdmin.deptId = rootDept.id;
+        saasAdmin.managerId = null;
+        userMapper.updateById(saasAdmin);
+        seedTenantUser(saasAdmin, rootDept.id, rootDept.id.equals(saasAdmin.deptId));
+        seedPhoneAuthentication(saasAdmin);
 
+        // 创建销售用户
         User sales = new User();
         sales.id = UUID.randomUUID().toString();
         sales.tenantId = "tenant-a";
@@ -147,7 +196,7 @@ public class BootstrapService {
         sales.systemAdmin = false;
         sales.status = UserStatus.ENABLED;
         sales.deptId = rootDept.id;
-        sales.managerId = admin.id;
+        sales.managerId = saasAdmin.id;
         sales.createdAt = LocalDateTime.now();
         userMapper.insert(sales);
         seedTenantUser(sales, rootDept.id, true);
@@ -256,8 +305,11 @@ public class BootstrapService {
             if (user == null || user.phone == null || !looksCorrupted(user.name)) {
                 continue;
             }
-            if (DEFAULT_ADMIN_PHONE.equals(user.phone)) {
-                user.name = DEFAULT_ADMIN_NAME;
+            if (DEFAULT_VENDOR_ADMIN_PHONE.equals(user.phone)) {
+                user.name = DEFAULT_VENDOR_ADMIN_NAME;
+                userMapper.updateById(user);
+            } else if (DEFAULT_SAAS_ADMIN_PHONE.equals(user.phone)) {
+                user.name = DEFAULT_SAAS_ADMIN_NAME;
                 userMapper.updateById(user);
             } else if (DEFAULT_SALES_PHONE.equals(user.phone)) {
                 user.name = DEFAULT_SALES_NAME;

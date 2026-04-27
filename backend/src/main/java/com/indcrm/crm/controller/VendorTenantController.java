@@ -1,7 +1,11 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.BizException;
+import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.common.PageUtils;
+import com.indcrm.crm.domain.User;
+import com.indcrm.crm.service.SessionService;
 import com.indcrm.crm.service.VendorTenantService;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
@@ -21,9 +25,18 @@ import java.util.List;
 @Validated
 public class VendorTenantController {
     private final VendorTenantService vendorTenantService;
+    private final SessionService sessionService;
 
-    public VendorTenantController(VendorTenantService vendorTenantService) {
+    public VendorTenantController(VendorTenantService vendorTenantService, SessionService sessionService) {
         this.vendorTenantService = vendorTenantService;
+        this.sessionService = sessionService;
+    }
+
+    private void requireVendorAdmin() {
+        User user = sessionService.requireUser();
+        if (!user.vendorAdmin) {
+            throw new BizException(ErrorCode.AUTH_403, "vendor admin only");
+        }
     }
 
     @GetMapping
@@ -31,16 +44,19 @@ public class VendorTenantController {
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size
     ) {
+        requireVendorAdmin();
         return ApiResponse.ok(PageUtils.maybePaginate(vendorTenantService.listTenants(), page, size));
     }
 
     @GetMapping("/admin-phone-exists")
     public ApiResponse<Boolean> adminPhoneExists(@RequestParam("phone") String phone) {
+        requireVendorAdmin();
         return ApiResponse.ok(vendorTenantService.adminPhoneExists(phone));
     }
 
     @PostMapping
     public ApiResponse<VendorTenantService.TenantOpenResult> open(@RequestBody OpenTenantReq req) {
+        requireVendorAdmin();
         return ApiResponse.ok(vendorTenantService.openTenant(
                 req.tenantName(),
                 req.tenantId(),
@@ -55,6 +71,7 @@ public class VendorTenantController {
             @PathVariable("tenantId") String tenantId,
             @RequestBody UpdateStatusReq req
     ) {
+        requireVendorAdmin();
         return ApiResponse.ok(vendorTenantService.updateTenantStatus(tenantId, req.status()));
     }
 
@@ -63,6 +80,7 @@ public class VendorTenantController {
             @PathVariable("tenantId") String tenantId,
             @RequestBody RenewReq req
     ) {
+        requireVendorAdmin();
         int days = req.days() == null ? 30 : req.days();
         return ApiResponse.ok(vendorTenantService.renewTenant(tenantId, days));
     }

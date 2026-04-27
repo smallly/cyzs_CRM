@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userName = ref<string>('')
   const tenantId = ref<string>('')
   const tenantName = ref<string>('')
+  const vendorAdmin = ref<boolean>(false)
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -35,6 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
     userName.value = res.name || res.userName || res.username || res.realName || ''
     tenantId.value = res.tenantId || res.tid || ''
     tenantName.value = res.tenantName || res.orgName || tenantId.value
+    vendorAdmin.value = (res as any).vendorAdmin === true || (res as any).vendorAdmin === 'true'
   }
 
   function logout() {
@@ -43,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
     userName.value = ''
     tenantId.value = ''
     tenantName.value = ''
+    vendorAdmin.value = false
   }
 
   function restoreFromStorage() {
@@ -61,6 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
         userName.value = data.userName || data.name || data.userRealName || ''
         tenantName.value = data.tenantName || tenantId.value || ''
+        vendorAdmin.value = !!data.vendorAdmin
       } catch {
         // ignore parse errors
       }
@@ -89,7 +93,8 @@ export const useAuthStore = defineStore('auth', () => {
       uid: userId.value,
       tid: tenantId.value,
       userName: userName.value,
-      tenantName: tenantName.value
+      tenantName: tenantName.value,
+      vendorAdmin: vendorAdmin.value
     }))
   }
 
@@ -99,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
     userName,
     tenantId,
     tenantName,
+    vendorAdmin,
     isLoggedIn,
     api,
     login,

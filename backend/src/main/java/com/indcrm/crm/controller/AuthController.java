@@ -39,7 +39,8 @@ public class AuthController {
                 "defaultTenantId", defaultTenantId,
                 "tenants", tenants,
                 "bizRole", user.bizRole.name(),
-                "systemAdmin", user.systemAdmin
+                "systemAdmin", user.systemAdmin,
+                "vendorAdmin", user.vendorAdmin
         ));
     }
 
