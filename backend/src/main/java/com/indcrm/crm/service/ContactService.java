@@ -231,12 +231,14 @@ public class ContactService {
         for (Project p : all) {
             if (selected.contains(p.id)) {
                 if (!contactId.equals(p.contactId)) {
-                    p.contactId = contactId;
-                    projectMapper.updateById(p);
+                    projectMapper.update(null, Wrappers.<Project>update()
+                            .eq("id", p.id)
+                            .set("contact_id", contactId));
                 }
             } else if (contactId.equals(p.contactId)) {
-                p.contactId = null;
-                projectMapper.updateById(p);
+                projectMapper.update(null, Wrappers.<Project>update()
+                        .eq("id", p.id)
+                        .set("contact_id", null));
             }
         }
     }
