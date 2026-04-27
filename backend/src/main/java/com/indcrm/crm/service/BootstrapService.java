@@ -71,6 +71,7 @@ public class BootstrapService {
     @PostConstruct
     @Transactional
     public void init() {
+        migrateSchema();
         ensureVendorAdminExists();
         if (userMapper.selectCount(null) > 0) {
             ensureTenantsForExistingUsers();
@@ -81,6 +82,27 @@ public class BootstrapService {
             seedData();
         }
         migrateBusinessEntitiesFromStateStore();
+    }
+
+    private void migrateSchema() {
+        try {
+            jdbcTemplate.execute(
+                "ALTER TABLE projects ADD COLUMN intended_price VARCHAR(200) DEFAULT NULL COMMENT '意向价格'"
+            );
+        } catch (org.springframework.dao.DuplicateKeyException | org.springframework.jdbc.BadSqlGrammarException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Duplicate column name")) {
+                return;
+            }
+            if (e.getMessage() != null && e.getMessage().contains("already exists")) {
+                return;
+            }
+            throw e;
+        } catch (Exception e) {
+            if (e.getMessage() != null && (e.getMessage().contains("Duplicate column name") || e.getMessage().contains("already exists"))) {
+                return;
+            }
+            throw e;
+        }
     }
 
     private void ensureVendorAdminExists() {
