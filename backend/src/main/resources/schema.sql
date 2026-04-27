@@ -167,6 +167,7 @@ CREATE TABLE IF NOT EXISTS projects (
   intended_region VARCHAR(200) DEFAULT NULL COMMENT '意向区域',
   intended_area_min DECIMAL(10,2) DEFAULT NULL COMMENT '意向面积下限',
   intended_area_max DECIMAL(10,2) DEFAULT NULL COMMENT '意向面积上限',
+  intended_price VARCHAR(200) DEFAULT NULL COMMENT '意向价格',
   intended_area DECIMAL(10,2) DEFAULT NULL COMMENT '意向面积(兼容旧数据)',
   first_contact_at DATETIME DEFAULT NULL COMMENT '首次接触时间',
   first_visit_date DATE DEFAULT NULL COMMENT '首次到访日期',

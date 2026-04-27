@@ -39,6 +39,7 @@ public class ProjectController {
                 req.intendedRegion(),
                 resolveAreaMin(req.intendedAreaMin(), req.intendedAreaMax(), req.intendedArea()),
                 resolveAreaMax(req.intendedAreaMin(), req.intendedAreaMax(), req.intendedArea()),
+                req.intendedPrice(),
                 parseLocalDateTime(req.firstContactAt()),
                 parseLocalDate(req.firstVisitDate()),
                 parseLocalDate(req.firstNegotiationDate()),
@@ -72,6 +73,7 @@ public class ProjectController {
                 req.intendedRegion(),
                 resolveAreaMin(req.intendedAreaMin(), req.intendedAreaMax(), req.intendedArea()),
                 resolveAreaMax(req.intendedAreaMin(), req.intendedAreaMax(), req.intendedArea()),
+                req.intendedPrice(),
                 req.remark()
         ));
     }
@@ -116,6 +118,7 @@ public class ProjectController {
             Double intendedAreaMax,
             // legacy single-value field
             Double intendedArea,
+            String intendedPrice,
             String firstContactAt,
             String firstVisitDate,
             String firstNegotiationDate,
@@ -133,6 +136,7 @@ public class ProjectController {
             Double intendedAreaMax,
             // legacy single-value field
             Double intendedArea,
+            String intendedPrice,
             String remark
     ) {}
 

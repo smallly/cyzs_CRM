@@ -263,7 +263,7 @@ a:hover {
 
 .el-input__wrapper.is-focus {
   border-color: #2f5cf6;
-  box-shadow: 0 0 0 2px rgba(47, 92, 246, 0.1);
+  box-shadow: none;
 }
 
 /* Select选择器样式 */

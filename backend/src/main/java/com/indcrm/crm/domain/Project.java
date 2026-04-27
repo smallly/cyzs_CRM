@@ -35,6 +35,8 @@ public class Project {
     public Double intendedAreaMin;
     @TableField("intended_area_max")
     public Double intendedAreaMax;
+    @TableField("intended_price")
+    public String intendedPrice;
     // legacy single-value area, kept only for backward compatibility
     @TableField("intended_area")
     public Double intendedArea;
@@ -57,4 +59,7 @@ public class Project {
     public LocalDateTime createdAt;
     @TableField("deleted_at")
     public LocalDateTime deletedAt;
+
+    @TableField(exist = false)
+    public String ownerName;
 }

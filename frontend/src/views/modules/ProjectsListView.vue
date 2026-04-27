@@ -24,11 +24,11 @@
       </template>
 
       <template #ownerId="{ row }">
-        {{ getUserDisplayName(row.ownerId) }}
+        {{ getUserDisplayName(row.ownerId, row.ownerName) }}
       </template>
 
       <template #creatorId="{ row }">
-        {{ getUserDisplayName(row.creatorId || row.ownerId) }}
+        {{ getUserDisplayName(row.creatorId || row.ownerId, row.creatorName) }}
       </template>
 
       <template #createdAt="{ row }">
@@ -172,8 +172,9 @@ async function loadContacts() {
   contacts.value = normalizePageResult<any>(res).records
 }
 
-function getUserDisplayName(userId?: string): string {
+function getUserDisplayName(userId?: string, ownerName?: string): string {
   if (!userId) return '-'
+  if (ownerName) return ownerName
   const user = users.value.find((u) => u.id === userId)
   return user?.name || userId
 }

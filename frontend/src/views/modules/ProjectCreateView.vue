@@ -88,6 +88,12 @@
           </el-form-item>
         </el-col>
 
+        <el-col :xs="24" :sm="24" :md="12">
+          <el-form-item label="意向价格">
+            <el-input v-model="formData.intendedPrice" placeholder="请输入意向价格，如 5000元/月" />
+          </el-form-item>
+        </el-col>
+
         <el-col :span="24">
           <el-form-item label="备注">
             <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
@@ -111,6 +117,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
+import { normalizePageResult, type PageResult } from '../../api/page'
 
 interface DictRes {
   projectLevels: string[]
@@ -137,6 +144,7 @@ const formData = reactive({
   intendedRegion: '',
   intendedAreaMin: undefined as number | undefined,
   intendedAreaMax: undefined as number | undefined,
+  intendedPrice: '',
   remark: ''
 })
 
@@ -155,7 +163,8 @@ async function loadContacts() {
 }
 
 async function loadUsers() {
-  users.value = await authStore.api<any[]>('/api/users')
+  const res = await authStore.api<PageResult<any> | any[]>('/api/users')
+  users.value = normalizePageResult<any>(res).records
 }
 
 async function loadDicts() {
@@ -217,6 +226,7 @@ async function handleSubmit() {
       intendedRegion: formData.intendedRegion || undefined,
       intendedAreaMin: formData.intendedAreaMin,
       intendedAreaMax: formData.intendedAreaMax,
+      intendedPrice: formData.intendedPrice || undefined,
       remark: formData.remark || undefined
     }
     if (formData.level) payload.level = formData.level
@@ -247,6 +257,7 @@ function resetForm() {
     intendedRegion: '',
     intendedAreaMin: undefined,
     intendedAreaMax: undefined,
+    intendedPrice: '',
     remark: ''
   })
 }

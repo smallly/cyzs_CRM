@@ -67,7 +67,7 @@
         <el-col :span="12">
           <div class="info-row">
             <span class="info-label">项目负责人</span>
-            <span class="info-value">{{ getUserDisplayName(project?.ownerId) }}</span>
+            <span class="info-value">{{ getUserDisplayName(project?.ownerId, project?.ownerName) }}</span>
           </div>
         </el-col>
         <el-col :span="12">
@@ -92,6 +92,12 @@
           <div class="info-row">
             <span class="info-label">意向面积区间(㎡)</span>
             <span class="info-value">{{ formatAreaRange(project) }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">意向价格</span>
+            <span class="info-value">{{ project?.intendedPrice || "-" }}</span>
           </div>
         </el-col>
         <el-col :span="12">
@@ -369,6 +375,11 @@
               <el-input-number v-model="projectEditForm.intendedAreaMax" :min="0" />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="意向价格">
+              <el-input v-model="projectEditForm.intendedPrice" placeholder="如 5000元/月" />
+            </el-form-item>
+          </el-col>
           <el-col :span="24">
             <el-form-item label="备注">
               <el-input v-model="projectEditForm.remark" type="textarea" :rows="4" />
@@ -547,6 +558,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
+import { normalizePageResult, type PageResult } from '../../api/page'
 
 const route = useRoute()
 const router = useRouter()
@@ -667,6 +679,7 @@ const projectEditForm = reactive({
   intendedRegion: '',
   intendedAreaMin: undefined as number | undefined,
   intendedAreaMax: undefined as number | undefined,
+  intendedPrice: '',
   remark: ''
 })
 
@@ -705,7 +718,8 @@ async function loadProject() {
 }
 
 async function loadUsers() {
-  users.value = await authStore.api<any[]>('/api/users')
+  const res = await authStore.api<PageResult<any> | any[]>('/api/users')
+  users.value = normalizePageResult<any>(res).records
 }
 
 async function loadContacts() {
@@ -738,8 +752,9 @@ function getUserAvatarText(userId?: string): string {
   return user?.name?.charAt(0).toUpperCase() || 'U'
 }
 
-function getUserDisplayName(userId?: string): string {
+function getUserDisplayName(userId?: string, ownerName?: string): string {
   if (!userId) return '-'
+  if (ownerName) return ownerName
   const user = users.value.find(u => u.id === userId)
   return user?.name || userId
 }
@@ -1065,6 +1080,7 @@ function openProjectEdit() {
     intendedRegion: project.value.intendedRegion || '',
     intendedAreaMin: project.value.intendedAreaMin,
     intendedAreaMax: project.value.intendedAreaMax,
+    intendedPrice: project.value.intendedPrice || '',
     remark: project.value.remark || ''
   })
   projectEditDialogVisible.value = true

@@ -61,6 +61,7 @@ public class ProjectService {
             String intendedRegion,
             Double intendedAreaMin,
             Double intendedAreaMax,
+            String intendedPrice,
             LocalDateTime firstContactAt,
             LocalDate firstVisitDate,
             LocalDate firstNegotiationDate,
@@ -112,6 +113,7 @@ public class ProjectService {
         p.intendedRegion = intendedRegion;
         p.intendedAreaMin = intendedAreaMin;
         p.intendedAreaMax = intendedAreaMax;
+        p.intendedPrice = intendedPrice;
         p.intendedArea = null;
         p.firstContactAt = firstContactAt;
         p.firstVisitDate = firstVisitDate;
@@ -137,6 +139,7 @@ public class ProjectService {
         for (Project p : all) {
             if (permissionService.canOperateByOwner(actor, p.ownerId)) {
                 hydrateAreaRange(p);
+                hydrateOwnerName(p);
                 list.add(p);
             }
         }
@@ -153,6 +156,7 @@ public class ProjectService {
         if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
             throw new BizException(ErrorCode.AUTH_403, "No permission to view project");
         }
+        hydrateOwnerName(p);
         return p;
     }
 
@@ -166,6 +170,7 @@ public class ProjectService {
             String intendedRegion,
             Double intendedAreaMin,
             Double intendedAreaMax,
+            String intendedPrice,
             String remark
     ) {
         Project p = mustGet(actor.tenantId, projectId);
@@ -189,6 +194,7 @@ public class ProjectService {
         p.intendedRegion = normalizeNullable(intendedRegion);
         p.intendedAreaMin = intendedAreaMin;
         p.intendedAreaMax = intendedAreaMax;
+        p.intendedPrice = intendedPrice;
         p.intendedArea = null;
         p.remark = normalizeNullable(remark);
         projectMapper.updateById(p);
@@ -354,6 +360,16 @@ public class ProjectService {
         if (p.intendedAreaMin == null && p.intendedAreaMax == null && p.intendedArea != null) {
             p.intendedAreaMin = p.intendedArea;
             p.intendedAreaMax = p.intendedArea;
+        }
+    }
+
+    private void hydrateOwnerName(Project p) {
+        if (p.ownerId == null || p.ownerId.isBlank()) {
+            return;
+        }
+        User owner = userMapper.selectById(p.ownerId);
+        if (owner != null) {
+            p.ownerName = owner.name;
         }
     }
 }
