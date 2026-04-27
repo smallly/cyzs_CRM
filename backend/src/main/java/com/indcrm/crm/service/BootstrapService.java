@@ -85,24 +85,16 @@ public class BootstrapService {
     }
 
     private void migrateSchema() {
-        try {
-            jdbcTemplate.execute(
-                "ALTER TABLE projects ADD COLUMN intended_price VARCHAR(200) DEFAULT NULL COMMENT '意向价格'"
-            );
-        } catch (org.springframework.dao.DuplicateKeyException | org.springframework.jdbc.BadSqlGrammarException e) {
-            if (e.getMessage() != null && e.getMessage().contains("Duplicate column name")) {
-                return;
-            }
-            if (e.getMessage() != null && e.getMessage().contains("already exists")) {
-                return;
-            }
-            throw e;
-        } catch (Exception e) {
-            if (e.getMessage() != null && (e.getMessage().contains("Duplicate column name") || e.getMessage().contains("already exists"))) {
-                return;
-            }
-            throw e;
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'projects' AND column_name = 'intended_price'",
+            Integer.class
+        );
+        if (count != null && count > 0) {
+            return;
         }
+        jdbcTemplate.execute(
+            "ALTER TABLE projects ADD COLUMN intended_price VARCHAR(200) DEFAULT NULL COMMENT '意向价格'"
+        );
     }
 
     private void ensureVendorAdminExists() {
