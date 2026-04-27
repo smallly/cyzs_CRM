@@ -189,9 +189,6 @@ CREATE TABLE IF NOT EXISTS projects (
   KEY idx_projects_stage (tenant_id, stage)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='项目表';
 
--- 兼容升级：为已存在的 projects 表添加 intended_price 字段
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS intended_price VARCHAR(200) DEFAULT NULL COMMENT '意向价格';
-
 CREATE TABLE IF NOT EXISTS followups (
   id VARCHAR(64) NOT NULL COMMENT '跟进记录ID',
   tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
