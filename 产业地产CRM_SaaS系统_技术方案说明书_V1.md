@@ -1,7 +1,7 @@
 ﻿# 产业地产 CRM SaaS 系统 - 技术方案说明书（V1）
 
-**版本：** 1.2  
-**编制日期：** 2026-04-27  
+**版本：** 1.3  
+**编制日期：** 2026-04-26  
 **适用范围：** V1（测试环境、灰度上线阶段）
 
 ---
@@ -13,7 +13,7 @@
 | 前端框架 | Vue3 |
 | 前端语言 | TypeScript |
 | 后端语言 | Java |
-| 后端框架 | Spring Boot 3.x |
+| 后端框架 | Spring Boot 3.2.12 |
 | JDK | 17 |
 | 数据库 | MySQL 8.4 |
 | 缓存 | Redis |
@@ -59,7 +59,7 @@ V1 采用单体应用 + 模块化分层：
 
 1. Controller：REST 接口层
 2. Service：业务规则层（阶段流转、权限校验、软删除联动）
-3. Repository/Mapper：MyBatis-Plus 数据访问层（已迁移实体走关系型表；配置类/简单结构暂走 JSON 单表）
+3. Repository/Mapper：MyBatis-Plus 数据访问层（全部 15 个实体已迁移至关系型表；`state_store` 仅保留历史 JSON 备份，`InMemoryStore` 仅保留 `dailySeq` 编号计数器）
 4. Security：JWT 鉴权 + RBAC + 数据范围拦截
 5. Audit：审计日志记录层
 6. Data Migration：启动时自动将 `state_store` JSON 数据迁移到关系型表（一次性）
@@ -163,22 +163,36 @@ JWT 策略（V1）：
 
 ### 6.3 数据持久化策略
 
-V1 采用关系型表为主 + JSON 单表为辅的混合策略：
+V1 已完成全部 15 个实体的关系型表迁移，采用纯关系型表策略：
 
-**已迁移至关系型表（MyBatis-Plus）：**
-- `users`、`user_authentications`、`tenant_users`、`organization_memberships`
-- `departments`、`tenants`、`audit_logs`
-- 上述表具备完整的关系型约束、索引、事务支持
+**已迁移至关系型表（MyBatis-Plus，共 15 个实体）：**
 
-**暂存 JSON 单表（`state_store`）：**
-- `Contact`、`Project`、`Followup`、`Contract`、`Payment`
-- `ScopeConfig`、`ProjectDictConfig`
-- 适用场景：数据结构较灵活、嵌套属性较多、或需要快速迭代的业务实体
+| 域 | 实体 | 表名 | 说明 |
+|---|---|---|---|
+| 成员域 | User | `users` | 平台级用户主体 |
+| 成员域 | UserAuthentication | `user_authentications` | 认证方式绑定 |
+| 成员域 | TenantUser | `tenant_users` | 租户成员档案 |
+| 成员域 | OrganizationMembership | `organization_memberships` | 部门归属 |
+| 成员域 | Department | `departments` | 部门树 |
+| 成员域 | Tenant | `tenants` | 租户组织 |
+| 业务域 | Contact | `contacts` | 联系人 |
+| 业务域 | Project | `projects` | 项目 |
+| 业务域 | Followup | `followups` | 跟进记录 |
+| 业务域 | Contract | `contracts` | 合同 |
+| 业务域 | Payment | `payments` | 回款 |
+| 配置域 | ScopeConfig | `scope_configs` | 数据范围配置 |
+| 配置域 | ProjectDictConfig | `project_dict_configs` | 项目字典 |
+| 审计域 | AuditLog | `audit_logs` | 审计日志 |
+| 序列域 | — | `daily_sequences` | 日编号序列（如启用） |
 
-**迁移原则：**
-1. 成员域（用户/组织/权限）优先迁移到关系型表，确保强一致性和复杂查询性能
-2. 业务域（联系人/项目/跟进/合同/回款）后续按需迁移
-3. `state_store` 保留作为未迁移实体的降级存储，所有已迁移实体从内存 Map 中移除
+**`state_store` 保留用途：**
+- 仅作为历史 JSON 数据备份，启动时 `BootstrapService` 会一次性将旧数据迁移到关系型表
+- 不再承载任何业务实体的运行时读写
+
+**`InMemoryStore` 当前状态：**
+- 已移除 14 个废弃内存 Map
+- 仅保留 `dailySeq`（`Map<String, AtomicInteger>`）用于按租户按天生成编号（`YYYYMMDD-0001` 格式）
+- 所有业务数据读写均通过 MyBatis-Plus Mapper 操作数据库
 
 ### 6.4 成员域表设计建议
 
@@ -210,7 +224,16 @@ V1 采用关系型表为主 + JSON 单表为辅的混合策略：
 3. `role_id` 先按单值
 4. 删除部门归属采用逻辑失效：更新 `status` 并记录 `left_at`
 
-### 6.4 编号规则
+### 6.4 MyBatis-Plus 兼容性说明
+
+V1 使用 `mybatis-plus-spring-boot3-starter:3.5.9`（Spring Boot 3 专用 starter，非 `mybatis-plus-boot-starter`）。
+
+关键注意事项：
+1. `updateById()` 默认忽略 `null` 字段，如需将字段设为 `null`，必须使用 `UpdateWrapper.set("column", null)`
+2. 自定义 TypeHandler（如 `JsonListTypeHandler`）需在 `application.yml` 中配置 `mybatis-plus.type-handlers-package`
+3. 所有实体主键统一使用 `VARCHAR(64)`，配合 `@TableId` 注解
+
+### 6.5 编号规则
 
 统一编号格式：`YYYYMMDD-0001`（按组织、按天重置）
 
@@ -246,28 +269,41 @@ V1 采用关系型表为主 + JSON 单表为辅的混合策略：
 
 非关键配置页使用普通轮询/手动刷新。
 
-### 7.4 成员域接口建议
+### 7.4 成员域接口（已落地）
 
-V1 成员域建议采用以下接口分层：
+V1 成员域采用以下接口分层，已全部实现：
 
 1. 租户成员
-   - `POST /api/tenant-users`
-   - `PUT /api/tenant-users/{id}`
-   - `PUT /api/tenant-users/{id}/pending-phone`
-   - `PUT /api/tenant-users/{id}/status`
+   - `GET /api/tenant-users` — 列表（支持分页）
+   - `POST /api/tenant-users` — 新增成员
+   - `PUT /api/tenant-users/{id}` — 编辑成员（`name`、`employee_no`、`status`）
+   - `PUT /api/tenant-users/{id}/pending-phone` — 修改未激活成员待绑定手机号
+   - `PUT /api/tenant-users/{id}/status` — 更新成员状态
 
 2. 用户本人
-   - `PUT /api/me/phone`
-   - `PUT /api/me/profile`
+   - `PUT /api/me/profile` — 修改平台级姓名
+   - `PUT /api/me/phone` — 修改主手机号
+   - `PUT /api/me/password` — 修改密码（需旧密码校验，BCrypt）
 
 3. 部门归属
-   - `POST /api/tenant-users/{id}/memberships`
-   - `PUT /api/memberships/{membershipId}`
-   - `PUT /api/memberships/{membershipId}/status`
+   - `GET /api/tenant-users/{id}/memberships` — 查询某成员部门归属
+   - `POST /api/tenant-users/{id}/memberships` — 新增部门归属
+   - `PUT /api/memberships/{membershipId}` — 编辑部门归属
+   - `PUT /api/memberships/{membershipId}/status` — 失效部门归属（逻辑失效，记录 `left_at`）
 
 4. 激活逻辑
-   - 首次登录进入租户时，由服务层内部完成 `pending_phone -> user_id` 绑定
-   - 不建议把激活流程暴露成任意租户管理员可调用的开放接口
+   - 首次登录进入租户时，由 `AuthService` 内部完成 `pending_phone -> user_id` 绑定与 `activated = true`
+   - 不暴露为租户管理员可调用的开放接口
+
+### 7.5 厂商管理接口（已落地）
+
+SaaS 平台级租户管理：
+
+- `GET /api/vendor/tenants` — 租户列表（支持分页）
+- `GET /api/vendor/tenants/admin-phone-exists` — 检查管理员手机号是否存在
+- `POST /api/vendor/tenants` — 开通新租户
+- `PUT /api/vendor/tenants/{tenantId}/status` — 更新租户状态
+- `PUT /api/vendor/tenants/{tenantId}/renew` — 租户续期
 
 ---
 
@@ -336,13 +372,28 @@ V1 成员域建议采用以下接口分层：
 
 ---
 
-## 11. 里程碑建议（开发视角）
+## 11. 里程碑与当前状态（开发视角）
 
-1. M1：工程搭建 + 登录鉴权 + 基础权限
-2. M2：联系人/项目/跟进
-3. M3：合同/回款 + 阶段联动
-4. M4：系统设置 + 审计日志 + SSE 关键页面
-5. M5：联调测试 + 灰度发布
+| 里程碑 | 目标 | 状态 |
+|--------|------|------|
+| M1 | 工程搭建 + 登录鉴权 + 基础权限 | ✅ 已完成 |
+| M2 | 联系人/项目/跟进 | ✅ 已完成 |
+| M3 | 合同/回款 + 阶段联动 | ✅ 已完成（基础 CRUD，阶段联动） |
+| M4 | 系统设置 + 审计日志 + SSE 关键页面 | ✅ 已完成 |
+| M5 | 联调测试 + 灰度发布 | 🔄 待推进 |
+
+**当前已达成：**
+1. 15 个实体全部迁移至 MyBatis-Plus 关系型表
+2. 前后端接口全部打通，JWT 鉴权 + 多租户切换可用
+3. 密码采用 BCrypt 加密，支持修改密码
+4. 测试覆盖：集成测试通过（`mvn test`: 2 tests, 0 failures）
+5. 数据迁移：`BootstrapService` 启动时自动从 `state_store` JSON 迁移到关系型表
+
+**V1 已知缺口（待 M5 补齐）：**
+1. 合同/回款暂无完整 `PUT /{id}` 和 `DELETE /{id}`（仅有 `PUT /{id}/sign-date`、`PUT /{id}/paid-date`）
+2. 附件上传当前为字符串占位（URL/文件路径），未接入实际文件存储服务
+3. SSE 已提供 `/api/stream/subscribe`，前端接入程度需联调确认
+4. 分页查询目前以全量列表 + 前端过滤为主，大数据量场景需后端分页优化
 
 ---
 
