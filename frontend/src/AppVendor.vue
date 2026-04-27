@@ -33,7 +33,20 @@
         </div>
       </div>
       <div class="vendor-menu">
-        <button class="vendor-menu-item active">组织管理</button>
+        <button
+          class="vendor-menu-item"
+          :class="{ active: activeMenu === 'tenants' }"
+          @click="activeMenu = 'tenants'"
+        >
+          组织管理
+        </button>
+        <button
+          class="vendor-menu-item"
+          :class="{ active: activeMenu === 'admins' }"
+          @click="activeMenu = 'admins'"
+        >
+          管理员管理
+        </button>
       </div>
     </el-aside>
 
@@ -64,7 +77,8 @@
       </el-header>
 
       <el-main class="vendor-main">
-        <el-card>
+        <!-- 组织管理 -->
+        <el-card v-if="activeMenu === 'tenants'">
           <template #header>
             <div class="card-header">
               <span>组织管理</span>
@@ -133,9 +147,68 @@
             />
           </div>
         </el-card>
+
+        <!-- 管理员管理 -->
+        <el-card v-if="activeMenu === 'admins'">
+          <template #header>
+            <div class="card-header">
+              <span>管理员管理</span>
+              <el-space>
+                <el-button type="primary" @click="openAdminDialog">添加管理员</el-button>
+              </el-space>
+            </div>
+          </template>
+
+          <el-table :data="admins" v-loading="adminLoading">
+            <el-table-column prop="name" label="姓名" min-width="120" />
+            <el-table-column prop="phone" label="手机号" min-width="130" />
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
+                  {{ row.status === 'ENABLED' ? '已启用' : '已停用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="创建时间" min-width="170">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdAt) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  size="small"
+                  :type="row.status === 'ENABLED' ? 'danger' : 'primary'"
+                  @click="toggleAdminStatus(row)"
+                >
+                  {{ row.status === 'ENABLED' ? '停用' : '启用' }}
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
       </el-main>
     </el-container>
   </el-container>
+
+  <!-- 添加管理员弹窗 -->
+  <el-dialog v-model="adminDialogVisible" title="添加管理员" width="480px" :close-on-click-modal="false">
+    <el-form :model="adminForm" label-width="80px">
+      <el-form-item label="姓名" required>
+        <el-input v-model="adminForm.name" placeholder="请输入姓名" />
+      </el-form-item>
+      <el-form-item label="手机号" required>
+        <el-input v-model="adminForm.phone" placeholder="请输入手机号" />
+      </el-form-item>
+      <el-form-item label="密码" required>
+        <el-input v-model="adminForm.password" type="password" show-password placeholder="至少6位" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="adminDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="adminCreating" @click="submitAdmin">保存</el-button>
+    </template>
+  </el-dialog>
 
   <!-- 开通组织弹窗 -->
   <el-dialog
@@ -359,6 +432,8 @@ const userAvatarText = computed(() => {
   return name ? name.charAt(0).toUpperCase() : 'U'
 })
 
+const activeMenu = ref<'tenants' | 'admins'>('tenants')
+
 const loading = ref(false)
 const page = ref(1)
 const pageSize = ref(10)
@@ -378,6 +453,17 @@ const renewTarget = ref<TenantSummary | null>(null)
 const orderTarget = ref<TenantSummary | null>(null)
 const orderRecords = ref<any[]>([])
 
+// Admin management
+const adminLoading = ref(false)
+const adminDialogVisible = ref(false)
+const adminCreating = ref(false)
+const admins = ref<any[]>([])
+const adminForm = reactive({
+  name: '',
+  phone: '',
+  password: ''
+})
+
 const form = reactive({
   tenantName: '',
   tenantId: '',
@@ -396,6 +482,7 @@ const renewForm = reactive({
 onMounted(() => {
   if (isLoggedIn.value) {
     void loadTenants()
+    void loadAdmins()
   }
 })
 
@@ -415,6 +502,7 @@ async function handleLogin() {
     }
     ElMessage.success('登录成功')
     void loadTenants()
+    void loadAdmins()
   } catch (error: any) {
     ElMessage.error(error.message || '登录失败')
   } finally {
@@ -619,6 +707,74 @@ function resetForm() {
   form.openTime = new Date().toISOString().split('T')[0]
   form.expireTime = ''
   adminPhoneExists.value = false
+}
+
+// Admin management functions
+async function loadAdmins() {
+  adminLoading.value = true
+  try {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/vendor/admins')
+    const pageData = normalizePageResult<any>(res)
+    admins.value = pageData.records
+  } catch (error: any) {
+    ElMessage.error(error?.message || '管理员列表加载失败')
+  } finally {
+    adminLoading.value = false
+  }
+}
+
+function openAdminDialog() {
+  adminForm.name = ''
+  adminForm.phone = ''
+  adminForm.password = ''
+  adminDialogVisible.value = true
+}
+
+async function submitAdmin() {
+  if (!adminForm.name.trim()) {
+    ElMessage.warning('请输入姓名')
+    return
+  }
+  if (!adminForm.phone.trim()) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  if (!adminForm.password || adminForm.password.length < 6) {
+    ElMessage.warning('密码至少6位')
+    return
+  }
+  adminCreating.value = true
+  try {
+    await authStore.api('/api/vendor/admins', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: adminForm.name.trim(),
+        phone: adminForm.phone.trim(),
+        password: adminForm.password
+      })
+    })
+    ElMessage.success('管理员已添加')
+    adminDialogVisible.value = false
+    await loadAdmins()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '添加失败')
+  } finally {
+    adminCreating.value = false
+  }
+}
+
+async function toggleAdminStatus(row: any) {
+  const target = row.status === 'ENABLED' ? 'DISABLED' : 'ENABLED'
+  try {
+    await authStore.api(`/api/vendor/admins/${row.id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: target })
+    })
+    ElMessage.success(target === 'ENABLED' ? '已启用' : '已停用')
+    await loadAdmins()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '状态更新失败')
+  }
 }
 
 function formatDateTime(value?: string) {
