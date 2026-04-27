@@ -78,8 +78,6 @@ public class BootstrapService {
             ensureDefaultDepartmentForExistingUsers();
             normalizeSeedUserNames();
             ensureIdentityStructuresForExistingUsers();
-        } else {
-            seedData();
         }
         migrateBusinessEntitiesFromStateStore();
     }

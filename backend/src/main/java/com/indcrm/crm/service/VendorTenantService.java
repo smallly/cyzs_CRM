@@ -117,9 +117,6 @@ public class VendorTenantService {
             if (tenant == null) {
                 continue;
             }
-            if ("vendor-default".equals(tenant.id)) {
-                continue;
-            }
             normalizeTenantDefaults(tenant, now);
 
             User admin = tenant.adminUserId != null ? userMapper.selectById(tenant.adminUserId) : null;
