@@ -51,7 +51,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item disabled>
-                  <div style="font-size:13px;color:#64748b">{{ authStore.phone || authStore.userId }}</div>
+                  <div style="font-size:13px;color:#64748b">{{ authStore.userName || authStore.phone || authStore.userId }}</div>
                 </el-dropdown-item>
                 <el-dropdown-item divided @click="handleLogout">
                   <el-icon><SwitchButton /></el-icon>

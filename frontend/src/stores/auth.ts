@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string>('')
   const userId = ref<string>('')
   const userName = ref<string>('')
+  const phone = ref<string>('')
   const tenantId = ref<string>('')
   const tenantName = ref<string>('')
   const vendorAdmin = ref<boolean>(false)
@@ -32,8 +33,9 @@ export const useAuthStore = defineStore('auth', () => {
       body: JSON.stringify({ phone, password })
     })
     token.value = res.token
-    userId.value = res.userId || res.uid || phone
+    userId.value = res.userId || res.uid || ''
     userName.value = res.name || res.userName || res.username || res.realName || ''
+    phone.value = (res as any).phone || ''
     tenantId.value = res.tenantId || res.tid || ''
     tenantName.value = res.tenantName || res.orgName || tenantId.value
     vendorAdmin.value = (res as any).vendorAdmin === true || (res as any).vendorAdmin === 'true'
@@ -43,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = ''
     userId.value = ''
     userName.value = ''
+    phone.value = ''
     tenantId.value = ''
     tenantName.value = ''
     vendorAdmin.value = false
@@ -63,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
           tenantId.value = data.tenantId
         }
         userName.value = data.userName || data.name || data.userRealName || ''
+        phone.value = data.phone || ''
         tenantName.value = data.tenantName || tenantId.value || ''
         vendorAdmin.value = !!data.vendorAdmin
       } catch {
@@ -93,6 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
       uid: userId.value,
       tid: tenantId.value,
       userName: userName.value,
+      phone: phone.value,
       tenantName: tenantName.value,
       vendorAdmin: vendorAdmin.value
     }))
@@ -102,6 +107,7 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     userId,
     userName,
+    phone,
     tenantId,
     tenantName,
     vendorAdmin,
