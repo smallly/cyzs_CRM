@@ -328,17 +328,17 @@ body,
   cursor: not-allowed;
 }
 
-input:not([type="radio"]),
+input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner),
 select,
 textarea,
-button {
+button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next) {
   font-size: 13px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   padding: 8px 10px;
 }
 
-input:not([type="radio"]),
+input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner),
 select,
 textarea {
   min-width: 140px;
@@ -366,7 +366,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-input:not([type="radio"]):focus,
+input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner):focus,
 select:focus,
 textarea:focus {
   outline: none;
@@ -403,25 +403,25 @@ textarea {
   margin: 0;
 }
 
-button {
+button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next) {
   background: var(--primary-blue);
   color: #fff;
   border-color: var(--primary-blue);
   cursor: pointer;
 }
 
-button.secondary {
+button.secondary:not(.el-button) {
   background: #fff;
   color: var(--primary-text);
   border-color: var(--primary-blue-border);
 }
 
-button:hover {
+button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next):hover {
   background: var(--primary-blue-hover);
   border-color: var(--primary-blue-hover);
 }
 
-button.secondary:hover {
+button.secondary:not(.el-button):hover {
   background: var(--primary-blue-weak);
   border-color: var(--primary-blue);
   color: var(--primary-blue-hover);
@@ -456,8 +456,8 @@ table {
   font-size: 12px;
 }
 
-th,
-td {
+th:not(.el-table__cell),
+td:not(.el-table__cell) {
   border-top: 1px solid #dde7fb;
   border-bottom: 1px solid #dde7fb;
   border-left: none;
@@ -526,20 +526,24 @@ th {
 .project-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+}
+
+.project-detail-page > .card {
+  margin-bottom: 0;
 }
 
 .project-hero-sticky {
-  position: sticky;
-  top: 0;
+  position: static;
+  top: auto;
   z-index: 20;
-  background: #f3f5f9;
-  padding-bottom: 12px;
-  margin-bottom: -12px;
+  background: transparent;
+  padding-bottom: 6px;
+  margin-bottom: 0;
 }
 
 .project-hero-card {
-  padding: 18px;
+  padding: 9px 18px;
   border-color: #d9e2f2;
   background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
   position: relative;
@@ -552,7 +556,7 @@ th {
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 7px;
 }
 
 .project-hero-left {
@@ -747,7 +751,7 @@ th {
 .project-stage-progress {
   margin-bottom: 2px;
   border-top: 1px solid #e6edf8;
-  padding-top: 14px;
+  padding-top: 7px;
 }
 
 .stage-progress {
@@ -838,7 +842,7 @@ th {
 }
 
 .project-base-card {
-  padding-top: 12px;
+  padding-top: 6px;
 }
 
 .project-base-header {
@@ -846,7 +850,7 @@ th {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .project-base-title {
@@ -936,7 +940,11 @@ th {
   align-items: flex-end;
   justify-content: flex-start;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
+}
+
+.project-detail-tabs-card {
+  padding-top: 8px;
 }
 
 .project-detail-actions {

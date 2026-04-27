@@ -1,9 +1,8 @@
-<template>
+﻿<template>
   <el-card>
     <template #header>
       <div class="card-header">
         <span>角色管理（默认角色）</span>
-        <el-button @click="loadRoles">刷新</el-button>
       </div>
     </template>
 
@@ -23,6 +22,18 @@
       </el-table-column>
       <el-table-column prop="description" label="说明" min-width="260" />
     </el-table>
+    <div class="pagination-wrap">
+      <el-pagination
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :background="false"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
+      />
+    </div>
   </el-card>
 </template>
 
@@ -30,10 +41,14 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
+import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 const roles = ref<any[]>([])
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 onMounted(async () => {
   await loadRoles()
@@ -42,12 +57,27 @@ onMounted(async () => {
 async function loadRoles() {
   loading.value = true
   try {
-    roles.value = await authStore.api<any[]>('/api/roles')
+    const query = buildPageQuery(page.value, pageSize.value)
+    const res = await authStore.api<PageResult<any> | any[]>(`/api/roles?${query}`)
+    const pageData = normalizePageResult<any>(res)
+    roles.value = pageData.records
+    total.value = pageData.total
   } catch (error: any) {
     ElMessage.error(error.message || '加载角色失败')
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(nextPage: number) {
+  page.value = nextPage
+  void loadRoles()
+}
+
+function handleSizeChange(nextSize: number) {
+  pageSize.value = nextSize
+  page.value = 1
+  void loadRoles()
 }
 
 function getScopeLabel(scope?: string): string {
@@ -67,5 +97,11 @@ function getScopeLabel(scope?: string): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.pagination-wrap {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

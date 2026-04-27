@@ -1,9 +1,11 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.ContractMapper;
+import com.indcrm.crm.mapper.ProjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,12 +17,15 @@ import java.util.UUID;
 
 @Service
 public class ContractService {
-    private final InMemoryStore store;
+    private final ContractMapper contractMapper;
+    private final ProjectMapper projectMapper;
     private final PermissionService permissionService;
     private final AuditService auditService;
 
-    public ContractService(InMemoryStore store, PermissionService permissionService, AuditService auditService) {
-        this.store = store;
+    public ContractService(ContractMapper contractMapper, ProjectMapper projectMapper,
+                           PermissionService permissionService, AuditService auditService) {
+        this.contractMapper = contractMapper;
+        this.projectMapper = projectMapper;
         this.permissionService = permissionService;
         this.auditService = auditService;
     }
@@ -39,21 +44,24 @@ public class ContractService {
             String paymentTerms,
             String attachment
     ) {
-        Project p = store.projects.get(projectId);
+        Project p = projectMapper.selectById(projectId);
         if (p == null || p.deleted || !actor.tenantId.equals(p.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "项目不存在");
         }
         if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
             throw new BizException(ErrorCode.AUTH_403, "无合同创建权限");
         }
-        for (Contract c : store.contracts.values()) {
-            if (!c.deleted && actor.tenantId.equals(c.tenantId)) {
-                if (contractNo.equals(c.contractNo)) {
-                    throw new BizException(ErrorCode.BIZ_409, "合同编号重复");
-                }
-                if (projectId.equals(c.projectId)) {
-                    throw new BizException(ErrorCode.BIZ_422, "一项目仅允许一合同");
-                }
+        List<Contract> existing = contractMapper.selectList(
+                Wrappers.<Contract>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+        );
+        for (Contract c : existing) {
+            if (contractNo.equals(c.contractNo)) {
+                throw new BizException(ErrorCode.BIZ_409, "合同编号重复");
+            }
+            if (projectId.equals(c.projectId)) {
+                throw new BizException(ErrorCode.BIZ_422, "一项目仅允许一合同");
             }
         }
         Contract c = new Contract();
@@ -73,31 +81,53 @@ public class ContractService {
         c.paymentTerms = normalizeNullable(paymentTerms);
         c.attachment = requireAttachment(attachment);
         c.createdAt = LocalDateTime.now();
-        store.contracts.put(c.id, c);
+        contractMapper.insert(c);
 
         p.stage = ProjectStage.SIGNING;
+        projectMapper.updateById(p);
         auditService.log(actor, "CONTRACT_CREATE", "Contract", c.id, c.contractNo);
         return c;
     }
 
     public List<Contract> list(User actor) {
+        List<Contract> all = contractMapper.selectList(
+                Wrappers.<Contract>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+        );
         List<Contract> list = new ArrayList<>();
-        for (Contract c : store.contracts.values()) {
-            if (c.deleted || !actor.tenantId.equals(c.tenantId)) {
-                continue;
-            }
+        for (Contract c : all) {
             if (permissionService.canOperateByOwner(actor, c.ownerId)) {
                 list.add(c);
             }
         }
+        list.sort((a, b) -> {
+            LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
+            LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
+            return bt.compareTo(at);
+        });
         return list;
     }
 
     public Contract mustGet(User actor, String contractId) {
-        Contract c = store.contracts.get(contractId);
+        Contract c = contractMapper.selectById(contractId);
         if (c == null || c.deleted || !actor.tenantId.equals(c.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "合同不存在");
         }
+        return c;
+    }
+
+    public Contract updateSignDate(User actor, String contractId, LocalDate signDate) {
+        if (signDate == null) {
+            throw new BizException(ErrorCode.BIZ_422, "签约日期不能为空");
+        }
+        Contract c = mustGet(actor, contractId);
+        if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "无合同编辑权限");
+        }
+        c.signDate = signDate;
+        contractMapper.updateById(c);
+        auditService.log(actor, "CONTRACT_UPDATE_SIGN_DATE", "Contract", c.id, c.contractNo);
         return c;
     }
 

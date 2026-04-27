@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
@@ -6,7 +6,7 @@ const routes: RouteRecordRaw[] = [
     path: '/login',
     name: 'Login',
     component: () => import('../views/pages/LoginPage.vue'),
-    meta: { requiresAuth: false }
+    meta: { requiresAuth: false, title: '登录' }
   },
   {
     path: '/',
@@ -16,67 +16,106 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'Workbench',
-        component: () => import('../views/pages/WorkbenchPage.vue')
+        component: () => import('../views/pages/WorkbenchPage.vue'),
+        meta: { title: '工作台' }
       },
       {
         path: 'contacts',
         name: 'Contacts',
-        component: () => import('../views/modules/ContactsListView.vue')
+        component: () => import('../views/modules/ContactsListView.vue'),
+        meta: { title: '联系人' }
+      },
+      {
+        path: 'contacts/create',
+        name: 'ContactCreate',
+        component: () => import('../views/pages/ContactCreatePage.vue'),
+        meta: { title: '新增联系人' }
       },
       {
         path: 'projects',
         name: 'Projects',
-        component: () => import('../views/modules/ProjectsListView.vue')
+        component: () => import('../views/modules/ProjectsListView.vue'),
+        meta: { title: '项目' }
       },
       {
         path: 'followups',
         name: 'Followups',
-        component: () => import('../views/modules/FollowupsView.vue')
+        component: () => import('../views/modules/FollowupsView.vue'),
+        meta: { title: '跟进记录' }
+      },
+      {
+        path: 'followups/create',
+        name: 'FollowupCreate',
+        component: () => import('../views/pages/FollowupCreatePage.vue'),
+        meta: { title: '新增跟进记录' }
       },
       {
         path: 'projects/create',
         name: 'ProjectCreate',
-        component: () => import('../views/modules/ProjectCreateView.vue')
+        component: () => import('../views/modules/ProjectCreateView.vue'),
+        meta: { title: '新建项目' }
       },
       {
         path: 'projects/:id',
         name: 'ProjectDetail',
-        component: () => import('../views/pages/ProjectDetailPage.vue')
+        component: () => import('../views/pages/ProjectDetailPage.vue'),
+        meta: { title: '项目详情' }
       },
       {
         path: 'contracts',
         name: 'Contracts',
-        component: () => import('../views/modules/ContractsView.vue')
+        component: () => import('../views/modules/ContractsView.vue'),
+        meta: { title: '合同' }
+      },
+      {
+        path: 'contracts/create',
+        name: 'ContractCreate',
+        component: () => import('../views/pages/ContractCreatePage.vue'),
+        meta: { title: '新增合同' }
       },
       {
         path: 'payments',
         name: 'Payments',
-        component: () => import('../views/modules/PaymentsView.vue')
+        component: () => import('../views/modules/PaymentsView.vue'),
+        meta: { title: '回款' }
+      },
+      {
+        path: 'payments/create',
+        name: 'PaymentCreate',
+        component: () => import('../views/pages/PaymentCreatePage.vue'),
+        meta: { title: '新增回款' }
+      },
+      {
+        path: 'settings/org',
+        name: 'UsersDepartments',
+        component: () => import('../views/pages/UsersDepartmentsPage.vue'),
+        meta: { title: '成员与部门' }
       },
       {
         path: 'users',
-        name: 'Users',
-        component: () => import('../views/modules/UsersView.vue')
+        redirect: { path: '/settings/org', query: { tab: 'users' } }
       },
       {
         path: 'departments',
-        name: 'Departments',
-        component: () => import('../views/modules/DepartmentsView.vue')
+        redirect: { path: '/settings/org', query: { tab: 'departments' } }
       },
       {
         path: 'settings/roles',
         name: 'RoleSettings',
-        component: () => import('../views/pages/RoleSettingsPage.vue')
+        component: () => import('../views/pages/RoleSettingsPage.vue'),
+        meta: { title: '角色管理' }
       },
       {
         path: 'settings/scope',
         name: 'ScopeModeSettings',
-        component: () => import('../views/pages/ScopeModePage.vue')
+        component: () => import('../views/pages/ScopeModePage.vue'),
+        meta: { title: '数据范围' }
       },
       {
         path: 'settings/dicts',
         name: 'DictSettings',
-        component: () => import('../views/pages/DictSettingsPage.vue')
+        component: () => import('../views/pages/DictSettingsPage.vue'),
+        meta: { title: '数据字典' }
       }
     ]
   }

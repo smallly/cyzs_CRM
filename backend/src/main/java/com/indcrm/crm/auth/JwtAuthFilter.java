@@ -1,7 +1,7 @@
 package com.indcrm.crm.auth;
 
 import com.indcrm.crm.domain.User;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.UserMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,11 +15,11 @@ import java.io.IOException;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
-    private final InMemoryStore store;
+    private final UserMapper userMapper;
 
-    public JwtAuthFilter(JwtService jwtService, InMemoryStore store) {
+    public JwtAuthFilter(JwtService jwtService, UserMapper userMapper) {
         this.jwtService = jwtService;
-        this.store = store;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -42,7 +42,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (token != null && !token.isBlank()) {
                 Claims claims = jwtService.parse(token);
                 String uid = claims.get("uid", String.class);
-                User user = store.users.get(uid);
+                User user = userMapper.selectById(uid);
                 if (user != null) {
                     AuthContext.set(user);
                 }

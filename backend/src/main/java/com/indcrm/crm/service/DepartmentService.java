@@ -1,12 +1,15 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.Department;
 import com.indcrm.crm.domain.DepartmentStatus;
 import com.indcrm.crm.domain.User;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.DepartmentMapper;
+import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -15,25 +18,27 @@ import java.util.UUID;
 
 @Service
 public class DepartmentService {
-    private final InMemoryStore store;
+    private final DepartmentMapper departmentMapper;
+    private final UserMapper userMapper;
     private final PermissionService permissionService;
     private final AuditService auditService;
 
-    public DepartmentService(InMemoryStore store, PermissionService permissionService, AuditService auditService) {
-        this.store = store;
+    public DepartmentService(DepartmentMapper departmentMapper, UserMapper userMapper,
+                             PermissionService permissionService, AuditService auditService) {
+        this.departmentMapper = departmentMapper;
+        this.userMapper = userMapper;
         this.permissionService = permissionService;
         this.auditService = auditService;
     }
 
     public List<Department> list(User actor) {
         ensureSystemAdmin(actor);
-        List<Department> list = new ArrayList<>();
-        for (Department dept : store.departments.values()) {
-            if (dept != null && actor.tenantId.equals(dept.tenantId)) {
-                if (dept.status == null) {
-                    dept.status = DepartmentStatus.ENABLED;
-                }
-                list.add(dept);
+        List<Department> list = departmentMapper.selectList(
+                new QueryWrapper<Department>().eq("tenant_id", actor.tenantId)
+        );
+        for (Department dept : list) {
+            if (dept.status == null) {
+                dept.status = DepartmentStatus.ENABLED;
             }
         }
         list.sort((a, b) -> {
@@ -44,15 +49,16 @@ public class DepartmentService {
         return list;
     }
 
+    @Transactional
     public Department create(User actor, String name, String parentId, String headUserId) {
         ensureSystemAdmin(actor);
         String trimmedName = normalizeName(name);
-        Department parent = null;
-        if (parentId != null && !parentId.isBlank()) {
-            parent = getTenantDepartment(actor, parentId);
-            if (parent.status != DepartmentStatus.ENABLED) {
-                throw new BizException(ErrorCode.BIZ_422, "Parent department is disabled");
-            }
+        if (parentId == null || parentId.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "Parent department is required");
+        }
+        Department parent = getTenantDepartment(actor, parentId);
+        if (parent.status != DepartmentStatus.ENABLED) {
+            throw new BizException(ErrorCode.BIZ_422, "Parent department is disabled");
         }
         String resolvedHeadUserId = normalizeHeadUser(actor, headUserId);
 
@@ -60,17 +66,18 @@ public class DepartmentService {
         dept.id = UUID.randomUUID().toString();
         dept.tenantId = actor.tenantId;
         dept.name = trimmedName;
-        dept.parentId = parent == null ? null : parent.id;
+        dept.parentId = parent.id;
         dept.headUserId = resolvedHeadUserId;
         dept.status = DepartmentStatus.ENABLED;
         dept.createdAt = LocalDateTime.now();
         dept.updatedAt = dept.createdAt;
-        store.departments.put(dept.id, dept);
+        departmentMapper.insert(dept);
 
         auditService.log(actor, "DEPARTMENT_CREATE", "Department", dept.id, "name=" + dept.name);
         return dept;
     }
 
+    @Transactional
     public Department update(User actor, String id, String name, String parentId, String headUserId) {
         ensureSystemAdmin(actor);
         Department dept = getTenantDepartment(actor, id);
@@ -99,11 +106,13 @@ public class DepartmentService {
         if (dept.status == null) {
             dept.status = DepartmentStatus.ENABLED;
         }
+        departmentMapper.updateById(dept);
 
         auditService.log(actor, "DEPARTMENT_UPDATE", "Department", dept.id, "name=" + dept.name);
         return dept;
     }
 
+    @Transactional
     public void setStatus(User actor, String id, DepartmentStatus status) {
         ensureSystemAdmin(actor);
         if (status == null) {
@@ -112,6 +121,7 @@ public class DepartmentService {
         Department dept = getTenantDepartment(actor, id);
         dept.status = status;
         dept.updatedAt = LocalDateTime.now();
+        departmentMapper.updateById(dept);
         auditService.log(actor, "DEPARTMENT_STATUS", "Department", dept.id, "status=" + status.name());
     }
 
@@ -136,7 +146,7 @@ public class DepartmentService {
         if (headUserId == null || headUserId.isBlank()) {
             return null;
         }
-        User head = store.users.get(headUserId);
+        User head = userMapper.selectById(headUserId);
         if (head == null || !actor.tenantId.equals(head.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Department head not found");
         }
@@ -144,7 +154,7 @@ public class DepartmentService {
     }
 
     private Department getTenantDepartment(User actor, String deptId) {
-        Department dept = store.departments.get(deptId);
+        Department dept = departmentMapper.selectById(deptId);
         if (dept == null || !actor.tenantId.equals(dept.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Department not found");
         }
@@ -158,7 +168,7 @@ public class DepartmentService {
             if (targetAncestorId.equals(parentId)) {
                 return true;
             }
-            Department current = store.departments.get(parentId);
+            Department current = departmentMapper.selectById(parentId);
             if (current == null || !tenantId.equals(current.tenantId)) {
                 return false;
             }

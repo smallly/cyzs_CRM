@@ -10,8 +10,9 @@ import { useAuthStore } from './stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-onMounted(() => {
+onMounted(async () => {
   authStore.restoreFromStorage()
+  await authStore.syncUserNameFromUsers()
   if (!authStore.isLoggedIn && router.currentRoute.value.path !== '/login') {
     router.push('/login')
   }

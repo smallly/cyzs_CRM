@@ -1,6 +1,7 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.service.PaymentService;
 import com.indcrm.crm.service.SessionService;
 import org.springframework.web.bind.annotation.*;
@@ -35,8 +36,20 @@ public class PaymentController {
     }
 
     @GetMapping
-    public ApiResponse<?> list() {
-        return ApiResponse.ok(paymentService.list(sessionService.requireUser()));
+    public ApiResponse<?> list(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
+        return ApiResponse.ok(PageUtils.maybePaginate(paymentService.list(sessionService.requireUser()), page, size));
+    }
+
+    @PutMapping("/{id}/paid-date")
+    public ApiResponse<?> updatePaidDate(@PathVariable("id") String id, @RequestBody PaidDateReq req) {
+        return ApiResponse.ok(paymentService.updatePaidDate(
+                sessionService.requireUser(),
+                id,
+                parseLocalDate(req.paidDate())
+        ));
     }
 
     public record CreateReq(
@@ -48,6 +61,8 @@ public class PaymentController {
             String voucher,
             String remark
     ) {}
+
+    public record PaidDateReq(String paidDate) {}
 
     private LocalDate parseLocalDate(String value) {
         if (value == null || value.isBlank()) {

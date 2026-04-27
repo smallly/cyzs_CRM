@@ -1,18 +1,22 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indcrm.crm.domain.*;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.DepartmentMapper;
+import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 public class PermissionService {
-    private final InMemoryStore store;
+    private final UserMapper userMapper;
+    private final DepartmentMapper departmentMapper;
     private final SystemConfigService configService;
 
-    public PermissionService(InMemoryStore store, SystemConfigService configService) {
-        this.store = store;
+    public PermissionService(UserMapper userMapper, DepartmentMapper departmentMapper, SystemConfigService configService) {
+        this.userMapper = userMapper;
+        this.departmentMapper = departmentMapper;
         this.configService = configService;
     }
 
@@ -46,21 +50,26 @@ public class PermissionService {
 
     private Set<String> getSubordinateUserIdsByDepartmentHead(User user) {
         Set<String> managedDeptIds = new HashSet<>();
-        for (Department dept : store.departments.values()) {
-            if (dept == null || dept.status != DepartmentStatus.ENABLED) continue;
-            if (!user.tenantId.equals(dept.tenantId)) continue;
-            if (user.id.equals(dept.headUserId)) {
+        List<Department> allDepts = departmentMapper.selectList(
+                new QueryWrapper<Department>()
+                        .eq("tenant_id", user.tenantId)
+                        .eq("status", DepartmentStatus.ENABLED.name())
+        );
+        for (Department dept : allDepts) {
+            if (dept != null && user.id.equals(dept.headUserId)) {
                 managedDeptIds.add(dept.id);
             }
         }
         if (managedDeptIds.isEmpty()) {
             return Collections.emptySet();
         }
-        Set<String> deptScope = getDepartmentSubtreeIds(user.tenantId, managedDeptIds);
+        Set<String> deptScope = getDepartmentSubtreeIds(user.tenantId, managedDeptIds, allDepts);
         Set<String> ids = new HashSet<>();
-        for (User member : store.users.values()) {
+        List<User> members = userMapper.selectList(
+                new QueryWrapper<User>().eq("tenant_id", user.tenantId)
+        );
+        for (User member : members) {
             if (member == null) continue;
-            if (!user.tenantId.equals(member.tenantId)) continue;
             if (member.deptId != null && deptScope.contains(member.deptId) && !user.id.equals(member.id)) {
                 ids.add(member.id);
             }
@@ -73,9 +82,11 @@ public class PermissionService {
             return Set.of(user.id);
         }
         Set<String> ids = new HashSet<>();
-        for (User member : store.users.values()) {
+        List<User> members = userMapper.selectList(
+                new QueryWrapper<User>().eq("tenant_id", user.tenantId)
+        );
+        for (User member : members) {
             if (member == null) continue;
-            if (!user.tenantId.equals(member.tenantId)) continue;
             if (user.deptId.equals(member.deptId)) {
                 ids.add(member.id);
             }
@@ -88,11 +99,18 @@ public class PermissionService {
         if (user.deptId == null || user.deptId.isBlank()) {
             return Set.of(user.id);
         }
-        Set<String> deptIds = getDepartmentSubtreeIds(user.tenantId, Set.of(user.deptId));
+        List<Department> allDepts = departmentMapper.selectList(
+                new QueryWrapper<Department>()
+                        .eq("tenant_id", user.tenantId)
+                        .eq("status", DepartmentStatus.ENABLED.name())
+        );
+        Set<String> deptIds = getDepartmentSubtreeIds(user.tenantId, Set.of(user.deptId), allDepts);
         Set<String> userIds = new HashSet<>();
-        for (User member : store.users.values()) {
+        List<User> members = userMapper.selectList(
+                new QueryWrapper<User>().eq("tenant_id", user.tenantId)
+        );
+        for (User member : members) {
             if (member == null) continue;
-            if (!user.tenantId.equals(member.tenantId)) continue;
             if (member.deptId != null && deptIds.contains(member.deptId)) {
                 userIds.add(member.id);
             }
@@ -101,12 +119,12 @@ public class PermissionService {
         return userIds;
     }
 
-    private Set<String> getDepartmentSubtreeIds(String tenantId, Set<String> roots) {
+    private Set<String> getDepartmentSubtreeIds(String tenantId, Set<String> roots, List<Department> allDepts) {
         Set<String> result = new HashSet<>(roots);
         boolean changed = true;
         while (changed) {
             changed = false;
-            for (Department dept : store.departments.values()) {
+            for (Department dept : allDepts) {
                 if (dept == null || dept.status != DepartmentStatus.ENABLED) continue;
                 if (!tenantId.equals(dept.tenantId)) continue;
                 if (dept.parentId != null && result.contains(dept.parentId) && !result.contains(dept.id)) {

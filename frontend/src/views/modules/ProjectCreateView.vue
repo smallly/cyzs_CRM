@@ -1,87 +1,93 @@
-<template>
+﻿<template>
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>新建项目</span>
+        <div class="card-title-wrap">
+          <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
+          <span>新建项目</span>
+        </div>
         <el-button @click="router.push('/projects')">返回项目列表</el-button>
       </div>
     </template>
 
-    <el-alert
-      v-if="contacts.length === 0"
-      type="warning"
-      :closable="false"
-      show-icon
-      style="margin-bottom: 16px"
-    >
+    <el-alert v-if="contacts.length === 0" type="warning" :closable="false" show-icon style="margin-bottom: 16px">
       当前没有联系人，创建项目前请先新增联系人。
       <el-button size="small" @click="router.push('/contacts')">去新增联系人</el-button>
     </el-alert>
 
-    <el-form :model="formData" :rules="formRules" ref="formRef" label-width="120px">
-      <el-row :gutter="16">
-        <el-col :span="12">
+    <el-form ref="formRef" :model="formData" :rules="formRules" label-width="108px" class="project-create-form">
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="项目名称" prop="name">
             <el-input v-model="formData.name" placeholder="请输入项目名称" />
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="联系人" prop="contactId">
-            <el-select v-model="formData.contactId" placeholder="请选择联系人">
-              <el-option v-for="c in contacts" :key="c.id" :label="`${c.name} (${c.phone1})`" :value="c.id" />
+            <el-select v-model="formData.contactId" filterable placeholder="请选择联系人">
+              <el-option
+                v-for="c in contacts"
+                :key="c.id"
+                :label="`${c.name || '-'} (${c.phone1 || '-'})`"
+                :value="c.id"
+              />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="项目负责人" prop="ownerId">
-            <el-select v-model="formData.ownerId" placeholder="请选择项目负责人">
+            <el-select v-model="formData.ownerId" filterable placeholder="请选择项目负责人">
               <el-option v-for="u in users" :key="u.id" :label="u.name" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="租购类型">
             <el-select v-model="formData.dealType">
               <el-option label="租赁" value="RENT" />
-              <el-option label="购买" value="PURCHASE" />
-              <el-option label="租购皆可" value="RENT_OR_PURCHASE" />
+              <el-option label="购买" value="BUY" />
+              <el-option label="租购皆可" value="BOTH" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="项目级别">
-            <el-select v-model="formData.level">
-              <el-option label="A类" value="A类" />
-              <el-option label="B类" value="B类" />
-              <el-option label="C类" value="C类" />
+            <el-select v-model="formData.level" filterable placeholder="请选择项目级别">
+              <el-option v-for="item in levelOptions" :key="item" :label="item" :value="item" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="项目来源">
-            <el-select v-model="formData.source">
-              <el-option label="电话来访" value="电话来访" />
-              <el-option label="网络咨询" value="网络咨询" />
-              <el-option label="客户介绍" value="客户介绍" />
-              <el-option label="其他" value="其他" />
+            <el-select v-model="formData.source" filterable placeholder="请选择项目来源">
+              <el-option v-for="item in sourceOptions" :key="item" :label="item" :value="item" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+
+        <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="意向区域">
             <el-input v-model="formData.intendedRegion" placeholder="请输入意向区域" />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
-          <el-form-item label="意向面积(㎡)">
-            <el-input-number v-model="formData.intendedAreaMin" :min="0" placeholder="最小" />
+
+        <el-col :xs="24" :sm="24" :md="12">
+          <el-form-item label="面积最小(m²)">
+            <el-input v-model.number="formData.intendedAreaMin" type="number" min="0" placeholder="请输入最小面积" />
           </el-form-item>
         </el-col>
-        <el-col :span="6">
-          <el-form-item label="至">
-            <el-input-number v-model="formData.intendedAreaMax" :min="0" placeholder="最大" />
+
+        <el-col :xs="24" :sm="24" :md="12">
+          <el-form-item label="面积最大(m²)">
+            <el-input v-model.number="formData.intendedAreaMax" type="number" min="0" placeholder="请输入最大面积" />
           </el-form-item>
         </el-col>
+
         <el-col :span="24">
           <el-form-item label="备注">
             <el-input v-model="formData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
@@ -89,12 +95,10 @@
         </el-col>
       </el-row>
 
-      <el-form-item>
+      <el-form-item class="form-actions">
         <el-space>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">
-            保存项目
-          </el-button>
-          <el-button @click="resetForm">重置</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
+          <el-button @click="handleCancel">取消</el-button>
         </el-space>
       </el-form-item>
     </el-form>
@@ -102,30 +106,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
+
+interface DictRes {
+  projectLevels: string[]
+  projectSources: string[]
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const formRef = ref()
-const loading = ref(false)
 const submitting = ref(false)
 const contacts = ref<any[]>([])
 const users = ref<any[]>([])
+const levelOptions = ref<string[]>([])
+const sourceOptions = ref<string[]>([])
 
 const formData = reactive({
   name: '',
   contactId: '',
   ownerId: '',
   dealType: 'RENT',
-  level: 'B类',
-  source: '电话来访',
+  level: '',
+  source: '',
   intendedRegion: '',
-  intendedAreaMin: 0,
-  intendedAreaMax: 0,
+  intendedAreaMin: undefined as number | undefined,
+  intendedAreaMax: undefined as number | undefined,
   remark: ''
 })
 
@@ -136,17 +147,8 @@ const formRules = {
 }
 
 onMounted(async () => {
-  await loadAll()
+  await Promise.all([loadContacts(), loadUsers(), loadDicts()])
 })
-
-async function loadAll() {
-  loading.value = true
-  try {
-    await Promise.all([loadContacts(), loadUsers()])
-  } finally {
-    loading.value = false
-  }
-}
 
 async function loadContacts() {
   contacts.value = await authStore.api<any[]>('/api/contacts')
@@ -156,15 +158,75 @@ async function loadUsers() {
   users.value = await authStore.api<any[]>('/api/users')
 }
 
+async function loadDicts() {
+  try {
+    const res = await authStore.api<DictRes>('/api/system/dicts')
+    if (Array.isArray(res.projectLevels) && res.projectLevels.length) {
+      levelOptions.value = res.projectLevels
+    }
+    if (Array.isArray(res.projectSources) && res.projectSources.length) {
+      sourceOptions.value = res.projectSources
+    }
+  } catch {
+    // ignore, will validate again before submit
+  }
+
+  if (!formData.level && levelOptions.value.length) {
+    formData.level = levelOptions.value[0]
+  }
+  if (!formData.source && sourceOptions.value.length) {
+    formData.source = sourceOptions.value[0]
+  }
+}
+
 async function handleSubmit() {
   try {
     await formRef.value?.validate()
     submitting.value = true
 
+    // Always align with backend dictionary right before submit.
+    await loadDicts()
+
+    const levelValid = !formData.level || levelOptions.value.includes(formData.level)
+    const sourceValid = !formData.source || sourceOptions.value.includes(formData.source)
+    if (!levelValid) {
+      ElMessage.warning('项目级别已变更，请重新选择')
+      formData.level = ''
+      return
+    }
+    if (!sourceValid) {
+      ElMessage.warning('项目来源已变更，请重新选择')
+      formData.source = ''
+      return
+    }
+
+    if (
+      formData.intendedAreaMin != null &&
+      formData.intendedAreaMax != null &&
+      formData.intendedAreaMin > formData.intendedAreaMax
+    ) {
+      ElMessage.warning('面积区间不合法：最小值不能大于最大值')
+      return
+    }
+
+    const payload: Record<string, any> = {
+      name: formData.name,
+      contactId: formData.contactId,
+      ownerId: formData.ownerId,
+      dealType: formData.dealType,
+      intendedRegion: formData.intendedRegion || undefined,
+      intendedAreaMin: formData.intendedAreaMin,
+      intendedAreaMax: formData.intendedAreaMax,
+      remark: formData.remark || undefined
+    }
+    if (formData.level) payload.level = formData.level
+    if (formData.source) payload.source = formData.source
+
     const created = await authStore.api<{ id: string }>('/api/projects', {
       method: 'POST',
-      body: JSON.stringify(formData)
+      body: JSON.stringify(payload)
     })
+
     ElMessage.success('项目已创建')
     router.push(`/projects/${created.id}`)
   } catch (error: any) {
@@ -180,13 +242,25 @@ function resetForm() {
     contactId: '',
     ownerId: '',
     dealType: 'RENT',
-    level: 'B类',
-    source: '电话来访',
+    level: '',
+    source: '',
     intendedRegion: '',
-    intendedAreaMin: 0,
-    intendedAreaMax: 0,
+    intendedAreaMin: undefined,
+    intendedAreaMax: undefined,
     remark: ''
   })
+}
+
+function handleBack() {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  router.push('/projects')
+}
+
+function handleCancel() {
+  handleBack()
 }
 </script>
 
@@ -195,5 +269,31 @@ function resetForm() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+}
+
+.card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.back-icon-btn {
+  font-size: 16px;
+  padding: 0;
+}
+
+.project-create-form :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.project-create-form :deep(.form-actions .el-form-item__content) {
+  justify-content: center;
+}
+
+.project-create-form :deep(.el-input),
+.project-create-form :deep(.el-select),
+.project-create-form :deep(.el-textarea) {
+  width: 100%;
 }
 </style>

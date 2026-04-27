@@ -1,6 +1,7 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.domain.Department;
 import com.indcrm.crm.domain.DepartmentStatus;
 import com.indcrm.crm.domain.User;
@@ -20,9 +21,12 @@ public class DepartmentController {
     }
 
     @GetMapping
-    public ApiResponse<?> list() {
+    public ApiResponse<?> list(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
         User actor = sessionService.requireUser();
-        return ApiResponse.ok(departmentService.list(actor));
+        return ApiResponse.ok(PageUtils.maybePaginate(departmentService.list(actor), page, size));
     }
 
     @PostMapping

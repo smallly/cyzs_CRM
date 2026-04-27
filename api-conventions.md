@@ -1,12 +1,13 @@
 # API Conventions
-> 前后端接口规范（V1 现行版），联调前必读。  
-> 本文档以当前项目代码实现为准，不与未落地架构（如 `src/api/*`、Axios）混写。
+
+当前项目接口规范文档。适用于 V1 现行实现和本轮确认后的成员域扩展设计。
 
 ---
 
-## 一、统一响应体
+## 一、统一响应结构
 
-### 后端 `ApiResponse<T>` 定义（当前实现）
+后端统一响应结构为 `ApiResponse<T>`：
+
 ```java
 public record ApiResponse<T>(int code, String message, T data) {
     public static <T> ApiResponse<T> ok(T data) {
@@ -19,47 +20,50 @@ public record ApiResponse<T>(int code, String message, T data) {
 }
 ```
 
-### 响应示例（当前项目）
-```json
-// 成功
-{ "code": 0, "message": "ok", "data": { ... } }
+响应示例：
 
-// 失败（业务异常）
-{ "code": 422, "message": "content is required", "data": null }
+```json
+{ "code": 0, "message": "ok", "data": { } }
 ```
 
-### 说明
-- 当前项目未实现统一 `PageResult<T>` 分页包装；列表接口直接返回数组到 `data`。
-- 部分鉴权失败（如 JWT 解析失败）会返回 HTTP 401 + 纯文本 `Unauthorized`（非 `ApiResponse`）。
+```json
+{ "code": 422, "message": "phone already bound", "data": null }
+```
+
+说明：
+
+1. 当前列表接口默认返回数组到 `data`，未统一包裹分页对象。
+2. 鉴权失败场景可能直接返回 HTTP 401 与纯文本 `Unauthorized`。
 
 ---
 
-## 二、业务状态码（现行）
+## 二、业务状态码
 
-| code | 含义 | 来源 |
-|---|---|---|
-| `0` | 成功 | `ApiResponse.ok` |
-| `401` | 未登录 / token 无效 | `ErrorCode.AUTH_401` 或 Filter 401 |
-| `403` | 无权限 | `ErrorCode.AUTH_403` |
-| `409` | 业务冲突（如唯一性） | `ErrorCode.BIZ_409` |
-| `422` | 业务规则/参数不满足 | `ErrorCode.BIZ_422` |
-| `500` | 系统异常 | `GlobalExceptionHandler` 兜底 |
+| code | 含义 |
+|---|---|
+| `0` | 成功 |
+| `401` | 未登录或 token 无效 |
+| `403` | 无权限访问 |
+| `409` | 唯一性冲突 |
+| `422` | 业务规则冲突或参数不满足 |
+| `500` | 系统异常 |
 
 ---
 
-## 三、接口命名规范
+## 三、URL 与方法规范
 
-### URL 规则（当前项目）
-- 根前缀统一：`/api/`
-- 资源采用复数名词：`/contacts`、`/projects`、`/followups`
-- 子动作使用资源子路径：`/projects/{id}/stage`、`/users/{id}/status`
-- HTTP 方法语义：
-  - `GET`：查询
-  - `POST`：创建
-  - `PUT`：更新
-  - `DELETE`：删除（当前多为软删）
+1. 统一根前缀：`/api`
+2. 资源使用复数名词：如 `/contacts`、`/projects`、`/tenant-users`
+3. 子动作使用资源子路径：如 `/projects/{id}/stage`、`/tenant-users/{id}/status`
+4. HTTP 方法语义：
+   - `GET`：查询
+   - `POST`：创建
+   - `PUT`：更新
+   - `DELETE`：删除
 
-### 已落地接口清单
+---
+
+## 四、已落地接口清单
 
 | 模块 | 方法 | 路径 |
 |---|---|---|
@@ -75,7 +79,7 @@ public record ApiResponse<T>(int code, String message, T data) {
 | 项目 | PUT | `/api/projects/{id}/stage` |
 | 项目 | PUT | `/api/projects/{id}/owner` |
 | 项目 | DELETE | `/api/projects/{id}` |
-| 跟进 | GET | `/api/followups?projectId=`（可选） |
+| 跟进 | GET | `/api/followups` |
 | 跟进 | POST | `/api/followups` |
 | 跟进 | PUT | `/api/followups/{id}` |
 | 跟进 | DELETE | `/api/followups/{id}` |
@@ -99,116 +103,182 @@ public record ApiResponse<T>(int code, String message, T data) {
 | 审计日志 | GET | `/api/audit-logs` |
 | SSE | GET | `/api/stream/subscribe` |
 
-### 合同/回款附件字段约定（2026-04-23）
-- `POST /api/contracts` 新增请求字段 `attachment`（`string`，必填）。
-- `POST /api/payments` 新增请求字段 `voucher`（`string`，选填，可为 `null`）。
-- 字段内容与跟进附件保持一致：支持纯文件名，或 `{"name":"xxx","data":"data:..."}` JSON 字符串。
+---
+
+## 五、成员域新增接口约定
+
+以下接口为本轮需求确认后新增的推荐接口，后续实现应按此规范推进。
+
+### 5.1 租户成员
+
+| 功能 | 方法 | 路径 |
+|---|---|---|
+| 新增成员 | POST | `/api/tenant-users` |
+| 编辑成员 | PUT | `/api/tenant-users/{id}` |
+| 修改未激活成员待绑定手机号 | PUT | `/api/tenant-users/{id}/pending-phone` |
+| 更新成员状态 | PUT | `/api/tenant-users/{id}/status` |
+
+请求字段约定：
+
+1. `tenant_users.name`：租户内显示姓名
+2. `employee_no`：租户内唯一，可为空
+3. `pending_phone`：仅未激活成员使用
+4. `status`：`pending` / `active` / `disabled` / `left`
+
+规则：
+
+1. 已激活成员禁止通过租户成员接口修改正式手机号
+2. 未激活成员修改手机号时，仅更新 `pending_phone`
+3. 成员首次登录进入租户后，服务层负责完成 `user_id` 绑定与激活
+
+### 5.2 用户本人
+
+| 功能 | 方法 | 路径 |
+|---|---|---|
+| 修改主手机号 | PUT | `/api/me/phone` |
+| 修改平台级姓名 | PUT | `/api/me/profile` |
+
+`PUT /api/me/phone` 请求示例：
+
+```json
+{
+  "new_phone": "13044444444",
+  "sms_code": "123456"
+}
+```
+
+规则：
+
+1. 新手机号必须全局唯一
+2. 更新 `users.phone`
+3. 同步更新手机号类认证记录
+
+### 5.3 部门归属
+
+| 功能 | 方法 | 路径 |
+|---|---|---|
+| 新增部门归属 | POST | `/api/tenant-users/{id}/memberships` |
+| 编辑部门归属 | PUT | `/api/memberships/{membershipId}` |
+| 失效部门归属 | PUT | `/api/memberships/{membershipId}/status` |
+
+请求字段约定：
+
+1. `department_id`：当前部门树下的部门标识
+2. `position`：自由文本
+3. `role_id`：单值
+4. `is_primary`：同一成员仅允许一条为 `true`
+5. `status`：`active` / `inactive`
+6. `left_at`：失效时记录离开时间
+
+规则：
+
+1. 一个成员可有多条部门归属
+2. 删除部门归属时不物理删除，改 `status` 并记录 `left_at`
 
 ---
 
-## 四、列表查询与分页约定
+## 六、列表查询与分页
 
-### 当前实现
-- 当前列表接口以“全量列表 + 前端过滤”为主。
-- 仅跟进列表支持项目筛选参数：`projectId`。
-- 暂无统一 `page/size` 分页参数协议。
+当前实现以“全量列表 + 前端过滤”为主。
 
-### 现行查询示例
+现行查询示例：
+
 ```http
 GET /api/followups
 GET /api/followups?projectId=90d737bb-857d-4a96-bf66-a4da74d3aa9f
 ```
 
----
+后续若成员列表或部门归属列表数据量扩大，再统一引入：
 
-## 五、时间与日期格式约定（现行）
-
-### 日期字段（`LocalDate` / 字符串日期）
-- 统一使用：`yyyy-MM-dd`
-- 典型字段：
-  - `signDate`（合同签约日期）
-  - `paidDate`（回款日期）
-  - `firstVisitDate` / `firstNegotiationDate` / `movedInDate`
-
-### 日期时间字段（`LocalDateTime`）
-- 接口字段：
-  - 跟进：`followupAt`
-  - 项目：`firstContactAt`
-- 建议传入：`yyyy-MM-ddTHH:mm:ss`（例如 `2026-04-22T03:39:00`）
+1. `pageNo`
+2. `pageSize`
+3. 排序参数
 
 ---
 
-## 六、字段命名规范（现行）
+## 七、时间格式约定
 
-| 规则 | 后端（Java） | 前端（TS） |
-|---|---|---|
-| 命名风格 | camelCase | camelCase |
-| 主键 | `id` | `id` |
-| 租户 | `tenantId` | `tenantId` |
-| 部门 | `deptId`（成员）/ `parentId`（部门树） | `deptId` / `parentId` |
-| 创建人 | `creatorId` / `ownerId`（按领域对象） | 对应对象字段 |
-| 创建时间 | `createdAt` | `createdAt` |
-| 软删除 | `deleted` + `deletedAt` | 前端通常不展示 |
+日期字段统一使用：
 
----
-
-## 七、前端请求封装规范（当前实现）
-
-当前项目未使用 Axios；统一使用 `frontend/src/App.vue` 中的 `api<T>(path, init?)` 封装。
-
-```ts
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = { "Content-Type": "application/json", ...(init?.headers || {}) };
-  if (token.value) headers.Authorization = "Bearer " + token.value;
-  const res = await fetch(apiBase + path, { ...init, headers });
-  // 若响应体存在 code 字段，则按 code===0 判成功
-}
+```text
+yyyy-MM-dd
 ```
 
-约定：
-- 所有业务请求都走该封装，不直接散写 `fetch`。
-- 默认 `Content-Type: application/json`。
-- token 放在 `Authorization: Bearer <token>`。
-- 若响应中 `code !== 0`，前端抛错并由统一提示函数处理。
+日期时间字段统一使用：
+
+```text
+yyyy-MM-ddTHH:mm:ss
+```
+
+成员域重点字段：
+
+1. `first_login_at`
+2. `last_login_at`
+3. `joined_at`
+4. `left_at`
+5. `verified_at`
 
 ---
 
-## 八、鉴权与权限约定
+## 八、字段命名规范
 
-### 鉴权
-- 登录接口：`/api/auth/login` 免鉴权。
-- 其余 `/api/*` 接口默认需 token。
-- JWT 载荷包含：`uid`、`tid`。
-- token 有效期：7 天（见 `app.jwt.expire-days`）。
+| 领域 | 字段 |
+|---|---|
+| 用户主体 | `user_id`, `phone`, `name`, `last_tenant_id` |
+| 认证方式 | `auth_type`, `auth_identifier`, `password_hash`, `verified_at` |
+| 租户成员 | `tenant_id`, `pending_phone`, `employee_no`, `activated`, `first_login_at`, `last_login_at` |
+| 部门归属 | `department_id`, `position`, `role_id`, `is_primary`, `left_at` |
 
-### 权限
-- 接口内通过 `sessionService.requireUser()` 读取当前用户。
-- 业务数据可见性与可操作性由服务层按租户、负责人、角色与数据范围判定。
-- 系统设置相关接口需要系统管理员权限（`/api/system/*`）。
-- 数据范围模式（现行）：
-  - `ALL`：全部数据
-  - `SELF`：仅本人数据
-  - `SELF_AND_SUBORDINATES`：本人及下属的数据（按“部门负责人”递归计算）
-  - `DEPT`：本部门数据
-  - `DEPT_AND_SUBTREE`：本部门及以下数据
-  - `SUBTREE`：历史兼容值，读取时按 `DEPT_AND_SUBTREE` 处理
+说明：
+
+1. `users.phone` 是正式主手机号
+2. `users.last_tenant_id` 是最近成功进入的租户
+3. `tenant_users.pending_phone` 是待绑定手机号
+4. 两者不能混用
 
 ---
 
-## 九、错误处理原则（现行）
+## 九、鉴权与权限约定
 
-1. 后端业务校验失败：抛 `BizException(code, message)`。  
-2. `GlobalExceptionHandler` 统一转换为 `ApiResponse.fail(code, message)`。  
-3. 未捕获异常：返回 `code=500` + 异常消息。  
-4. 前端请求封装统一抛错，页面层统一 toast 展示错误信息。  
-5. 删除类操作必须先二次确认，再发 `DELETE` 请求。
+鉴权：
+
+1. `/api/auth/login` 免鉴权
+2. 其余 `/api/*` 默认需要 token
+3. token 通过 `Authorization: Bearer <token>` 传递
+
+成员域权限：
+
+1. 用户本人可调用 `/api/me/*`
+2. 租户管理员可调用 `/api/tenant-users/*` 与部门归属维护接口
+3. 租户管理员不可修改已激活成员正式手机号和密码
 
 ---
 
-## 十、SSE 约定
+## 十、错误处理原则
 
-- 订阅接口：`GET /api/stream/subscribe`
-- 鉴权方式：
-  - 优先 `Authorization: Bearer <token>`
-  - 兼容 query 参数 `?token=...`（当前前端使用该方式）
-- 使用场景：关键列表与日志类页面的实时刷新通知
+1. 业务校验失败抛 `BizException(code, message)`
+2. 统一由 `GlobalExceptionHandler` 转换为 `ApiResponse.fail`
+3. 前端统一由请求封装处理 `code !== 0`
+4. 删除或失效类操作必须先二次确认
+
+成员域推荐错误提示：
+
+1. `phone already bound`
+2. `activated member phone is immutable`
+3. `employee_no already exists in tenant`
+4. `only one primary membership is allowed`
+
+---
+
+## 十一、SSE 约定
+
+订阅接口：
+
+```http
+GET /api/stream/subscribe
+```
+
+鉴权方式：
+
+1. 优先 `Authorization: Bearer <token>`
+2. 兼容 query 参数 `?token=...`

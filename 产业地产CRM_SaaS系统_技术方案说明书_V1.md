@@ -1,7 +1,7 @@
 ﻿# 产业地产 CRM SaaS 系统 - 技术方案说明书（V1）
 
-**版本：** 1.0  
-**编制日期：** 2026-04-17  
+**版本：** 1.2  
+**编制日期：** 2026-04-27  
 **适用范围：** V1（测试环境、灰度上线阶段）
 
 ---
@@ -15,9 +15,9 @@
 | 后端语言 | Java |
 | 后端框架 | Spring Boot 3.x |
 | JDK | 17 |
-| 数据库 | MySQL 8.0+ |
+| 数据库 | MySQL 8.4 |
 | 缓存 | Redis |
-| ORM | MyBatis-Plus |
+| ORM | MyBatis-Plus 3.5.9 (`mybatis-plus-spring-boot3-starter`) |
 | 接口风格 | REST |
 | 实时协议 | SSE（关键页面） |
 | 鉴权方案 | JWT + RBAC + 项目数据范围配置拦截 |
@@ -36,7 +36,7 @@
 
 ### 2.2 V1 非目标
 
-1. 不做钉钉登录与组织同步（V2 规划）
+1. 不做钉钉登录与组织同步（V2 规划，仅预留认证扩展位）
 2. 不做 Excel 导入
 3. 不做审批流
 4. 不做云存储正式部署（预留接口）
@@ -59,16 +59,17 @@ V1 采用单体应用 + 模块化分层：
 
 1. Controller：REST 接口层
 2. Service：业务规则层（阶段流转、权限校验、软删除联动）
-3. Repository/Mapper：MyBatis-Plus 数据访问层
+3. Repository/Mapper：MyBatis-Plus 数据访问层（已迁移实体走关系型表；配置类/简单结构暂走 JSON 单表）
 4. Security：JWT 鉴权 + RBAC + 数据范围拦截
 5. Audit：审计日志记录层
+6. Data Migration：启动时自动将 `state_store` JSON 数据迁移到关系型表（一次性）
 
 ---
 
 ## 4. 领域模块设计
 
-1. `auth`：登录、JWT 签发与解析
-2. `org-user`：组织、部门、成员、角色、成员状态（启用/停用）
+1. `auth`：登录、JWT 签发与解析、用户认证方式绑定
+2. `org-user`：组织、部门、成员、角色、成员状态（启用/停用）、激活状态、多部门归属
 3. `contact`：联系人管理、手机号唯一性校验
 4. `project`：项目管理、阶段流转、负责人规则、软删联动入口
 5. `followup`：跟进记录
@@ -76,6 +77,24 @@ V1 采用单体应用 + 模块化分层：
 7. `payment`：回款（实收）管理（挂合同）
 8. `system-config`：项目数据范围配置、数据字典
 9. `audit-log`：变更日志（谁、何时、做了什么）
+
+### 4.1 SaaS 用户模型
+
+V1 在组织成员域采用四层模型，避免把手机号、密码、成员状态、部门归属混在一张表里：
+
+1. `users`：平台级用户主体，保存 `user_id`、`phone`、`name`、`last_tenant_id`
+2. `user_authentications`：用户认证方式表，保存 `auth_type`、`auth_identifier`、`password_hash`
+3. `tenant_users`：租户成员表，保存 `tenant_id`、`user_id`、`pending_phone`、`activated`、`status`
+4. `organization_memberships`：部门归属表，保存 `tenant_user_id`、`department_id`、`position`、`role_id`、`is_primary`
+
+设计口径：
+
+1. `users.phone` 是正式主手机号，全局唯一
+2. `users.last_tenant_id` 记录用户最近一次成功进入的租户
+3. `tenant_users.pending_phone` 仅用于未激活成员
+4. `tenant_users.activated` 表示成员是否首次登录过当前租户
+5. 一个 `users` 可绑定多条 `user_authentications`
+6. 一个 `tenant_users` 可绑定多条 `organization_memberships`
 
 ---
 
@@ -137,8 +156,61 @@ JWT 策略（V1）：
 4. 一项目一合同（V1）
 5. 回款记录必须关联合同
 6. 项目软删联动软删跟进/合同/回款
+7. `users.phone` 全局唯一
+8. `tenant_users.employee_no` 在租户内唯一，可为空
+9. `user_authentications` 建议按 `auth_type + auth_identifier` 唯一
+10. 同一 `tenant_user` 仅允许一条 `is_primary = true` 的有效部门归属
 
-### 6.3 编号规则
+### 6.3 数据持久化策略
+
+V1 采用关系型表为主 + JSON 单表为辅的混合策略：
+
+**已迁移至关系型表（MyBatis-Plus）：**
+- `users`、`user_authentications`、`tenant_users`、`organization_memberships`
+- `departments`、`tenants`、`audit_logs`
+- 上述表具备完整的关系型约束、索引、事务支持
+
+**暂存 JSON 单表（`state_store`）：**
+- `Contact`、`Project`、`Followup`、`Contract`、`Payment`
+- `ScopeConfig`、`ProjectDictConfig`
+- 适用场景：数据结构较灵活、嵌套属性较多、或需要快速迭代的业务实体
+
+**迁移原则：**
+1. 成员域（用户/组织/权限）优先迁移到关系型表，确保强一致性和复杂查询性能
+2. 业务域（联系人/项目/跟进/合同/回款）后续按需迁移
+3. `state_store` 保留作为未迁移实体的降级存储，所有已迁移实体从内存 Map 中移除
+
+### 6.4 成员域表设计建议
+
+#### `users`
+
+1. 主键：`id`（VARCHAR(64)，UUID）
+2. 关键字段：`phone`（全局唯一）、`name`、`password`（BCrypt 密文）
+3. 不存成员状态，不存部门信息
+4. `last_tenant_id` 记录最近一次成功进入的租户
+
+#### `user_authentications`
+
+1. 一用户多条
+2. `auth_type` 先支持 `phone`，后续扩展 `dingtalk`
+3. `password_hash` 仅手机号类认证使用
+4. 后续接钉钉时只扩展该表，不改 `users` 主体结构
+
+#### `tenant_users`
+
+1. 已激活成员：`user_id` 必填
+2. 未激活成员：`user_id` 可空，使用 `pending_phone`
+3. `status` 由租户控制，建议取值：`pending`、`active`、`disabled`、`left`
+4. `activated` 建议由 `first_login_at is not null` 推导
+
+#### `organization_memberships`
+
+1. 当前组织模型按部门树处理，V1 先保留 `department_id`
+2. `position` 先采用自由文本
+3. `role_id` 先按单值
+4. 删除部门归属采用逻辑失效：更新 `status` 并记录 `left_at`
+
+### 6.4 编号规则
 
 统一编号格式：`YYYYMMDD-0001`（按组织、按天重置）
 
@@ -155,6 +227,7 @@ JWT 策略（V1）：
 2. 标准 HTTP 方法（GET/POST/PUT/DELETE）
 3. 统一响应结构（code/message/data）
 4. 分页查询统一参数（pageNo/pageSize）
+5. 成员域接口区分“租户成员”“用户本人”“部门归属”三类资源，避免同一接口混改认证字段与成员字段
 
 ### 7.2 错误码建议
 
@@ -172,6 +245,29 @@ JWT 策略（V1）：
 3. 合同/回款状态列表
 
 非关键配置页使用普通轮询/手动刷新。
+
+### 7.4 成员域接口建议
+
+V1 成员域建议采用以下接口分层：
+
+1. 租户成员
+   - `POST /api/tenant-users`
+   - `PUT /api/tenant-users/{id}`
+   - `PUT /api/tenant-users/{id}/pending-phone`
+   - `PUT /api/tenant-users/{id}/status`
+
+2. 用户本人
+   - `PUT /api/me/phone`
+   - `PUT /api/me/profile`
+
+3. 部门归属
+   - `POST /api/tenant-users/{id}/memberships`
+   - `PUT /api/memberships/{membershipId}`
+   - `PUT /api/memberships/{membershipId}/status`
+
+4. 激活逻辑
+   - 首次登录进入租户时，由服务层内部完成 `pending_phone -> user_id` 绑定
+   - 不建议把激活流程暴露成任意租户管理员可调用的开放接口
 
 ---
 
@@ -266,4 +362,4 @@ JWT 策略（V1）：
 
 ---
 
-**结论**：该技术方案可直接支撑当前已确认的 V1 需求，并为 V2（钉钉集成、自定义角色、云存储）预留扩展空间。
+**结论**：该技术方案可直接支撑当前已确认的 V1 需求，并在成员域预留钉钉登录、多部门归属等 V2 扩展空间。

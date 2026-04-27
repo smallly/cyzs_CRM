@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div>
     <SearchPanel
       v-model="searchForm"
       :fields="searchFields"
-      @search="loadContacts"
+      @search="handleSearch"
       @reset="resetSearch"
     />
 
@@ -13,13 +13,16 @@
       :columns="columns"
       :loading="loading"
       :show-add="true"
-      @add="openDrawer"
+      :show-pagination="true"
+      :total="total"
+      :default-current-page="page"
+      :default-page-size="pageSize"
+      @add="goCreate"
       @refresh="loadContacts"
+      @page-change="handlePageChange"
     >
       <template #name="{ row }">
-        <el-button link @click="editContact(row)">
-          {{ row.name || '-' }}
-        </el-button>
+        <el-button link @click="editContact(row)">{{ row.name || '-' }}</el-button>
       </template>
 
       <template #linkedProjects="{ row }">
@@ -40,13 +43,8 @@
         </el-tag>
       </template>
 
-      <template #createdAt="{ row }">
-        {{ formatDateTime(row.createdAt) }}
-      </template>
-
-      <template #updatedAt="{ row }">
-        {{ formatDateTime(row.updatedAt) }}
-      </template>
+      <template #createdAt="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+      <template #updatedAt="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
 
       <template #actions="{ row }">
         <el-space>
@@ -72,7 +70,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
@@ -81,12 +79,17 @@ import SearchPanel from '../../components/common/SearchPanel.vue'
 import type { SearchField } from '../../components/common/SearchPanel.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import type { FormField } from '../../components/common/FormDrawer.vue'
+import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 
 const loading = ref(false)
 const contacts = ref<any[]>([])
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 const users = ref<any[]>([])
 const projects = ref<any[]>([])
 
@@ -125,18 +128,18 @@ const searchFields: SearchField[] = [
 const columns: TableColumn[] = [
   { prop: 'name', label: '姓名', width: 120, slot: 'name', fixed: 'left' },
   { prop: 'enterpriseName', label: '企业名称', width: 200 },
-  { prop: 'title', label: '职位', width: 150 },
-  { prop: 'linkedProjects', label: '关联项目', width: 200, slot: 'linkedProjects' },
-  { prop: 'phone1', label: '手机号1', width: 130 },
-  { prop: 'phone2', label: '手机号2', width: 130 },
+  { prop: 'title', label: '职位', width: 120 },
+  { prop: 'linkedProjects', label: '关联项目', width: 220, slot: 'linkedProjects' },
+  { prop: 'phone1', label: '手机号1', width: 140 },
+  { prop: 'phone2', label: '手机号2', width: 140 },
   { prop: 'wechat', label: '微信号', width: 140 },
   { prop: 'email', label: '邮箱', width: 200 },
-  { prop: 'id', label: 'ID', width: 180 },
   { prop: 'ownerId', label: '负责人', width: 120, slot: 'ownerId' },
-  { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
   { prop: 'deleted', label: '状态', width: 100, slot: 'deleted' },
-  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' },
-  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' }
+  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' },
+  { prop: 'id', label: 'ID', width: 220 },
+  { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
+  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
 ]
 
 const formFields: FormField[] = [
@@ -144,7 +147,7 @@ const formFields: FormField[] = [
   { prop: 'enterpriseName', label: '企业名称', type: 'input', span: 12, placeholder: '请输入企业名称' },
   { prop: 'title', label: '职位', type: 'input', span: 12, placeholder: '请输入职位' },
   { prop: 'phone1', label: '手机号1', type: 'input', span: 12, required: true, placeholder: '请输入手机号1' },
-  { prop: 'phone2', label: '手机号2', type: 'input', span: 12, placeholder: '请输入手机号2(可选)' },
+  { prop: 'phone2', label: '手机号2', type: 'input', span: 12, placeholder: '请输入手机号2（可选）' },
   { prop: 'wechat', label: '微信号', type: 'input', span: 12, placeholder: '请输入微信号' },
   { prop: 'email', label: '邮箱', type: 'input', span: 12, placeholder: '请输入邮箱' },
   { prop: 'officePhone', label: '办公电话', type: 'input', span: 12, placeholder: '请输入办公电话' },
@@ -190,52 +193,66 @@ const formRules = {
 }
 
 onMounted(async () => {
-  await loadAll()
+  await loadContacts()
+  void loadUsers()
+  void loadProjects()
+
   const editId = route.query.editId
   if (typeof editId === 'string' && editId) {
+    await ensureFormDependencies()
     const contact = contacts.value.find((c) => c.id === editId)
-    if (contact) {
-      editContact(contact)
-    }
+    if (contact) await editContact(contact)
   }
 })
 
-async function loadAll() {
+async function loadContacts() {
   loading.value = true
   try {
-    await Promise.all([loadContacts(), loadUsers(), loadProjects()])
+    const query = buildPageQuery(page.value, pageSize.value, {
+      name: searchForm.name,
+      enterpriseName: searchForm.enterpriseName,
+      phone1: searchForm.phone1,
+      phone2: searchForm.phone2
+    })
+    const res = await authStore.api<PageResult<any> | any[]>(`/api/contacts?${query}`)
+    const pageData = normalizePageResult<any>(res)
+    contacts.value = pageData.records
+    total.value = pageData.total
   } catch (error: any) {
-    ElMessage.error(error.message || '加载失败')
+    ElMessage.error(error.message || '加载联系人失败')
   } finally {
     loading.value = false
   }
 }
 
-async function loadContacts() {
-  try {
-    const data = await authStore.api<any[]>('/api/contacts')
-    contacts.value = data.filter((c) => {
-      if (searchForm.name && !c.name?.includes(searchForm.name)) return false
-      if (searchForm.enterpriseName && !c.enterpriseName?.includes(searchForm.enterpriseName)) return false
-      if (searchForm.phone1 && !c.phone1?.includes(searchForm.phone1)) return false
-      if (searchForm.phone2 && !c.phone2?.includes(searchForm.phone2)) return false
-      return true
-    })
-  } catch (error: any) {
-    ElMessage.error(error.message || '加载联系人失败')
-  }
-}
-
 async function loadUsers() {
-  users.value = await authStore.api<any[]>('/api/users')
+  try {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/users')
+    users.value = normalizePageResult<any>(res).records
+  } catch {
+    users.value = []
+  }
 }
 
 async function loadProjects() {
-  projects.value = await authStore.api<any[]>('/api/projects')
+  try {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/projects')
+    projects.value = normalizePageResult<any>(res).records
+  } catch {
+    projects.value = []
+  }
+
   const projectField = formFields.find((f) => f.prop === 'projectIds')
   if (projectField) {
-    projectField.options = projects.value.map((p) => ({ label: `${p.name} (${p.code})`, value: p.id }))
+    projectField.options = projects.value.map((p) => ({
+      label: `${p.name || '-'} (${p.code || '-'})`,
+      value: p.id
+    }))
   }
+}
+
+async function ensureFormDependencies() {
+  await Promise.allSettled([loadUsers(), loadProjects()])
 }
 
 function resetSearch() {
@@ -245,10 +262,23 @@ function resetSearch() {
     phone1: undefined,
     phone2: undefined
   })
-  loadContacts()
+  page.value = 1
+  void loadContacts()
 }
 
-function openDrawer() {
+function handleSearch() {
+  page.value = 1
+  void loadContacts()
+}
+
+async function handlePageChange(nextPage: number, nextSize: number) {
+  page.value = nextPage
+  pageSize.value = nextSize
+  await loadContacts()
+}
+
+async function openDrawer() {
+  await ensureFormDependencies()
   editingContactId.value = ''
   Object.assign(formData, {
     name: '',
@@ -267,10 +297,16 @@ function openDrawer() {
   drawerVisible.value = true
 }
 
-function editContact(contact: any) {
+function goCreate() {
+  router.push('/contacts/create')
+}
+
+async function editContact(contact: any) {
+  await ensureFormDependencies()
   const linkedProjectIds = projects.value
     .filter((p) => p.contactId === contact.id || p.contactIds?.includes(contact.id))
     .map((p) => p.id)
+
   editingContactId.value = contact.id
   Object.assign(formData, {
     name: contact.name || '',
@@ -326,7 +362,6 @@ async function deleteContact(id: string) {
       cancelButtonText: '取消',
       type: 'warning'
     })
-
     await authStore.api(`/api/contacts/${id}`, { method: 'DELETE' })
     ElMessage.success('联系人已删除')
     await loadContacts()

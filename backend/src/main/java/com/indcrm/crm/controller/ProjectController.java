@@ -1,6 +1,7 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.domain.ProjectDealType;
 import com.indcrm.crm.domain.ProjectStage;
 import com.indcrm.crm.service.ProjectService;
@@ -47,17 +48,20 @@ public class ProjectController {
     }
 
     @GetMapping
-    public ApiResponse<?> list() {
-        return ApiResponse.ok(projectService.list(sessionService.requireUser()));
+    public ApiResponse<?> list(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
+        return ApiResponse.ok(PageUtils.maybePaginate(projectService.list(sessionService.requireUser()), page, size));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<?> detail(@PathVariable String id) {
+    public ApiResponse<?> detail(@PathVariable("id") String id) {
         return ApiResponse.ok(projectService.getDetail(sessionService.requireUser(), id));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<?> update(@PathVariable String id, @RequestBody UpdateReq req) {
+    public ApiResponse<?> update(@PathVariable("id") String id, @RequestBody UpdateReq req) {
         return ApiResponse.ok(projectService.updateBasicInfo(
                 sessionService.requireUser(),
                 id,
@@ -73,7 +77,7 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}/stage")
-    public ApiResponse<?> stage(@PathVariable String id, @RequestBody StageReq req) {
+    public ApiResponse<?> stage(@PathVariable("id") String id, @RequestBody StageReq req) {
         return ApiResponse.ok(
                 projectService.updateStage(
                         sessionService.requireUser(),
@@ -89,13 +93,13 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}/owner")
-    public ApiResponse<Void> transfer(@PathVariable String id, @RequestBody TransferReq req) {
+    public ApiResponse<Void> transfer(@PathVariable("id") String id, @RequestBody TransferReq req) {
         projectService.transferOwner(sessionService.requireUser(), id, req.ownerId(), req.reason());
         return ApiResponse.ok(null);
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable String id) {
+    public ApiResponse<Void> delete(@PathVariable("id") String id) {
         projectService.delete(sessionService.requireUser(), id);
         return ApiResponse.ok(null);
     }

@@ -1,24 +1,17 @@
 package com.indcrm.crm.repo;
 
-import com.indcrm.crm.domain.*;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * V1 后期仅保留 dailySeq 内存计数器。
+ * 所有业务实体已迁移到 MyBatis-Plus 关系型表，不再通过内存 Map 存储。
+ */
 @Component
 public class InMemoryStore {
-    public final Map<String, User> users = new ConcurrentHashMap<>();
-    public final Map<String, Contact> contacts = new ConcurrentHashMap<>();
-    public final Map<String, Project> projects = new ConcurrentHashMap<>();
-    public final Map<String, Followup> followups = new ConcurrentHashMap<>();
-    public final Map<String, Contract> contracts = new ConcurrentHashMap<>();
-    public final Map<String, Payment> payments = new ConcurrentHashMap<>();
-    public final Map<String, Department> departments = new ConcurrentHashMap<>();
-    public final Map<String, ScopeConfig> scopeConfigs = new ConcurrentHashMap<>();
-    public final Map<String, ProjectDictConfig> projectDictConfigs = new ConcurrentHashMap<>();
-    public final Map<String, AuditLog> auditLogs = new ConcurrentHashMap<>();
 
     private final Map<String, AtomicInteger> dailySeq = new ConcurrentHashMap<>();
 

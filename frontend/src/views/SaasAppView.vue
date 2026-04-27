@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="layout">
     <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
       <div class="brand">
@@ -37,8 +37,7 @@
         </div>
         <div v-if="token" class="top-right">
           <span class="muted">{{ currentUserName }} / {{ currentUserId }}</span>
-          <button class="secondary" @click="loadAll">刷新数据</button>
-          <button class="secondary" @click="logout">退出登录</button>
+<button class="secondary" @click="logout">退出登录</button>
         </div>
       </header>
 
@@ -485,8 +484,7 @@
             <div class="card">
               <h2>角色管理</h2>
               <div class="row">
-                <button @click="loadRoles">刷新角色</button>
-              </div>
+</div>
               <table>
                 <thead>
                   <tr>
@@ -503,7 +501,7 @@
                   <tr v-for="r in roleOptions" :key="r.code">
                     <td>{{ r.code }}</td>
                     <td>{{ r.name }}</td>
-                    <td>{{ r.bizRole === "PROJECT_ADMIN" ? "项目管理员" : "一线招商人员" }}</td>
+                    <td>{{ r.bizRole === "PROJECT_ADMIN" ? "项目管理员" : "招商人员" }}</td>
                     <td>{{ r.systemAdmin ? "是" : "否" }}</td>
                     <td>{{ r.menuPermissions?.join("，") || "-" }}</td>
                     <td>{{ (r.dataScopeOptions || []).map((m) => getScopeModeLabel(m)).join("，") || "-" }}</td>
@@ -569,8 +567,7 @@
             <div class="card">
               <h2>审计日志</h2>
               <div class="row">
-                <button @click="loadAudit">刷新日志</button>
-              </div>
+</div>
               <table>
                 <thead>
                   <tr>

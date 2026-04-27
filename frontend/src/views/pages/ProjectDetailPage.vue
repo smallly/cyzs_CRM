@@ -40,7 +40,16 @@
             </div>
             <div class="stage-field-item">
               <div class="stage-field-label">{{ getStageFieldLabel(stageCode) }}</div>
-              <div class="stage-field-value">{{ getStageFieldValue(stageCode) }}</div>
+              <div
+                class="stage-field-value"
+                :class="{ editable: canEditStageField(stageCode) }"
+                @click="openStageFieldEditor(stageCode)"
+              >
+                <span>{{ getStageFieldValue(stageCode) }}</span>
+                <svg v-if="canEditStageField(stageCode)" class="stage-field-edit-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 20h4l10-10-4-4L4 16v4zm13-13 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -54,48 +63,63 @@
           <span>基本信息</span>
         </div>
       </template>
-      <div class="project-base-grid">
-        <div class="project-base-item">
-          <span class="base-label">项目负责人</span>
-          <span class="base-value">{{ getUserDisplayName(project?.ownerId) }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">项目级别</span>
-          <span class="base-value">{{ project?.level || "-" }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">租购类型</span>
-          <span class="base-value">{{ project?.dealType ? dealTypeLabelMap[project.dealType] : "-" }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">意向区域</span>
-          <span class="base-value">{{ project?.intendedRegion || "-" }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">意向面积区间(㎡)</span>
-          <span class="base-value">{{ formatAreaRange(project) }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">项目来源</span>
-          <span class="base-value">{{ project?.source || "-" }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">备注</span>
-          <span class="base-value">{{ project?.remark || "-" }}</span>
-        </div>
-        <div class="project-base-item">
-          <span class="base-label">最后跟进时间</span>
-          <span class="base-value">{{ formatDateTime(project?.lastFollowupAt) }}</span>
-        </div>
-      </div>
+      <el-row :gutter="24">
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">项目负责人</span>
+            <span class="info-value">{{ getUserDisplayName(project?.ownerId) }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">项目级别</span>
+            <span class="info-value">{{ project?.level || "-" }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">租购类型</span>
+            <span class="info-value">{{ project?.dealType ? dealTypeLabelMap[project.dealType] : "-" }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">意向区域</span>
+            <span class="info-value">{{ project?.intendedRegion || "-" }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">意向面积区间(㎡)</span>
+            <span class="info-value">{{ formatAreaRange(project) }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">项目来源</span>
+            <span class="info-value">{{ project?.source || "-" }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">备注</span>
+            <span class="info-value">{{ project?.remark || "-" }}</span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-row">
+            <span class="info-label">最后跟进时间</span>
+            <span class="info-value">{{ formatDateTime(project?.lastFollowupAt) }}</span>
+          </div>
+        </el-col>
+      </el-row>
     </el-card>
 
     <!-- Tabs详情卡片 -->
     <el-card>
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="联系人" name="contact">
-          <div class="detail-list-toolbar">
-            <span class="detail-list-title">联系人({{ contacts.length }})</span>
+        <el-tab-pane :label="`联系人${contacts.length ? `(${contacts.length})` : ''}`" name="contact">
+          <div class="detail-list-toolbar" v-if="contacts.length" style="justify-content:flex-end">
             <el-button size="small" @click="$router.push('/contacts')">新建联系人</el-button>
           </div>
           <el-table :data="contacts" v-if="contacts.length" border stripe size="small">
@@ -113,9 +137,8 @@
           <el-empty v-else description="当前项目未关联联系人" />
         </el-tab-pane>
 
-        <el-tab-pane label="跟进记录" name="followups">
-          <div class="detail-list-toolbar">
-            <span class="detail-list-title">跟进记录({{ followups.length }})</span>
+        <el-tab-pane :label="`跟进记录${followups.length ? `(${followups.length})` : ''}`" name="followups">
+          <div class="detail-list-toolbar" style="justify-content:flex-end">
             <el-button size="small" @click="openFollowupDrawer">新增跟进</el-button>
           </div>
           <div class="followup-feed" v-if="followups.length">
@@ -126,26 +149,33 @@
                   <div class="followup-user">{{ getUserDisplayName(f.creatorId || f.ownerId) }}</div>
                   <div class="followup-time">{{ formatDateTime(f.createdAt || f.followupAt) }}</div>
                 </div>
-                <el-space>
-                  <el-button size="small" @click="editFollowup(f)">编辑</el-button>
-                  <el-button size="small" type="danger" @click="deleteFollowup(f)">删除</el-button>
-                </el-space>
+                <div class="followup-head-actions">
+                  <button class="icon-action-btn" title="编辑" aria-label="编辑" @click="editFollowup(f)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 20h4l10-10-4-4L4 16v4zm13-13 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button class="icon-action-btn" title="删除" aria-label="删除" @click="deleteFollowup(f)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 7h16M9 7V5h6v2m-7 0 1 12h6l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div class="followup-body">{{ f.content || '-' }}</div>
               <div class="followup-foot">
                 <span>跟进时间：{{ formatDate(f.followupAt) }}</span>
                 <span>跟进方式：{{ f.method || '-' }}</span>
-                <span>关联联系人：{{ getContactDisplayName(f.contactId) }}</span>
+                <span>拜访对象：{{ getContactDisplayName(f.contactId) }}</span>
               </div>
             </el-card>
           </div>
           <el-empty v-else description="暂无跟进记录" />
         </el-tab-pane>
 
-        <el-tab-pane label="合同" name="contracts">
-          <div class="detail-list-toolbar">
-            <span class="detail-list-title">合同({{ contracts.length }})</span>
-            <el-button size="small" @click="$router.push('/contracts')">新增合同</el-button>
+        <el-tab-pane :label="`合同${contracts.length ? `(${contracts.length})` : ''}`" name="contracts">
+          <div class="detail-list-toolbar" style="justify-content:flex-end">
+            <el-button size="small" @click="openContractDialog">新增合同</el-button>
           </div>
           <el-table :data="contracts" v-if="contracts.length" border stripe size="small">
             <el-table-column prop="contractNo" label="合同编号" width="150" />
@@ -166,10 +196,9 @@
           <el-empty v-else description="暂无合同" />
         </el-tab-pane>
 
-        <el-tab-pane label="回款" name="payments">
-          <div class="detail-list-toolbar">
-            <span class="detail-list-title">回款({{ payments.length }})</span>
-            <el-button size="small" @click="$router.push('/payments')">登记回款</el-button>
+        <el-tab-pane :label="`回款${payments.length ? `(${payments.length})` : ''}`" name="payments">
+          <div class="detail-list-toolbar" style="justify-content:flex-end">
+            <el-button size="small" @click="openPaymentDialog">登记回款</el-button>
           </div>
           <el-table :data="payments" v-if="payments.length" border stripe size="small">
             <el-table-column prop="code" label="回款编号" width="150" />
@@ -192,6 +221,11 @@
                 {{ getUserDisplayName(row.creatorId || row.ownerId) }}
               </template>
             </el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="180">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdAt) }}
+              </template>
+            </el-table-column>
           </el-table>
           <el-empty v-else description="暂无回款" />
         </el-tab-pane>
@@ -203,7 +237,7 @@
       <el-form :model="stageForm" label-width="120px">
         <el-form-item label="更新阶段至" required>
           <el-select v-model="stageForm.stage" @change="onStageChange">
-            <el-option v-for="s in stageOptions" :key="s" :label="stageLabelMap[s]" :value="s" />
+            <el-option v-for="s in updatableStageOptions" :key="s" :label="stageLabelMap[s]" :value="s" />
           </el-select>
         </el-form-item>
 
@@ -305,8 +339,8 @@
             <el-form-item label="租购类型">
               <el-select v-model="projectEditForm.dealType">
                 <el-option label="租赁" value="RENT" />
-                <el-option label="购买" value="PURCHASE" />
-                <el-option label="租购皆可" value="RENT_OR_PURCHASE" />
+                <el-option label="购买" value="BUY" />
+                <el-option label="租购皆可" value="BOTH" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -348,6 +382,24 @@
       </template>
     </el-dialog>
 
+    <!-- 阶段时间编辑Dialog -->
+    <el-dialog v-model="stageFieldDialogVisible" :title="stageFieldDialogTitle" width="420">
+      <el-form label-width="100px">
+        <el-form-item :label="getStageFieldLabel(stageFieldForm.stageCode)" required>
+          <el-date-picker
+            v-model="stageFieldForm.date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            style="width: 100%"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="stageFieldDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="stageFieldSubmitting" @click="submitStageFieldEdit">保存</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 新增跟进Drawer -->
     <el-drawer v-model="followupDrawerVisible" :title="editingFollowupId ? '编辑跟进' : '新增跟进'" size="50%">
       <el-form :model="followupForm" label-width="100px">
@@ -362,7 +414,7 @@
             <el-option v-for="m in followupMethodOptions" :key="m" :label="m" :value="m" />
           </el-select>
         </el-form-item>
-        <el-form-item label="关联联系人">
+        <el-form-item label="拜访对象">
           <el-select v-model="followupForm.contactId">
             <el-option v-for="c in contacts" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
@@ -371,7 +423,15 @@
           <el-input v-model="followupForm.content" type="textarea" :rows="5" placeholder="请输入跟进内容" />
         </el-form-item>
         <el-form-item label="附件">
-          <el-input v-model="followupForm.attachment" placeholder="请输入附件名称或URL" />
+          <el-upload
+            :auto-upload="false"
+            :limit="1"
+            :on-change="handleFollowupFileChange"
+            :on-remove="handleFollowupFileRemove"
+            :file-list="followupFileList"
+          >
+            <el-button>选择文件</el-button>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -379,6 +439,106 @@
         <el-button type="primary" @click="submitFollowup" :loading="submitting">{{ editingFollowupId ? '更新' : '保存' }}</el-button>
       </template>
     </el-drawer>
+
+    <!-- 新增合同Dialog -->
+    <el-dialog v-model="contractDialogVisible" title="新增合同" width="680">
+      <el-form ref="contractFormRef" :model="newContractForm" label-width="110px">
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="所属项目">
+              <el-input :value="project?.name" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="合同编号" required>
+              <el-input v-model="newContractForm.contractNo" placeholder="请输入合同编号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="合同标题">
+              <el-input v-model="newContractForm.title" placeholder="请输入合同标题" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="合同金额(元)" required>
+              <el-input-number v-model="newContractForm.amount" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="签约日期" required>
+              <el-date-picker v-model="newContractForm.signDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="起租日期">
+              <el-date-picker v-model="newContractForm.leaseStartDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="到期日期">
+              <el-date-picker v-model="newContractForm.leaseEndDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="租赁期限(月)">
+              <el-input-number v-model="newContractForm.leaseTermMonths" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="合同附件" required>
+              <el-input v-model="newContractForm.attachment" placeholder="请输入附件名称或URL" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="contractDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitNewContract" :loading="submitting">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 新增回款Dialog -->
+    <el-dialog v-model="paymentDialogVisible" title="新增回款" width="680">
+      <el-form ref="paymentFormRef" :model="newPaymentForm" label-width="110px">
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="所属合同" required>
+              <el-select v-model="newPaymentForm.contractId" filterable placeholder="请选择合同" style="width: 100%">
+                <el-option v-for="c in contracts" :key="c.id" :label="`${c.contractNo || '-'} - ${c.title || ''}`" :value="c.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="回款日期" required>
+              <el-date-picker v-model="newPaymentForm.paidDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="回款金额(元)" required>
+              <el-input-number v-model="newPaymentForm.amount" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="开票状态">
+              <el-select v-model="newPaymentForm.invoiceStatus" style="width: 100%">
+                <el-option label="未开票" value="UNISSUED" />
+                <el-option label="已开票" value="ISSUED" />
+                <el-option label="无需开票" value="NOT_REQUIRED" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="备注">
+              <el-input v-model="newPaymentForm.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="paymentDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitNewPayment" :loading="submitting">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -405,10 +565,15 @@ const submitting = ref(false)
 const activeTab = ref('contact')
 
 const stageDialogVisible = ref(false)
+const stageFieldDialogVisible = ref(false)
 const ownerDialogVisible = ref(false)
 const followupDrawerVisible = ref(false)
+const contractDialogVisible = ref(false)
+const paymentDialogVisible = ref(false)
 const projectEditDialogVisible = ref(false)
 const editingFollowupId = ref('')
+const stageFieldSubmitting = ref(false)
+const followupFileList = ref<any[]>([])
 
 const stageOptions = ['PROSPECTING', 'VISITING', 'NEGOTIATING', 'SIGNING', 'COLLECTING', 'MOVED_IN']
 const stageLabelMap: Record<string, string> = {
@@ -421,8 +586,10 @@ const stageLabelMap: Record<string, string> = {
 }
 const dealTypeLabelMap: Record<string, string> = {
   RENT: '租赁',
+  BUY: '购买',
+  BOTH: '可租可买',
   PURCHASE: '购买',
-  BOTH: '可租可买'
+  RENT_OR_PURCHASE: '可租可买'
 }
 const invoiceStatusLabelMap: Record<string, string> = {
   UNISSUED: '未开票',
@@ -437,6 +604,11 @@ const stageForm = reactive({
   firstVisitDate: '',
   firstNegotiationDate: '',
   movedInDate: ''
+})
+
+const stageFieldForm = reactive({
+  stageCode: '',
+  date: ''
 })
 
 const contractForm = reactive({
@@ -467,6 +639,26 @@ const followupForm = reactive({
   attachment: ''
 })
 
+const newContractForm = reactive({
+  projectId: '',
+  contractNo: '',
+  title: '',
+  amount: 0,
+  signDate: '',
+  leaseStartDate: '',
+  leaseEndDate: '',
+  leaseTermMonths: undefined as number | undefined,
+  attachment: ''
+})
+
+const newPaymentForm = reactive({
+  contractId: '',
+  paidDate: '',
+  amount: 0,
+  invoiceStatus: 'UNISSUED',
+  remark: ''
+})
+
 const projectEditForm = reactive({
   name: '',
   dealType: 'RENT',
@@ -480,8 +672,11 @@ const projectEditForm = reactive({
 
 const projectStageCurrentIndex = computed(() => {
   if (!project.value?.stage) return 0
-  return stageOptions.indexOf(project.value.stage)
+  const idx = stageOptions.indexOf(project.value.stage)
+  return idx >= 0 ? idx : 0
 })
+
+const updatableStageOptions = computed(() => stageOptions.slice(projectStageCurrentIndex.value))
 
 onMounted(async () => {
   await loadAll()
@@ -566,15 +761,8 @@ function getStageLabel(stage?: string): string {
 }
 
 function getStageType(stage?: string): string {
-  const map: Record<string, string> = {
-    PROSPECTING: 'info',
-    VISITING: 'primary',
-    NEGOTIATING: 'warning',
-    SIGNING: 'success',
-    COLLECTING: 'success',
-    MOVED_IN: 'success'
-  }
-  return map[stage || 'PROSPECTING'] || 'info'
+  void stage
+  return 'primary'
 }
 
 function getInvoiceStatusType(status?: string): string {
@@ -609,6 +797,128 @@ function getStageFieldValue(stageCode: string): string {
     MOVED_IN: project.value.movedInDate
   }
   return formatDate(map[stageCode])
+}
+
+function getStageFieldRawValue(stageCode: string): string {
+  if (!project.value) return ''
+  const map: Record<string, any> = {
+    PROSPECTING: project.value.firstContactAt,
+    VISITING: project.value.firstVisitDate,
+    NEGOTIATING: project.value.firstNegotiationDate,
+    SIGNING: contracts.value[0]?.signDate,
+    COLLECTING: payments.value[0]?.paidDate,
+    MOVED_IN: project.value.movedInDate
+  }
+  const raw = map[stageCode]
+  if (!raw) return ''
+  return toDateValue(String(raw))
+}
+
+const stageFieldDialogTitle = computed(() => {
+  if (!stageFieldForm.stageCode) return '编辑阶段时间'
+  return `编辑${getStageFieldLabel(stageFieldForm.stageCode)}`
+})
+
+function isStageCompleted(stageCode: string): boolean {
+  const idx = stageOptions.indexOf(stageCode)
+  return idx >= 0 && idx <= projectStageCurrentIndex.value
+}
+
+function canEditStageField(stageCode: string): boolean {
+  return isStageCompleted(stageCode)
+}
+
+function openStageFieldEditor(stageCode: string) {
+  if (!canEditStageField(stageCode)) return
+  stageFieldForm.stageCode = stageCode
+  stageFieldForm.date = getStageFieldRawValue(stageCode)
+  stageFieldDialogVisible.value = true
+}
+
+function buildProjectStagePayloadForDateEdit(
+  currentStage: string,
+  overrides: {
+    firstContactAt?: string
+    firstVisitDate?: string
+    firstNegotiationDate?: string
+    movedInDate?: string
+  }
+) {
+  const currentIndex = stageOptions.indexOf(currentStage)
+  const selectedDate = overrides.firstVisitDate || overrides.firstNegotiationDate || overrides.movedInDate || overrides.firstContactAt
+
+  const payload: Record<string, string | undefined> = {
+    stage: currentStage,
+    firstContactAt: overrides.firstContactAt ? toDateTimeValue(overrides.firstContactAt) || undefined : project.value?.firstContactAt || undefined,
+    firstVisitDate: overrides.firstVisitDate || project.value?.firstVisitDate || undefined,
+    firstNegotiationDate: overrides.firstNegotiationDate || project.value?.firstNegotiationDate || undefined,
+    movedInDate: overrides.movedInDate || project.value?.movedInDate || undefined
+  }
+
+  if (currentIndex >= 0 && !payload.firstContactAt && selectedDate) {
+    payload.firstContactAt = toDateTimeValue(selectedDate) || undefined
+  }
+  if (currentIndex >= 1 && !payload.firstVisitDate && selectedDate) {
+    payload.firstVisitDate = selectedDate
+  }
+  if (currentIndex >= 2 && !payload.firstNegotiationDate && selectedDate) {
+    payload.firstNegotiationDate = selectedDate
+  }
+  if (currentIndex >= 5 && !payload.movedInDate && selectedDate) {
+    payload.movedInDate = selectedDate
+  }
+  return payload
+}
+
+async function submitStageFieldEdit() {
+  if (!stageFieldForm.stageCode || !stageFieldForm.date) {
+    ElMessage.warning('请选择日期')
+    return
+  }
+  stageFieldSubmitting.value = true
+  try {
+    if (stageFieldForm.stageCode === 'SIGNING') {
+      const contract = contracts.value[0]
+      if (!contract?.id) {
+        ElMessage.warning('当前项目暂无可编辑合同')
+        return
+      }
+      await authStore.api(`/api/contracts/${contract.id}/sign-date`, {
+        method: 'PUT',
+        body: JSON.stringify({ signDate: stageFieldForm.date })
+      })
+    } else if (stageFieldForm.stageCode === 'COLLECTING') {
+      const payment = payments.value[0]
+      if (!payment?.id) {
+        ElMessage.warning('当前项目暂无可编辑回款记录')
+        return
+      }
+      await authStore.api(`/api/payments/${payment.id}/paid-date`, {
+        method: 'PUT',
+        body: JSON.stringify({ paidDate: stageFieldForm.date })
+      })
+    } else {
+      const currentStage = project.value?.stage || 'PROSPECTING'
+      const payloadByStage: Record<string, Record<string, string>> = {
+        PROSPECTING: { firstContactAt: stageFieldForm.date },
+        VISITING: { firstVisitDate: stageFieldForm.date },
+        NEGOTIATING: { firstNegotiationDate: stageFieldForm.date },
+        MOVED_IN: { movedInDate: stageFieldForm.date }
+      }
+      const payload = buildProjectStagePayloadForDateEdit(currentStage, payloadByStage[stageFieldForm.stageCode] || {})
+      await authStore.api(`/api/projects/${projectId.value}/stage`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      })
+    }
+    ElMessage.success('阶段时间已更新')
+    await loadAll()
+    stageFieldDialogVisible.value = false
+  } catch (error: any) {
+    ElMessage.error(error.message || '更新时间失败')
+  } finally {
+    stageFieldSubmitting.value = false
+  }
 }
 
 function formatAreaRange(proj?: any): string {
@@ -674,6 +984,20 @@ function onStageChange() {
 }
 
 async function submitStageUpdate() {
+  const targetStageIndex = stageOptions.indexOf(stageForm.stage)
+  if (targetStageIndex >= 0 && targetStageIndex < projectStageCurrentIndex.value) {
+    ElMessage.warning('更新阶段暂不支持回退')
+    return
+  }
+
+  const buildStageUpdatePayload = (targetStage: string) => ({
+    stage: targetStage,
+    firstContactAt: stageForm.firstContactAt || project.value?.firstContactAt || stageForm.movedInDate || undefined,
+    firstVisitDate: stageForm.firstVisitDate || project.value?.firstVisitDate || stageForm.movedInDate || undefined,
+    firstNegotiationDate: stageForm.firstNegotiationDate || project.value?.firstNegotiationDate || stageForm.movedInDate || undefined,
+    movedInDate: stageForm.movedInDate || project.value?.movedInDate || undefined
+  })
+
   submitting.value = true
   try {
     // 签约阶段：先创建合同，再更新阶段
@@ -691,7 +1015,7 @@ async function submitStageUpdate() {
       })
       await authStore.api(`/api/projects/${projectId.value}/stage`, {
         method: 'PUT',
-        body: JSON.stringify({ stage: 'SIGNING' })
+        body: JSON.stringify(buildStageUpdatePayload('SIGNING'))
       })
       ElMessage.success('合同已创建，项目阶段已更新为签约')
     }
@@ -707,7 +1031,7 @@ async function submitStageUpdate() {
       })
       await authStore.api(`/api/projects/${projectId.value}/stage`, {
         method: 'PUT',
-        body: JSON.stringify({ stage: 'COLLECTING' })
+        body: JSON.stringify(buildStageUpdatePayload('COLLECTING'))
       })
       ElMessage.success('回款已登记，项目阶段已更新为回款')
     }
@@ -715,13 +1039,7 @@ async function submitStageUpdate() {
     else {
       await authStore.api(`/api/projects/${projectId.value}/stage`, {
         method: 'PUT',
-        body: JSON.stringify({
-          stage: stageForm.stage,
-          firstContactAt: stageForm.firstContactAt || undefined,
-          firstVisitDate: stageForm.firstVisitDate || undefined,
-          firstNegotiationDate: stageForm.firstNegotiationDate || undefined,
-          movedInDate: stageForm.movedInDate || undefined
-        })
+        body: JSON.stringify(buildStageUpdatePayload(stageForm.stage))
       })
       ElMessage.success('项目阶段已更新')
     }
@@ -803,6 +1121,7 @@ function openFollowupDrawer() {
   followupForm.contactId = ''
   followupForm.content = ''
   followupForm.attachment = ''
+  followupFileList.value = []
   followupDrawerVisible.value = true
 }
 
@@ -873,6 +1192,15 @@ async function deleteFollowup(f: any) {
   }
 }
 
+function handleFollowupFileChange(file: any) {
+  followupForm.attachment = file.name
+}
+
+function handleFollowupFileRemove() {
+  followupForm.attachment = ''
+  followupFileList.value = []
+}
+
 function toDateValue(value?: string | null): string {
   if (!value) {
     return new Date().toISOString().split('T')[0]
@@ -888,6 +1216,70 @@ function toDateTimeValue(value?: string | null): string | null {
 
 function goContact(contactId: string) {
   router.push({ path: '/contacts', query: { editId: contactId } })
+}
+
+function openContractDialog() {
+  newContractForm.projectId = projectId.value
+  newContractForm.contractNo = ''
+  newContractForm.title = ''
+  newContractForm.amount = 0
+  newContractForm.signDate = ''
+  newContractForm.leaseStartDate = ''
+  newContractForm.leaseEndDate = ''
+  newContractForm.leaseTermMonths = undefined
+  newContractForm.attachment = ''
+  contractDialogVisible.value = true
+}
+
+async function submitNewContract() {
+  if (!newContractForm.contractNo || !newContractForm.amount || !newContractForm.signDate || !newContractForm.attachment) {
+    ElMessage.warning('请完整填写必填项')
+    return
+  }
+  submitting.value = true
+  try {
+    await authStore.api('/api/contracts', {
+      method: 'POST',
+      body: JSON.stringify(newContractForm)
+    })
+    ElMessage.success('合同已创建')
+    contractDialogVisible.value = false
+    await Promise.all([loadContracts(), loadPayments()])
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+function openPaymentDialog() {
+  newPaymentForm.contractId = ''
+  newPaymentForm.paidDate = new Date().toISOString().split('T')[0]
+  newPaymentForm.amount = 0
+  newPaymentForm.invoiceStatus = 'UNISSUED'
+  newPaymentForm.remark = ''
+  paymentDialogVisible.value = true
+}
+
+async function submitNewPayment() {
+  if (!newPaymentForm.contractId || !newPaymentForm.paidDate || !newPaymentForm.amount) {
+    ElMessage.warning('请完整填写必填项')
+    return
+  }
+  submitting.value = true
+  try {
+    await authStore.api('/api/payments', {
+      method: 'POST',
+      body: JSON.stringify(newPaymentForm)
+    })
+    ElMessage.success('回款已创建')
+    paymentDialogVisible.value = false
+    await loadPayments()
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建失败')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -1023,31 +1415,53 @@ function goContact(contactId: string) {
 
 .stage-field-value {
   color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-/* 基本信息grid */
+.stage-field-value.editable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 2px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.stage-field-value.editable:hover {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.stage-field-edit-icon {
+  width: 12px;
+  height: 12px;
+  color: #3b82f6;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.stage-field-value.editable:hover .stage-field-edit-icon {
+  opacity: 1;
+}
+
+/* 基本信息 */
 .project-base-card {
   margin-bottom: 12px;
 }
 
-.project-base-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.project-base-item {
+.info-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-.base-label {
+.info-label {
   font-size: 13px;
   color: #64748b;
+  min-width: 120px;
 }
 
-.base-value {
+.info-value {
   font-size: 14px;
   color: #1f2937;
 }

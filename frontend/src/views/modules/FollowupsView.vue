@@ -1,13 +1,13 @@
-<template>
+﻿<template>
   <el-card>
     <template #header>
       <div class="card-header">
         <span>跟进记录</span>
         <el-space>
-          <el-select v-model="filterProjectId" clearable placeholder="按项目筛选" style="width: 260px" @change="loadFollowups">
+          <el-select v-model="filterProjectId" clearable placeholder="按项目筛选" style="width: 260px" @change="handleProjectFilterChange">
             <el-option v-for="project in projects" :key="project.id" :label="`${project.name} (${project.code})`" :value="project.id" />
           </el-select>
-          <el-button @click="loadFollowups">刷新</el-button>
+          <el-button type="primary" @click="goCreate">新增跟进</el-button>
         </el-space>
       </div>
     </template>
@@ -31,25 +31,49 @@
           {{ getContactDisplayName(row.contactId) }}
         </template>
       </el-table-column>
+      <el-table-column prop="id" label="ID" width="220" />
       <el-table-column label="创建人" width="120">
         <template #default="{ row }">
           {{ getUserDisplayName(row.creatorId || row.ownerId) }}
         </template>
       </el-table-column>
+      <el-table-column label="创建时间" width="180">
+        <template #default="{ row }">
+          {{ formatDateTime(row.createdAt) }}
+        </template>
+      </el-table-column>
     </el-table>
+    <div class="pagination-wrap">
+      <el-pagination
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :background="false"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
+      />
+    </div>
   </el-card>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
+import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const loading = ref(false)
 const filterProjectId = ref('')
 const followups = ref<any[]>([])
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 const projects = ref<any[]>([])
 const users = ref<any[]>([])
 const contacts = ref<any[]>([])
@@ -82,8 +106,33 @@ async function loadContacts() {
 }
 
 async function loadFollowups() {
-  const query = filterProjectId.value ? `?projectId=${encodeURIComponent(filterProjectId.value)}` : ''
-  followups.value = await authStore.api<any[]>(`/api/followups${query}`)
+  const query = buildPageQuery(page.value, pageSize.value, {
+    projectId: filterProjectId.value
+  })
+  const res = await authStore.api<PageResult<any> | any[]>(`/api/followups?${query}`)
+  const pageData = normalizePageResult<any>(res)
+  followups.value = pageData.records
+  total.value = pageData.total
+}
+
+function handleProjectFilterChange() {
+  page.value = 1
+  void loadFollowups()
+}
+
+function handlePageChange(nextPage: number) {
+  page.value = nextPage
+  void loadFollowups()
+}
+
+function handleSizeChange(nextSize: number) {
+  pageSize.value = nextSize
+  page.value = 1
+  void loadFollowups()
+}
+
+function goCreate() {
+  router.push('/followups/create')
 }
 
 function getProjectDisplayName(projectId?: string): string {
@@ -119,5 +168,11 @@ function formatDateTime(value?: string | null): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.pagination-wrap {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

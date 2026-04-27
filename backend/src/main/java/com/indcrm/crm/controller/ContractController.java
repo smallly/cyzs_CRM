@@ -1,6 +1,7 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.service.ContractService;
 import com.indcrm.crm.service.SessionService;
 import org.springframework.web.bind.annotation.*;
@@ -39,8 +40,20 @@ public class ContractController {
     }
 
     @GetMapping
-    public ApiResponse<?> list() {
-        return ApiResponse.ok(contractService.list(sessionService.requireUser()));
+    public ApiResponse<?> list(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
+        return ApiResponse.ok(PageUtils.maybePaginate(contractService.list(sessionService.requireUser()), page, size));
+    }
+
+    @PutMapping("/{id}/sign-date")
+    public ApiResponse<?> updateSignDate(@PathVariable("id") String id, @RequestBody SignDateReq req) {
+        return ApiResponse.ok(contractService.updateSignDate(
+                sessionService.requireUser(),
+                id,
+                parseLocalDate(req.signDate())
+        ));
     }
 
     public record CreateReq(
@@ -56,6 +69,8 @@ public class ContractController {
             String paymentTerms,
             String attachment
     ) {}
+
+    public record SignDateReq(String signDate) {}
 
     private LocalDate parseLocalDate(String value) {
         if (value == null || value.isBlank()) {

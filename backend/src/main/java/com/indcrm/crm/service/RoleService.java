@@ -8,7 +8,14 @@ import java.util.List;
 
 @Service
 public class RoleService {
-    public List<RoleItem> listBuiltInRoles() {
+    private final SystemConfigService configService;
+
+    public RoleService(SystemConfigService configService) {
+        this.configService = configService;
+    }
+
+    public List<RoleItem> listBuiltInRoles(String tenantId) {
+        DataScopeMode salesDefaultScope = configService.getMode(tenantId);
         return List.of(
                 new RoleItem(
                         "SYSTEM_ADMIN",
@@ -22,13 +29,13 @@ public class RoleService {
                 ),
                 new RoleItem(
                         "SALES",
-                        "一线招商人员",
+                        "招商人员",
                         BizRole.SALES,
                         false,
                         "业务执行角色",
                         List.of("workbench", "contacts", "projects", "followups", "contracts", "payments"),
                         List.of(DataScopeMode.SELF, DataScopeMode.SELF_AND_SUBORDINATES, DataScopeMode.DEPT, DataScopeMode.DEPT_AND_SUBTREE),
-                        DataScopeMode.SELF
+                        salesDefaultScope
                 )
         );
     }

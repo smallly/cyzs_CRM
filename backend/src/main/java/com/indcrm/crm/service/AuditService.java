@@ -1,8 +1,10 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indcrm.crm.domain.AuditLog;
 import com.indcrm.crm.domain.User;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.AuditLogMapper;
+import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -12,11 +14,13 @@ import java.util.UUID;
 
 @Service
 public class AuditService {
-    private final InMemoryStore store;
+    private final AuditLogMapper auditLogMapper;
+    private final UserMapper userMapper;
     private final SseService sseService;
 
-    public AuditService(InMemoryStore store, SseService sseService) {
-        this.store = store;
+    public AuditService(AuditLogMapper auditLogMapper, UserMapper userMapper, SseService sseService) {
+        this.auditLogMapper = auditLogMapper;
+        this.userMapper = userMapper;
         this.sseService = sseService;
     }
 
@@ -30,18 +34,16 @@ public class AuditService {
         log.objectId = objectId;
         log.detail = detail;
         log.createdAt = LocalDateTime.now();
-        store.auditLogs.put(log.id, log);
-        sseService.publishTenantEvent(actor.tenantId, "audit_changed", log, store.users);
+        auditLogMapper.insert(log);
+        List<User> tenantUsers = userMapper.selectList(new QueryWrapper<User>().eq("tenant_id", actor.tenantId));
+        sseService.publishTenantEvent(actor.tenantId, "audit_changed", log, tenantUsers);
     }
 
     public List<AuditLog> listByTenant(String tenantId) {
-        List<AuditLog> list = new ArrayList<>();
-        for (AuditLog log : store.auditLogs.values()) {
-            if (tenantId.equals(log.tenantId)) {
-                list.add(log);
-            }
-        }
-        list.sort((a, b) -> b.createdAt.compareTo(a.createdAt));
-        return list;
+        return auditLogMapper.selectList(
+                new QueryWrapper<AuditLog>()
+                        .eq("tenant_id", tenantId)
+                        .orderByDesc("created_at")
+        );
     }
 }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <CrudTable
       title="项目列表"
@@ -7,13 +7,16 @@
       :loading="loading"
       :show-add="true"
       :show-refresh="true"
+      :show-pagination="true"
+      :total="total"
+      :default-current-page="page"
+      :default-page-size="pageSize"
       @add="router.push('/projects/create')"
       @refresh="loadProjects"
+      @page-change="handlePageChange"
     >
       <template #name="{ row }">
-        <el-button link @click="router.push(`/projects/${row.id}`)">
-          {{ row.name }}
-        </el-button>
+        <el-button link @click="router.push(`/projects/${row.id}`)">{{ row.name }}</el-button>
       </template>
 
       <template #contacts="{ row }">
@@ -24,14 +27,20 @@
         {{ getUserDisplayName(row.ownerId) }}
       </template>
 
+      <template #creatorId="{ row }">
+        {{ getUserDisplayName(row.creatorId || row.ownerId) }}
+      </template>
+
+      <template #createdAt="{ row }">
+        {{ formatDateTime(row.createdAt) }}
+      </template>
+
       <template #dealType="{ row }">
         {{ dealTypeLabelMap[row.dealType] || '-' }}
       </template>
 
       <template #stage="{ row }">
-        <el-tag :type="getStageType(row.stage)">
-          {{ stageLabelMap[row.stage] || row.stage }}
-        </el-tag>
+        <el-tag :type="getStageType(row.stage)">{{ stageLabelMap[row.stage] || row.stage }}</el-tag>
       </template>
 
       <template #actions="{ row }">
@@ -74,17 +83,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
+import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+
 const router = useRouter()
 const authStore = useAuthStore()
 
 const loading = ref(false)
 const projects = ref<any[]>([])
+const page = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 const users = ref<any[]>([])
 const contacts = ref<any[]>([])
 
@@ -95,18 +109,20 @@ const newOwnerId = ref('')
 const currentProject = ref<any>(null)
 
 const dealTypeLabelMap: Record<string, string> = {
-  'RENT': '租赁',
-  'PURCHASE': '购买',
-  'RENT_OR_PURCHASE': '租购皆可'
+  RENT: '租赁',
+  BUY: '购买',
+  BOTH: '租购皆可',
+  PURCHASE: '购买',
+  RENT_OR_PURCHASE: '租购皆可'
 }
 
 const stageLabelMap: Record<string, string> = {
-  'PROSPECTING': '约客',
-  'VISITING': '带看',
-  'NEGOTIATING': '谈判',
-  'SIGNING': '签约',
-  'COLLECTING': '回款',
-  'MOVED_IN': '入驻'
+  PROSPECTING: '约客',
+  VISITING: '带看',
+  NEGOTIATING: '谈判',
+  SIGNING: '签约',
+  COLLECTING: '回款',
+  MOVED_IN: '入驻'
 }
 
 const stageOptions = ['PROSPECTING', 'VISITING', 'NEGOTIATING', 'SIGNING', 'COLLECTING', 'MOVED_IN']
@@ -119,7 +135,10 @@ const columns: TableColumn[] = [
   { prop: 'dealType', label: '租购类型', width: 120, slot: 'dealType' },
   { prop: 'source', label: '项目来源', width: 120 },
   { prop: 'intendedRegion', label: '意向区域', width: 120 },
-  { prop: 'stage', label: '项目阶段', width: 100, slot: 'stage' }
+  { prop: 'stage', label: '项目阶段', width: 100, slot: 'stage' },
+  { prop: 'id', label: 'ID', width: 220 },
+  { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
+  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
 ]
 
 onMounted(async () => {
@@ -136,40 +155,48 @@ async function loadAll() {
 }
 
 async function loadProjects() {
-  projects.value = await authStore.api<any[]>('/api/projects')
+  const query = buildPageQuery(page.value, pageSize.value)
+  const res = await authStore.api<PageResult<any> | any[]>(`/api/projects?${query}`)
+  const pageData = normalizePageResult<any>(res)
+  projects.value = pageData.records
+  total.value = pageData.total
 }
 
 async function loadUsers() {
-  users.value = await authStore.api<any[]>('/api/users')
+  const res = await authStore.api<PageResult<any> | any[]>('/api/users')
+  users.value = normalizePageResult<any>(res).records
 }
 
 async function loadContacts() {
-  contacts.value = await authStore.api<any[]>('/api/contacts')
+  const res = await authStore.api<PageResult<any> | any[]>('/api/contacts')
+  contacts.value = normalizePageResult<any>(res).records
 }
 
 function getUserDisplayName(userId?: string): string {
   if (!userId) return '-'
-  const user = users.value.find(u => u.id === userId)
+  const user = users.value.find((u) => u.id === userId)
   return user?.name || userId
 }
 
 function getContactsDisplay(project: any): string {
-  const linkedContacts = contacts.value.filter(c =>
-    project.contactIds?.includes(c.id) || project.contactId === c.id
+  const linkedContacts = contacts.value.filter(
+    (c) => project.contactIds?.includes(c.id) || project.contactId === c.id
   )
-  return linkedContacts.map(c => c.name).join(', ') || '-'
+  return linkedContacts.map((c) => c.name).join(', ') || '-'
 }
 
 function getStageType(stage: string): string {
-  const map: Record<string, string> = {
-    'PROSPECTING': 'info',
-    'VISITING': 'primary',
-    'NEGOTIATING': 'warning',
-    'SIGNING': 'success',
-    'COLLECTING': 'success',
-    'MOVED_IN': 'success'
+  void stage
+  return 'primary'
+}
+
+function formatDateTime(value?: string | null): string {
+  if (!value) return '-'
+  try {
+    return new Date(value).toLocaleString('zh-CN')
+  } catch {
+    return value
   }
-  return map[stage] || 'info'
 }
 
 function changeStage(project: any) {
@@ -229,5 +256,11 @@ async function deleteProject(id: string) {
       ElMessage.error(error.message || '删除失败')
     }
   }
+}
+
+async function handlePageChange(nextPage: number, nextSize: number) {
+  page.value = nextPage
+  pageSize.value = nextSize
+  await loadProjects()
 }
 </script>

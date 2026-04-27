@@ -1,11 +1,13 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.Contact;
 import com.indcrm.crm.domain.Project;
 import com.indcrm.crm.domain.User;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.ContactMapper;
+import com.indcrm.crm.mapper.ProjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,12 +20,15 @@ import java.util.stream.Collectors;
 
 @Service
 public class ContactService {
-    private final InMemoryStore store;
+    private final ContactMapper contactMapper;
+    private final ProjectMapper projectMapper;
     private final PermissionService permissionService;
     private final AuditService auditService;
 
-    public ContactService(InMemoryStore store, PermissionService permissionService, AuditService auditService) {
-        this.store = store;
+    public ContactService(ContactMapper contactMapper, ProjectMapper projectMapper,
+                          PermissionService permissionService, AuditService auditService) {
+        this.contactMapper = contactMapper;
+        this.projectMapper = projectMapper;
         this.permissionService = permissionService;
         this.auditService = auditService;
     }
@@ -64,24 +69,47 @@ public class ContactService {
         c.ownerId = actor.id;
         c.createdAt = LocalDateTime.now();
         c.updatedAt = c.createdAt;
-        store.contacts.put(c.id, c);
-        syncProjectLinks(actor, c.id, normalizedProjectIds);
         c.projectIds = new ArrayList<>(normalizedProjectIds);
+        contactMapper.insert(c);
+        syncProjectLinks(actor, c.id, normalizedProjectIds);
         auditService.log(actor, "CONTACT_CREATE", "Contact", c.id, c.name);
         return c;
     }
 
-    public List<Contact> list(User actor) {
+    public List<Contact> list(User actor, String name, String enterpriseName, String phone1, String phone2) {
+        String normalizedName = normalizeNullable(name);
+        String normalizedEnterpriseName = normalizeNullable(enterpriseName);
+        String normalizedPhone1 = normalizeNullable(phone1);
+        String normalizedPhone2 = normalizeNullable(phone2);
+        List<Contact> all = contactMapper.selectList(
+                Wrappers.<Contact>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+        );
         List<Contact> list = new ArrayList<>();
-        for (Contact c : store.contacts.values()) {
-            if (!actor.tenantId.equals(c.tenantId) || c.deleted) {
-                continue;
-            }
+        for (Contact c : all) {
             if (permissionService.canOperateByOwner(actor, c.ownerId)) {
+                if (normalizedName != null && (c.name == null || !c.name.contains(normalizedName))) {
+                    continue;
+                }
+                if (normalizedEnterpriseName != null && (c.enterpriseName == null || !c.enterpriseName.contains(normalizedEnterpriseName))) {
+                    continue;
+                }
+                if (normalizedPhone1 != null && (c.phone1 == null || !c.phone1.contains(normalizedPhone1))) {
+                    continue;
+                }
+                if (normalizedPhone2 != null && (c.phone2 == null || !c.phone2.contains(normalizedPhone2))) {
+                    continue;
+                }
                 c.projectIds = findProjectIdsByContact(actor.tenantId, c.id);
                 list.add(c);
             }
         }
+        list.sort((a, b) -> {
+            LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
+            LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
+            return bt.compareTo(at);
+        });
         return list;
     }
 
@@ -120,8 +148,9 @@ public class ContactService {
         c.decisionMaker = decisionMaker != null && decisionMaker;
         c.remark = normalizeNullable(remark);
         c.updatedAt = LocalDateTime.now();
-        syncProjectLinks(actor, c.id, normalizedProjectIds);
         c.projectIds = new ArrayList<>(normalizedProjectIds);
+        contactMapper.updateById(c);
+        syncProjectLinks(actor, c.id, normalizedProjectIds);
         auditService.log(actor, "CONTACT_UPDATE", "Contact", c.id, c.name);
         return c;
     }
@@ -131,18 +160,23 @@ public class ContactService {
         if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
             throw new BizException(ErrorCode.AUTH_403, "No permission to delete contact");
         }
-        for (Project project : store.projects.values()) {
-            if (!project.deleted && actor.tenantId.equals(project.tenantId) && id.equals(project.contactId)) {
-                throw new BizException(ErrorCode.BIZ_422, "Contact is linked by project and cannot be deleted");
-            }
+        List<Project> linkedProjects = projectMapper.selectList(
+                Wrappers.<Project>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+                        .eq("contact_id", id)
+        );
+        if (!linkedProjects.isEmpty()) {
+            throw new BizException(ErrorCode.BIZ_422, "Contact is linked by project and cannot be deleted");
         }
         c.deleted = true;
         c.deletedAt = LocalDateTime.now();
+        contactMapper.updateById(c);
         auditService.log(actor, "CONTACT_DELETE", "Contact", c.id, c.name);
     }
 
     private Contact mustGet(String tenantId, String id) {
-        Contact c = store.contacts.get(id);
+        Contact c = contactMapper.selectById(id);
         if (c == null || c.deleted || !tenantId.equals(c.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Contact not found");
         }
@@ -151,10 +185,12 @@ public class ContactService {
     }
 
     private List<String> findProjectIdsByContact(String tenantId, String contactId) {
-        return store.projects.values().stream()
-                .filter(p -> !p.deleted && tenantId.equals(p.tenantId) && contactId.equals(p.contactId))
-                .map(p -> p.id)
-                .collect(Collectors.toList());
+        return projectMapper.selectList(
+                Wrappers.<Project>query()
+                        .eq("tenant_id", tenantId)
+                        .eq("deleted", false)
+                        .eq("contact_id", contactId)
+        ).stream().map(p -> p.id).collect(Collectors.toList());
     }
 
     private List<String> normalizeProjectIds(List<String> projectIds) {
@@ -175,7 +211,7 @@ public class ContactService {
 
     private void validateProjectLinks(User actor, List<String> projectIds) {
         for (String projectId : projectIds) {
-            Project p = store.projects.get(projectId);
+            Project p = projectMapper.selectById(projectId);
             if (p == null || p.deleted || !actor.tenantId.equals(p.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked project does not exist");
             }
@@ -187,12 +223,20 @@ public class ContactService {
 
     private void syncProjectLinks(User actor, String contactId, List<String> selectedProjectIds) {
         Set<String> selected = new HashSet<>(selectedProjectIds);
-        for (Project p : store.projects.values()) {
-            if (p.deleted || !actor.tenantId.equals(p.tenantId)) continue;
+        List<Project> all = projectMapper.selectList(
+                Wrappers.<Project>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+        );
+        for (Project p : all) {
             if (selected.contains(p.id)) {
-                p.contactId = contactId;
+                if (!contactId.equals(p.contactId)) {
+                    p.contactId = contactId;
+                    projectMapper.updateById(p);
+                }
             } else if (contactId.equals(p.contactId)) {
                 p.contactId = null;
+                projectMapper.updateById(p);
             }
         }
     }
@@ -201,10 +245,12 @@ public class ContactService {
         if (phone1 != null && !phone1.isBlank() && phone1.equals(phone2)) {
             throw new BizException(ErrorCode.BIZ_422, "phone1 cannot equal phone2");
         }
-        for (Contact c : store.contacts.values()) {
-            if (c.deleted || !tenantId.equals(c.tenantId)) {
-                continue;
-            }
+        List<Contact> all = contactMapper.selectList(
+                Wrappers.<Contact>query()
+                        .eq("tenant_id", tenantId)
+                        .eq("deleted", false)
+        );
+        for (Contact c : all) {
             if (selfId != null && selfId.equals(c.id)) {
                 continue;
             }

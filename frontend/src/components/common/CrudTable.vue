@@ -7,17 +7,13 @@
           <el-button v-if="showAdd" type="primary" @click="$emit('add')">
             新增
           </el-button>
-          <el-button v-if="showRefresh" @click="$emit('refresh')">
-            刷新
-          </el-button>
-        </el-space>
+</el-space>
       </div>
     </template>
 
     <el-table
       :data="data"
       v-loading="loading"
-      border
       stripe
       :height="height"
       @selection-change="handleSelectionChange"
@@ -80,6 +76,7 @@
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
+        :background="false"
         :page-sizes="pageSizes"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
@@ -91,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 
 export interface TableColumn {
@@ -159,6 +156,20 @@ const emit = defineEmits<{
 const currentPage = ref(props.defaultCurrentPage)
 const pageSize = ref(props.defaultPageSize)
 
+watch(
+  () => props.defaultCurrentPage,
+  (value) => {
+    currentPage.value = value
+  }
+)
+
+watch(
+  () => props.defaultPageSize,
+  (value) => {
+    pageSize.value = value
+  }
+)
+
 function handleSelectionChange(selection: any[]) {
   emit('selectionChange', selection)
 }
@@ -200,6 +211,11 @@ function getTagLabel(value: any, tagMap?: Record<string, { type: string; label: 
 </script>
 
 <style scoped>
+:deep(.el-card) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .crud-table-header {
   display: flex;
   justify-content: space-between;

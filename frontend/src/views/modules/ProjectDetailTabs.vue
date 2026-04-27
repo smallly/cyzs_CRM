@@ -1,5 +1,5 @@
 <template>
-  <div class="card">
+  <div class="card project-detail-tabs-card">
     <div class="project-detail-nav">
       <div class="project-detail-tabs">
         <button class="tab-btn" :class="{ active: activeTab === 'contact' }" @click="setTab('contact')">
@@ -183,6 +183,7 @@
             <th>开票状态</th>
             <th>回款凭证</th>
             <th>创建人</th>
+            <th>创建时间</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -200,12 +201,13 @@
               <span v-else>{{ hasPaymentVoucher(p) ? getPaymentVoucherName(p) : "-" }}</span>
             </td>
             <td>{{ getUserDisplayName(p.creatorId || p.ownerId) }}</td>
+            <td>{{ formatDateTime(p.createdAt) }}</td>
             <td><button class="row-link-btn">查看</button></td>
           </tr>
         </tbody>
         <tbody v-else>
           <tr>
-            <td class="empty-row" colspan="8">没有数据</td>
+            <td class="empty-row" colspan="9">没有数据</td>
           </tr>
         </tbody>
       </table>

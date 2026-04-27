@@ -1,6 +1,7 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.service.FollowupService;
 import com.indcrm.crm.service.SessionService;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class FollowupController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<?> update(@PathVariable String id, @RequestBody UpdateReq req) {
+    public ApiResponse<?> update(@PathVariable("id") String id, @RequestBody UpdateReq req) {
         return ApiResponse.ok(
                 followupService.update(
                         sessionService.requireUser(),
@@ -49,14 +50,18 @@ public class FollowupController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<?> delete(@PathVariable String id) {
+    public ApiResponse<?> delete(@PathVariable("id") String id) {
         followupService.delete(sessionService.requireUser(), id);
         return ApiResponse.ok("ok");
     }
 
     @GetMapping
-    public ApiResponse<?> list(@RequestParam(required = false) String projectId) {
-        return ApiResponse.ok(followupService.list(sessionService.requireUser(), projectId));
+    public ApiResponse<?> list(
+            @RequestParam(value = "projectId", required = false) String projectId,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size
+    ) {
+        return ApiResponse.ok(PageUtils.maybePaginate(followupService.list(sessionService.requireUser(), projectId), page, size));
     }
 
     public record CreateReq(String projectId, String content, LocalDateTime followupAt, String method, String contactId, String attachment) {}

@@ -1,9 +1,10 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,20 +15,35 @@ import java.util.UUID;
 
 @Service
 public class ProjectService {
-    private final InMemoryStore store;
+    private final ProjectMapper projectMapper;
+    private final ContactMapper contactMapper;
+    private final FollowupMapper followupMapper;
+    private final ContractMapper contractMapper;
+    private final PaymentMapper paymentMapper;
+    private final UserMapper userMapper;
     private final PermissionService permissionService;
     private final CodeService codeService;
     private final AuditService auditService;
     private final SystemConfigService systemConfigService;
 
     public ProjectService(
-            InMemoryStore store,
+            ProjectMapper projectMapper,
+            ContactMapper contactMapper,
+            FollowupMapper followupMapper,
+            ContractMapper contractMapper,
+            PaymentMapper paymentMapper,
+            UserMapper userMapper,
             PermissionService permissionService,
             CodeService codeService,
             AuditService auditService,
             SystemConfigService systemConfigService
     ) {
-        this.store = store;
+        this.projectMapper = projectMapper;
+        this.contactMapper = contactMapper;
+        this.followupMapper = followupMapper;
+        this.contractMapper = contractMapper;
+        this.paymentMapper = paymentMapper;
+        this.userMapper = userMapper;
         this.permissionService = permissionService;
         this.codeService = codeService;
         this.auditService = auditService;
@@ -64,7 +80,7 @@ public class ProjectService {
             throw new BizException(ErrorCode.BIZ_422, "ownerId is required");
         }
 
-        Contact contact = store.contacts.get(normalizedContactId);
+        Contact contact = contactMapper.selectById(normalizedContactId);
         if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
         }
@@ -75,7 +91,7 @@ public class ProjectService {
             firstContactAt = LocalDateTime.now();
         }
         validateAreaRange(intendedAreaMin, intendedAreaMax);
-        User owner = store.users.get(normalizedOwnerId);
+        User owner = userMapper.selectById(normalizedOwnerId);
         if (owner == null || !actor.tenantId.equals(owner.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Owner does not exist");
         }
@@ -106,22 +122,29 @@ public class ProjectService {
         p.stage = ProjectStage.PROSPECTING;
         p.createdAt = LocalDateTime.now();
 
-        store.projects.put(p.id, p);
+        projectMapper.insert(p);
         auditService.log(actor, "PROJECT_CREATE", "Project", p.id, p.code);
         return p;
     }
 
     public List<Project> list(User actor) {
+        List<Project> all = projectMapper.selectList(
+                Wrappers.<Project>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+        );
         List<Project> list = new ArrayList<>();
-        for (Project p : store.projects.values()) {
-            if (!actor.tenantId.equals(p.tenantId) || p.deleted) {
-                continue;
-            }
+        for (Project p : all) {
             if (permissionService.canOperateByOwner(actor, p.ownerId)) {
                 hydrateAreaRange(p);
                 list.add(p);
             }
         }
+        list.sort((a, b) -> {
+            LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
+            LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
+            return bt.compareTo(at);
+        });
         return list;
     }
 
@@ -168,6 +191,7 @@ public class ProjectService {
         p.intendedAreaMax = intendedAreaMax;
         p.intendedArea = null;
         p.remark = normalizeNullable(remark);
+        projectMapper.updateById(p);
         auditService.log(actor, "PROJECT_UPDATE", "Project", p.id, p.code);
         return p;
     }
@@ -217,6 +241,7 @@ public class ProjectService {
             p.remark = (p.remark == null || p.remark.isBlank()) ? remark.trim() : (p.remark + "\n[跳级原因] " + remark.trim());
         }
         p.stage = stage;
+        projectMapper.updateById(p);
         auditService.log(actor, "PROJECT_STAGE", "Project", p.id, stage.name());
         return p;
     }
@@ -230,11 +255,12 @@ public class ProjectService {
         if (normalizedOwnerId == null) {
             throw new BizException(ErrorCode.BIZ_422, "newOwnerId is required");
         }
-        User newOwner = store.users.get(normalizedOwnerId);
+        User newOwner = userMapper.selectById(normalizedOwnerId);
         if (newOwner == null || !actor.tenantId.equals(newOwner.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "New owner does not exist");
         }
         p.ownerId = normalizedOwnerId;
+        projectMapper.updateById(p);
         auditService.log(actor, "PROJECT_TRANSFER", "Project", p.id, "newOwner=" + normalizedOwnerId + ",reason=" + reason);
     }
 
@@ -245,31 +271,48 @@ public class ProjectService {
         }
         p.deleted = true;
         p.deletedAt = LocalDateTime.now();
+        projectMapper.updateById(p);
 
-        for (Followup f : store.followups.values()) {
-            if (!f.deleted && actor.tenantId.equals(f.tenantId) && projectId.equals(f.projectId)) {
-                f.deleted = true;
-                f.deletedAt = LocalDateTime.now();
-            }
+        List<Followup> followups = followupMapper.selectList(
+                Wrappers.<Followup>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+                        .eq("project_id", projectId)
+        );
+        for (Followup f : followups) {
+            f.deleted = true;
+            f.deletedAt = LocalDateTime.now();
+            followupMapper.updateById(f);
         }
 
-        for (Contract c : store.contracts.values()) {
-            if (!c.deleted && actor.tenantId.equals(c.tenantId) && projectId.equals(c.projectId)) {
-                c.deleted = true;
-                c.deletedAt = LocalDateTime.now();
-                for (Payment pay : store.payments.values()) {
-                    if (!pay.deleted && actor.tenantId.equals(pay.tenantId) && c.id.equals(pay.contractId)) {
-                        pay.deleted = true;
-                        pay.deletedAt = LocalDateTime.now();
-                    }
-                }
+        List<Contract> contracts = contractMapper.selectList(
+                Wrappers.<Contract>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+                        .eq("project_id", projectId)
+        );
+        for (Contract c : contracts) {
+            c.deleted = true;
+            c.deletedAt = LocalDateTime.now();
+            contractMapper.updateById(c);
+
+            List<Payment> payments = paymentMapper.selectList(
+                    Wrappers.<Payment>query()
+                            .eq("tenant_id", actor.tenantId)
+                            .eq("deleted", false)
+                            .eq("contract_id", c.id)
+            );
+            for (Payment pay : payments) {
+                pay.deleted = true;
+                pay.deletedAt = LocalDateTime.now();
+                paymentMapper.updateById(pay);
             }
         }
         auditService.log(actor, "PROJECT_DELETE", "Project", p.id, p.code);
     }
 
     public Project mustGet(String tenantId, String id) {
-        Project p = store.projects.get(id);
+        Project p = projectMapper.selectById(id);
         if (p == null || p.deleted || !tenantId.equals(p.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Project does not exist");
         }

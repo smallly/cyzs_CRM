@@ -1,12 +1,15 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.Contact;
 import com.indcrm.crm.domain.Followup;
 import com.indcrm.crm.domain.Project;
 import com.indcrm.crm.domain.User;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.ContactMapper;
+import com.indcrm.crm.mapper.FollowupMapper;
+import com.indcrm.crm.mapper.ProjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,13 +19,18 @@ import java.util.UUID;
 
 @Service
 public class FollowupService {
-    private final InMemoryStore store;
+    private final FollowupMapper followupMapper;
+    private final ProjectMapper projectMapper;
+    private final ContactMapper contactMapper;
     private final PermissionService permissionService;
     private final CodeService codeService;
     private final AuditService auditService;
 
-    public FollowupService(InMemoryStore store, PermissionService permissionService, CodeService codeService, AuditService auditService) {
-        this.store = store;
+    public FollowupService(FollowupMapper followupMapper, ProjectMapper projectMapper, ContactMapper contactMapper,
+                           PermissionService permissionService, CodeService codeService, AuditService auditService) {
+        this.followupMapper = followupMapper;
+        this.projectMapper = projectMapper;
+        this.contactMapper = contactMapper;
         this.permissionService = permissionService;
         this.codeService = codeService;
         this.auditService = auditService;
@@ -37,7 +45,7 @@ public class FollowupService {
             String contactId,
             String attachment
     ) {
-        Project project = store.projects.get(projectId);
+        Project project = projectMapper.selectById(projectId);
         if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Project does not exist");
         }
@@ -50,7 +58,7 @@ public class FollowupService {
 
         String normalizedContactId = normalizeNullable(contactId);
         if (normalizedContactId != null) {
-            Contact contact = store.contacts.get(normalizedContactId);
+            Contact contact = contactMapper.selectById(normalizedContactId);
             if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
             }
@@ -72,10 +80,11 @@ public class FollowupService {
         followup.attachment = normalizeNullable(attachment);
         followup.followupAt = followupAt == null ? LocalDateTime.now() : followupAt;
         followup.createdAt = LocalDateTime.now();
-        store.followups.put(followup.id, followup);
+        followupMapper.insert(followup);
 
         if (project.lastFollowupAt == null || followup.followupAt.isAfter(project.lastFollowupAt)) {
             project.lastFollowupAt = followup.followupAt;
+            projectMapper.updateById(project);
         }
         auditService.log(actor, "FOLLOWUP_CREATE", "Followup", followup.id, followup.code);
         return followup;
@@ -85,24 +94,27 @@ public class FollowupService {
         String normalizedProjectId = normalizeNullable(projectId);
         List<Followup> list = new ArrayList<>();
         if (normalizedProjectId != null) {
-            Project project = store.projects.get(normalizedProjectId);
+            Project project = projectMapper.selectById(normalizedProjectId);
             if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Project does not exist");
             }
             if (!permissionService.canOperateByOwner(actor, project.ownerId)) {
                 throw new BizException(ErrorCode.AUTH_403, "No permission to view followups");
             }
-            for (Followup followup : store.followups.values()) {
-                if (!followup.deleted && actor.tenantId.equals(followup.tenantId) && normalizedProjectId.equals(followup.projectId)) {
-                    list.add(followup);
-                }
-            }
+            list = followupMapper.selectList(
+                    Wrappers.<Followup>query()
+                            .eq("tenant_id", actor.tenantId)
+                            .eq("deleted", false)
+                            .eq("project_id", normalizedProjectId)
+            );
         } else {
-            for (Followup followup : store.followups.values()) {
-                if (followup.deleted || !actor.tenantId.equals(followup.tenantId)) {
-                    continue;
-                }
-                Project project = store.projects.get(followup.projectId);
+            List<Followup> all = followupMapper.selectList(
+                    Wrappers.<Followup>query()
+                            .eq("tenant_id", actor.tenantId)
+                            .eq("deleted", false)
+            );
+            for (Followup followup : all) {
+                Project project = projectMapper.selectById(followup.projectId);
                 if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
                     continue;
                 }
@@ -143,7 +155,7 @@ public class FollowupService {
 
         String normalizedContactId = normalizeNullable(contactId);
         if (normalizedContactId != null) {
-            Contact contact = store.contacts.get(normalizedContactId);
+            Contact contact = contactMapper.selectById(normalizedContactId);
             if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
             }
@@ -157,6 +169,7 @@ public class FollowupService {
         followup.method = normalizeNullable(method);
         followup.contactId = normalizedContactId;
         followup.attachment = normalizeNullable(attachment);
+        followupMapper.updateById(followup);
         recalculateProjectLastFollowupAt(project.id);
 
         auditService.log(actor, "FOLLOWUP_UPDATE", "Followup", followup.id, followup.code);
@@ -171,12 +184,13 @@ public class FollowupService {
         }
         followup.deleted = true;
         followup.deletedAt = LocalDateTime.now();
+        followupMapper.updateById(followup);
         recalculateProjectLastFollowupAt(project.id);
         auditService.log(actor, "FOLLOWUP_DELETE", "Followup", followup.id, followup.code);
     }
 
     private Followup mustGet(User actor, String followupId) {
-        Followup followup = store.followups.get(followupId);
+        Followup followup = followupMapper.selectById(followupId);
         if (followup == null || followup.deleted || !actor.tenantId.equals(followup.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Followup does not exist");
         }
@@ -184,7 +198,7 @@ public class FollowupService {
     }
 
     private Project mustGetProject(User actor, String projectId) {
-        Project project = store.projects.get(projectId);
+        Project project = projectMapper.selectById(projectId);
         if (project == null || project.deleted || !actor.tenantId.equals(project.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Project does not exist");
         }
@@ -192,20 +206,25 @@ public class FollowupService {
     }
 
     private void recalculateProjectLastFollowupAt(String projectId) {
-        Project project = store.projects.get(projectId);
+        Project project = projectMapper.selectById(projectId);
         if (project == null || project.deleted) {
             return;
         }
+        List<Followup> items = followupMapper.selectList(
+                Wrappers.<Followup>query()
+                        .eq("project_id", projectId)
+                        .eq("deleted", false)
+                        .isNotNull("followup_at")
+        );
         LocalDateTime latest = null;
-        for (Followup item : store.followups.values()) {
-            if (item.deleted || !projectId.equals(item.projectId) || item.followupAt == null) {
-                continue;
-            }
+        for (Followup item : items) {
+            if (item.followupAt == null) continue;
             if (latest == null || item.followupAt.isAfter(latest)) {
                 latest = item.followupAt;
             }
         }
         project.lastFollowupAt = latest;
+        projectMapper.updateById(project);
     }
 
     private String normalizeNullable(String value) {

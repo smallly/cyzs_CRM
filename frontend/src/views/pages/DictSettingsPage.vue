@@ -1,10 +1,9 @@
-<template>
+﻿<template>
   <el-card>
     <template #header>
       <div class="card-header">
         <span>数据字典配置</span>
         <el-space>
-          <el-button @click="loadDicts">刷新</el-button>
           <el-button type="primary" :loading="saving" @click="saveDicts">保存</el-button>
         </el-space>
       </div>

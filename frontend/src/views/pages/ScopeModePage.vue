@@ -1,9 +1,8 @@
-<template>
+﻿<template>
   <el-card>
     <template #header>
       <div class="card-header">
         <span>项目数据范围配置</span>
-        <el-button @click="loadScopeMode">刷新</el-button>
       </div>
     </template>
 

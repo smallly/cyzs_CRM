@@ -10,6 +10,12 @@
   --el-color-primary-dark-2: #1d4ed8;
 }
 
+html,
+body,
+#app {
+  overflow-x: hidden;
+}
+
 /* 侧边栏样式 - 浅色背景 */
 .app-layout .el-aside {
   background: #f7f9fc;
@@ -131,7 +137,7 @@
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .el-card__header {
@@ -141,6 +147,8 @@
 
 .el-card__body {
   padding: 14px;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 /* 按钮样式 - 匹配原有设计 */
@@ -182,8 +190,20 @@
 
 /* 表格样式 - 匹配原有设计 */
 .el-table {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: none !important;
+  border-radius: 0;
+}
+
+.el-table--border,
+.el-table--group {
+  border: none !important;
+}
+
+.el-table::before,
+.el-table--border::after,
+.el-table--group::after,
+.el-table__inner-wrapper::before {
+  display: none !important;
 }
 
 .el-table th.el-table__cell {
@@ -196,8 +216,38 @@
   color: #1f2937;
 }
 
-.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background: #f7f9fc;
+/* 可点击文本统一蓝色 */
+.el-button.is-link,
+.el-link,
+a {
+  color: #2f5cf6;
+}
+
+.el-button.is-link:hover,
+.el-link:hover,
+a:hover {
+  color: #1d4ed8;
+}
+
+/* 去掉竖线，仅保留横向分隔 */
+.el-table .el-table__cell {
+  border-right: none !important;
+}
+
+/* 表头统一底色 */
+.el-table thead th.el-table__cell,
+.el-table__header-wrapper th.el-table__cell,
+.el-table__fixed-header-wrapper th.el-table__cell {
+  background: #f7f9fc !important;
+}
+
+/* 表头之外所有行统一白底（含 striped） */
+.el-table__body-wrapper tbody td.el-table__cell,
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell,
+.el-table--striped .el-table__body tr.el-table__row td.el-table__cell,
+.el-table__fixed .el-table__body-wrapper tbody td.el-table__cell,
+.el-table__fixed-right .el-table__body-wrapper tbody td.el-table__cell {
+  background: #ffffff !important;
 }
 
 /* 输入框样式 */
@@ -257,6 +307,44 @@
   color: #334155;
 }
 
+.el-form,
+.el-form-item,
+.el-form-item__content,
+.el-row,
+.el-col,
+.el-main,
+.el-dialog__body,
+.el-drawer__body {
+  min-width: 0;
+}
+
+.el-dialog__body,
+.el-drawer__body {
+  overflow-x: hidden;
+}
+
+/* 避免表单栅格负边距导致页面出现横向滚动条 */
+.el-card__body > .el-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.el-card__body > .el-row > .el-col {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+
+.el-input,
+.el-select,
+.el-date-editor.el-input,
+.el-date-editor.el-input__wrapper,
+.el-date-editor.el-input-number,
+.el-input-number,
+.el-textarea {
+  width: 100%;
+  max-width: 100%;
+}
+
 /* 统计卡片样式 - WorkbenchPage */
 .stat-card {
   background: #fff;
@@ -280,7 +368,7 @@
 /* 面包屑样式 */
 .el-breadcrumb__item:last-child .el-breadcrumb__inner {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 400;
   color: #111827;
 }
 
@@ -323,9 +411,127 @@
   padding: 14px;
 }
 
+/* Dialog关闭按钮悬停不改底色 */
+.el-dialog__headerbtn:hover .el-dialog__close {
+  color: #2f5cf6;
+}
+
+.el-dialog__headerbtn:focus .el-dialog__close {
+  color: #2f5cf6;
+}
+
 /* Pagination分页样式 */
 .el-pagination.is-background .el-pager li:not(.is-disabled).is-active {
-  background: #2f5cf6;
+  background: transparent;
+  color: #111827;
+  font-weight: normal;
+}
+
+.el-pagination.is-background .btn-prev,
+.el-pagination.is-background .btn-next,
+.el-pagination.is-background .el-pager li {
+  background: transparent !important;
+  color: #111827;
+}
+
+.el-pagination.is-background .btn-prev:disabled,
+.el-pagination.is-background .btn-next:disabled {
+  color: #94a3b8;
+  background: transparent !important;
+}
+
+.el-pagination.is-background .btn-prev:hover,
+.el-pagination.is-background .btn-next:hover,
+.el-pagination.is-background .btn-prev:focus,
+.el-pagination.is-background .btn-next:focus,
+.el-pagination.is-background .btn-prev:focus-visible,
+.el-pagination.is-background .btn-next:focus-visible {
+  background: transparent !important;
+  color: #111827;
+}
+
+/* 强制去掉分页左右箭头底色（适配 is-background / 非 is-background） */
+.el-pagination .btn-prev,
+.el-pagination .btn-next,
+.el-pagination button.btn-prev,
+.el-pagination button.btn-next {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #111827 !important;
+}
+
+.el-pagination .btn-prev:hover,
+.el-pagination .btn-next:hover,
+.el-pagination .btn-prev:focus,
+.el-pagination .btn-next:focus,
+.el-pagination .btn-prev:focus-visible,
+.el-pagination .btn-next:focus-visible,
+.el-pagination button.btn-prev:hover,
+.el-pagination button.btn-next:hover,
+.el-pagination button.btn-prev:focus,
+.el-pagination button.btn-next:focus,
+.el-pagination button.btn-prev:focus-visible,
+.el-pagination button.btn-next:focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #111827 !important;
+}
+
+.el-pagination .btn-prev:disabled,
+.el-pagination .btn-next:disabled,
+.el-pagination button.btn-prev:disabled,
+.el-pagination button.btn-next:disabled {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+}
+
+/* DatePicker 紧凑模式 */
+.el-date-editor.el-input {
+  --el-component-size: 34px;
+}
+
+.el-date-editor.el-input .el-input__wrapper {
+  min-height: 34px;
+  padding: 0 10px;
+}
+
+.el-date-picker .el-picker-panel__content {
+  width: 280px;
+  margin: 8px;
+}
+
+.el-date-picker .el-date-table td,
+.el-date-picker .el-date-table th {
+  padding: 2px 0;
+  height: 34px;
+}
+
+.el-date-picker .el-date-table td span {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+}
+
+.el-picker-panel__icon-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #475569 !important;
+}
+
+.el-picker-panel__icon-btn:hover,
+.el-picker-panel__icon-btn:focus,
+.el-picker-panel__icon-btn:focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  color: #1f2937 !important;
+  outline: none !important;
 }
 
 /* Upload上传组件样式 */
@@ -359,4 +565,28 @@
 /* 确认框MessageBox样式 */
 .el-message-box {
   border-radius: 12px;
+}
+
+/* Unified close button style for Dialog / Drawer / MessageBox */
+.el-dialog__headerbtn,
+.el-drawer__close-btn,
+.el-message-box__headerbtn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  padding: 0;
+}
+
+.el-dialog__headerbtn:hover,
+.el-dialog__headerbtn:focus-visible,
+.el-drawer__close-btn:hover,
+.el-drawer__close-btn:focus-visible,
+.el-message-box__headerbtn:hover,
+.el-message-box__headerbtn:focus-visible {
+  background: #eef2f8 !important;
+  color: #475569 !important;
+  outline: none;
 }

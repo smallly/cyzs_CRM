@@ -1,6 +1,7 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.service.ContactService;
 import com.indcrm.crm.service.SessionService;
 import jakarta.validation.Valid;
@@ -45,12 +46,25 @@ public class ContactController {
     }
 
     @GetMapping
-    public ApiResponse<?> list() {
-        return ApiResponse.ok(contactService.list(sessionService.requireUser()));
+    public ApiResponse<?> list(
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "enterpriseName", required = false) String enterpriseName,
+            @RequestParam(value = "phone1", required = false) String phone1,
+            @RequestParam(value = "phone2", required = false) String phone2
+    ) {
+        return ApiResponse.ok(
+                PageUtils.maybePaginate(
+                        contactService.list(sessionService.requireUser(), name, enterpriseName, phone1, phone2),
+                        page,
+                        size
+                )
+        );
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<?> update(@PathVariable String id, @Valid @RequestBody ContactReq req) {
+    public ApiResponse<?> update(@PathVariable("id") String id, @Valid @RequestBody ContactReq req) {
         return ApiResponse.ok(
                 contactService.update(
                         sessionService.requireUser(),
@@ -72,7 +86,7 @@ public class ContactController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable String id) {
+    public ApiResponse<Void> delete(@PathVariable("id") String id) {
         contactService.delete(sessionService.requireUser(), id);
         return ApiResponse.ok(null);
     }

@@ -8,6 +8,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,21 +29,19 @@ public class SseService {
         return emitter;
     }
 
-    public void publishTenantEvent(String tenantId, String event, Object payload, Map<String, User> users) {
+    public void publishTenantEvent(String tenantId, String event, Object payload, List<User> tenantUsers) {
         String data = buildPayload(event, payload);
-
-        users.values().stream()
-                .filter(u -> tenantId.equals(u.tenantId))
-                .forEach(u -> {
-                    SseEmitter emitter = emitters.get(u.id);
-                    if (emitter != null) {
-                        try {
-                            emitter.send(SseEmitter.event().name(event).data(data));
-                        } catch (IOException ex) {
-                            emitters.remove(u.id);
-                        }
-                    }
-                });
+        for (User u : tenantUsers) {
+            if (!tenantId.equals(u.tenantId)) continue;
+            SseEmitter emitter = emitters.get(u.id);
+            if (emitter != null) {
+                try {
+                    emitter.send(SseEmitter.event().name(event).data(data));
+                } catch (IOException ex) {
+                    emitters.remove(u.id);
+                }
+            }
+        }
     }
 
     private String buildPayload(String event, Object payload) {

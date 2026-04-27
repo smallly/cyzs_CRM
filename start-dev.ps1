@@ -46,7 +46,7 @@ if (-not (Test-PortListening -Port 8080)) {
     if (-not (Test-Path $mvnCmd)) {
         throw "Maven not found: $mvnCmd"
     }
-    Start-Process -FilePath $mvnCmd -ArgumentList "spring-boot:run" -WorkingDirectory $backendDir -RedirectStandardOutput (Join-Path $logDir "backend.out.log") -RedirectStandardError (Join-Path $logDir "backend.err.log") -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath $mvnCmd -ArgumentList "spring-boot:run","-Dmaven.test.skip=true" -WorkingDirectory $backendDir -RedirectStandardOutput (Join-Path $logDir "backend.out.log") -RedirectStandardError (Join-Path $logDir "backend.err.log") -WindowStyle Hidden | Out-Null
     if (-not (Wait-Port -Port 8080 -Seconds 60)) {
         throw "Backend failed to start on 8080. See logs\backend.err.log"
     }

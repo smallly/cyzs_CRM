@@ -5,7 +5,8 @@ import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.DataScopeMode;
 import com.indcrm.crm.domain.ProjectDictConfig;
 import com.indcrm.crm.domain.ScopeConfig;
-import com.indcrm.crm.repo.InMemoryStore;
+import com.indcrm.crm.mapper.ProjectDictConfigMapper;
+import com.indcrm.crm.mapper.ScopeConfigMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,14 +24,16 @@ public class SystemConfigService {
             "\u5176\u4ed6"
     );
 
-    private final InMemoryStore store;
+    private final ScopeConfigMapper scopeConfigMapper;
+    private final ProjectDictConfigMapper projectDictConfigMapper;
 
-    public SystemConfigService(InMemoryStore store) {
-        this.store = store;
+    public SystemConfigService(ScopeConfigMapper scopeConfigMapper, ProjectDictConfigMapper projectDictConfigMapper) {
+        this.scopeConfigMapper = scopeConfigMapper;
+        this.projectDictConfigMapper = projectDictConfigMapper;
     }
 
     public DataScopeMode getMode(String tenantId) {
-        ScopeConfig config = store.scopeConfigs.get(tenantId);
+        ScopeConfig config = scopeConfigMapper.selectById(tenantId);
         if (config == null || config.mode == null) {
             return DataScopeMode.DEPT_AND_SUBTREE;
         }
@@ -44,11 +47,16 @@ public class SystemConfigService {
         ScopeConfig config = new ScopeConfig();
         config.tenantId = tenantId;
         config.mode = mode;
-        store.scopeConfigs.put(tenantId, config);
+        ScopeConfig existing = scopeConfigMapper.selectById(tenantId);
+        if (existing != null) {
+            scopeConfigMapper.updateById(config);
+        } else {
+            scopeConfigMapper.insert(config);
+        }
     }
 
     public DictOptions getDictOptions(String tenantId) {
-        ProjectDictConfig config = store.projectDictConfigs.get(tenantId);
+        ProjectDictConfig config = projectDictConfigMapper.selectById(tenantId);
         if (config == null) {
             return new DictOptions(DEFAULT_PROJECT_LEVELS, DEFAULT_PROJECT_SOURCES);
         }
@@ -64,7 +72,12 @@ public class SystemConfigService {
         config.tenantId = tenantId;
         config.projectLevels = levels;
         config.projectSources = sources;
-        store.projectDictConfigs.put(tenantId, config);
+        ProjectDictConfig existing = projectDictConfigMapper.selectById(tenantId);
+        if (existing != null) {
+            projectDictConfigMapper.updateById(config);
+        } else {
+            projectDictConfigMapper.insert(config);
+        }
     }
 
     public record DictOptions(List<String> projectLevels, List<String> projectSources) {}
