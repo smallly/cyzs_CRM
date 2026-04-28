@@ -6,14 +6,8 @@
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
           <span>新建项目</span>
         </div>
-        <el-button @click="router.push('/projects')">返回项目列表</el-button>
       </div>
     </template>
-
-    <el-alert v-if="contacts.length === 0" type="warning" :closable="false" show-icon style="margin-bottom: 16px">
-      当前没有联系人，创建项目前请先新增联系人。
-      <el-button size="small" @click="router.push('/contacts')">去新增联系人</el-button>
-    </el-alert>
 
     <el-form ref="formRef" :model="formData" :rules="formRules" label-width="108px" class="project-create-form">
       <el-row :gutter="12">
@@ -25,14 +19,17 @@
 
         <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="联系人" prop="contactId">
-            <el-select v-model="formData.contactId" filterable placeholder="请选择联系人">
-              <el-option
-                v-for="c in contacts"
-                :key="c.id"
-                :label="`${c.name || '-'} (${c.phone1 || '-'})`"
-                :value="c.id"
+            <div class="contact-selector">
+              <el-input
+                :model-value="selectedContactLabel"
+                readonly
+                placeholder="请选择联系人"
+                class="contact-input"
               />
-            </el-select>
+              <el-button class="contact-add-btn" @click="openContactDialog">
+                <el-icon><Plus /></el-icon>
+              </el-button>
+            </div>
           </el-form-item>
         </el-col>
 
@@ -108,14 +105,64 @@
         </el-space>
       </el-form-item>
     </el-form>
+
+    <!-- 选择联系人弹窗 -->
+    <el-dialog
+      v-model="contactDialogVisible"
+      title="选择联系人"
+      width="720px"
+      :close-on-click-modal="false"
+    >
+      <div class="contact-dialog-header">
+        <el-input
+          v-model="contactSearchKeyword"
+          placeholder="搜索姓名或手机号"
+          clearable
+          style="width: 280px"
+          @keyup.enter="filterContacts"
+        >
+          <template #suffix>
+            <el-icon @click="filterContacts" style="cursor: pointer"><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-button type="primary" @click="router.push('/contacts/create')">新建联系人</el-button>
+      </div>
+
+      <el-table
+        :data="filteredContacts"
+        style="margin-top: 16px"
+        highlight-current-row
+        @row-click="(row: any) => { selectedContactInDialog = row }"
+      >
+        <el-table-column width="55">
+          <template #default="{ row }">
+            <el-radio
+              :model-value="selectedContactInDialog?.id"
+              :label="row.id"
+              @click.stop="selectedContactInDialog = row"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="姓名" min-width="120" />
+        <el-table-column prop="phone1" label="手机号" min-width="140" />
+        <el-table-column prop="company" label="公司" min-width="160" />
+      </el-table>
+
+      <template #footer>
+        <el-space>
+          <el-button @click="contactDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmContactSelect">确定</el-button>
+        </el-space>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
@@ -133,6 +180,26 @@ const contacts = ref<any[]>([])
 const users = ref<any[]>([])
 const levelOptions = ref<string[]>([])
 const sourceOptions = ref<string[]>([])
+
+// Contact selector dialog
+const contactDialogVisible = ref(false)
+const contactSearchKeyword = ref('')
+const selectedContactInDialog = ref<any | null>(null)
+
+const selectedContactLabel = computed(() => {
+  const c = contacts.value.find((x) => x.id === formData.contactId)
+  return c ? `${c.name || '-'} (${c.phone1 || '-'})` : ''
+})
+
+const filteredContacts = computed(() => {
+  const kw = contactSearchKeyword.value.trim()
+  if (!kw) return contacts.value
+  return contacts.value.filter((c) => {
+    const name = (c.name || '').toLowerCase()
+    const phone = (c.phone1 || '').toLowerCase()
+    return name.includes(kw.toLowerCase()) || phone.includes(kw.toLowerCase())
+  })
+})
 
 const formData = reactive({
   name: '',
@@ -270,6 +337,25 @@ function handleBack() {
   router.push('/projects')
 }
 
+function openContactDialog() {
+  contactDialogVisible.value = true
+  contactSearchKeyword.value = ''
+  selectedContactInDialog.value = contacts.value.find((c) => c.id === formData.contactId) || null
+}
+
+function confirmContactSelect() {
+  if (!selectedContactInDialog.value) {
+    ElMessage.warning('请选择联系人')
+    return
+  }
+  formData.contactId = selectedContactInDialog.value.id
+  contactDialogVisible.value = false
+}
+
+function filterContacts() {
+  // filteredContacts is computed, no-op needed
+}
+
 function handleCancel() {
   handleBack()
 }
@@ -306,5 +392,25 @@ function handleCancel() {
 .project-create-form :deep(.el-select),
 .project-create-form :deep(.el-textarea) {
   width: 100%;
+}
+
+.contact-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contact-input {
+  flex: 1;
+}
+
+.contact-add-btn {
+  padding: 8px 12px;
+}
+
+.contact-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 </style>
