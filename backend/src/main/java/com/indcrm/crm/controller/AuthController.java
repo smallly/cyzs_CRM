@@ -3,7 +3,9 @@ package com.indcrm.crm.controller;
 import com.indcrm.crm.auth.JwtService;
 import com.indcrm.crm.common.ApiResponse;
 import com.indcrm.crm.domain.User;
+import com.indcrm.crm.domain.VendorAdmin;
 import com.indcrm.crm.service.AuthService;
+import com.indcrm.crm.service.VendorAdminAuthService;
 import com.indcrm.crm.service.SessionService;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
@@ -16,11 +18,13 @@ import java.util.Map;
 @Validated
 public class AuthController {
     private final AuthService authService;
+    private final VendorAdminAuthService vendorAdminAuthService;
     private final JwtService jwtService;
     private final SessionService sessionService;
 
-    public AuthController(AuthService authService, JwtService jwtService, SessionService sessionService) {
+    public AuthController(AuthService authService, VendorAdminAuthService vendorAdminAuthService, JwtService jwtService, SessionService sessionService) {
         this.authService = authService;
+        this.vendorAdminAuthService = vendorAdminAuthService;
         this.jwtService = jwtService;
         this.sessionService = sessionService;
     }
@@ -39,8 +43,21 @@ public class AuthController {
                 "defaultTenantId", defaultTenantId,
                 "tenants", tenants,
                 "bizRole", user.bizRole.name(),
-                "systemAdmin", user.systemAdmin,
-                "vendorAdmin", user.vendorAdmin
+                "systemAdmin", user.systemAdmin
+        ));
+    }
+
+    @PostMapping("/login/vendor")
+    public ApiResponse<Map<String, Object>> loginVendor(@RequestBody LoginReq req) {
+        VendorAdmin admin = vendorAdminAuthService.login(req.phone(), req.password());
+        String token = jwtService.issue(admin.id, "vendor-default", "VENDOR");
+        return ApiResponse.ok(Map.of(
+                "token", token,
+                "userId", admin.id,
+                "name", admin.name,
+                "tenantId", "vendor-default",
+                "defaultTenantId", "vendor-default",
+                "vendorAdmin", true
         ));
     }
 

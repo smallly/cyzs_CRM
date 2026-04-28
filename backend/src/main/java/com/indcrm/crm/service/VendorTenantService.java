@@ -117,7 +117,6 @@ public class VendorTenantService {
     public List<AvailableAdmin> listAvailableAdmins(String keyword) {
         List<User> users = userMapper.selectList(
                 new QueryWrapper<User>()
-                        .eq("vendor_admin", false)
                         .eq("status", UserStatus.ENABLED.name())
         );
         List<AvailableAdmin> result = new ArrayList<>();

@@ -1,7 +1,9 @@
 package com.indcrm.crm.auth;
 
 import com.indcrm.crm.domain.User;
+import com.indcrm.crm.domain.VendorAdmin;
 import com.indcrm.crm.mapper.UserMapper;
+import com.indcrm.crm.mapper.VendorAdminMapper;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,10 +18,12 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserMapper userMapper;
+    private final VendorAdminMapper vendorAdminMapper;
 
-    public JwtAuthFilter(JwtService jwtService, UserMapper userMapper) {
+    public JwtAuthFilter(JwtService jwtService, UserMapper userMapper, VendorAdminMapper vendorAdminMapper) {
         this.jwtService = jwtService;
         this.userMapper = userMapper;
+        this.vendorAdminMapper = vendorAdminMapper;
     }
 
     @Override
@@ -43,12 +47,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 Claims claims = jwtService.parse(token);
                 String uid = claims.get("uid", String.class);
                 String tid = claims.get("tid", String.class);
-                User user = userMapper.selectById(uid);
-                if (user != null) {
-                    if (tid != null && !tid.isBlank()) {
-                        user.tenantId = tid;
+                String type = claims.get("type", String.class);
+
+                if ("VENDOR".equals(type)) {
+                    VendorAdmin admin = vendorAdminMapper.selectById(uid);
+                    if (admin != null) {
+                        User user = convertToUser(admin);
+                        if (tid != null && !tid.isBlank()) {
+                            user.tenantId = tid;
+                        }
+                        AuthContext.set(user);
                     }
-                    AuthContext.set(user);
+                } else {
+                    User user = userMapper.selectById(uid);
+                    if (user != null) {
+                        if (tid != null && !tid.isBlank()) {
+                            user.tenantId = tid;
+                        }
+                        AuthContext.set(user);
+                    }
                 }
             }
             filterChain.doFilter(request, response);
@@ -58,5 +75,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } finally {
             AuthContext.clear();
         }
+    }
+
+    private User convertToUser(VendorAdmin admin) {
+        User user = new User();
+        user.id = admin.id;
+        user.phone = admin.phone;
+        user.password = admin.password;
+        user.name = admin.name;
+        user.status = admin.status;
+        user.tenantId = "vendor-default";
+        user.vendorAdmin = true;
+        user.systemAdmin = true;
+        user.bizRole = com.indcrm.crm.domain.BizRole.PROJECT_ADMIN;
+        user.createdAt = admin.createdAt;
+        return user;
     }
 }

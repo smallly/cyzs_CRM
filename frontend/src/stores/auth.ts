@@ -38,7 +38,27 @@ export const useAuthStore = defineStore('auth', () => {
     phoneRef.value = (res as any).phone || ''
     tenantId.value = res.tenantId || res.tid || ''
     tenantName.value = res.tenantName || res.orgName || tenantId.value
-    vendorAdmin.value = (res as any).vendorAdmin === true || (res as any).vendorAdmin === 'true'
+    vendorAdmin.value = false
+  }
+
+  async function loginVendor(phone: string, password: string) {
+    const res = await api<{
+      token: string
+      userId?: string
+      name?: string
+      tenantId?: string
+      vendorAdmin?: boolean
+    }>('/api/auth/login/vendor', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password })
+    })
+    token.value = res.token
+    userId.value = res.userId || ''
+    userName.value = res.name || ''
+    phoneRef.value = phone
+    tenantId.value = res.tenantId || 'vendor-default'
+    tenantName.value = '超管平台'
+    vendorAdmin.value = true
   }
 
   function logout() {

@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
-import com.indcrm.crm.mapper.UserAuthenticationMapper;
-import com.indcrm.crm.mapper.UserMapper;
+import com.indcrm.crm.mapper.VendorAdminAuthenticationMapper;
+import com.indcrm.crm.mapper.VendorAdminMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,21 +18,19 @@ import java.util.UUID;
 
 @Service
 public class VendorAdminService {
-    private final UserMapper userMapper;
-    private final UserAuthenticationMapper userAuthenticationMapper;
+    private final VendorAdminMapper vendorAdminMapper;
+    private final VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public VendorAdminService(UserMapper userMapper, UserAuthenticationMapper userAuthenticationMapper,
+    public VendorAdminService(VendorAdminMapper vendorAdminMapper, VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper,
                               PasswordEncoder passwordEncoder) {
-        this.userMapper = userMapper;
-        this.userAuthenticationMapper = userAuthenticationMapper;
+        this.vendorAdminMapper = vendorAdminMapper;
+        this.vendorAdminAuthenticationMapper = vendorAdminAuthenticationMapper;
         this.passwordEncoder = passwordEncoder;
     }
 
-    public List<User> listAdmins() {
-        List<User> list = userMapper.selectList(
-                new QueryWrapper<User>().eq("vendor_admin", true)
-        );
+    public List<VendorAdmin> listAdmins() {
+        List<VendorAdmin> list = vendorAdminMapper.selectList(null);
         list.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
             LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
@@ -42,7 +40,7 @@ public class VendorAdminService {
     }
 
     @Transactional
-    public User createAdmin(String name, String phone, String password) {
+    public VendorAdmin createAdmin(String name, String phone, String password) {
         if (name == null || name.isBlank()) {
             throw new BizException(ErrorCode.BIZ_422, "name is required");
         }
@@ -57,67 +55,64 @@ public class VendorAdminService {
         }
 
         String normalizedPhone = phone.trim();
-        long exists = userMapper.selectCount(
-                new QueryWrapper<User>().eq("phone", normalizedPhone)
+        long exists = vendorAdminMapper.selectCount(
+                new QueryWrapper<VendorAdmin>().eq("phone", normalizedPhone)
         );
         if (exists > 0) {
             throw new BizException(ErrorCode.BIZ_409, "phone already exists");
         }
 
         LocalDateTime now = LocalDateTime.now();
-        User user = new User();
-        user.id = UUID.randomUUID().toString();
-        user.tenantId = "vendor-default";
-        user.phone = normalizedPhone;
-        user.password = passwordEncoder.encode(password);
-        user.name = name.trim();
-        user.lastTenantId = user.tenantId;
-        user.bizRole = BizRole.PROJECT_ADMIN;
-        user.systemAdmin = true;
-        user.vendorAdmin = true;
-        user.status = UserStatus.ENABLED;
-        user.createdAt = now;
+        VendorAdmin admin = new VendorAdmin();
+        admin.id = UUID.randomUUID().toString();
+        admin.phone = normalizedPhone;
+        admin.password = passwordEncoder.encode(password);
+        admin.name = name.trim();
+        admin.status = UserStatus.ENABLED;
+        admin.createdAt = now;
+        admin.updatedAt = now;
 
-        userMapper.insert(user);
-        syncPhoneAuthentication(user);
-        return user;
+        vendorAdminMapper.insert(admin);
+        syncPhoneAuthentication(admin);
+        return admin;
     }
 
     @Transactional
-    public void setStatus(String userId, UserStatus status) {
+    public void setStatus(String adminId, UserStatus status) {
         if (status == null) {
             throw new BizException(ErrorCode.BIZ_422, "status is required");
         }
-        User user = userMapper.selectById(userId);
-        if (user == null || !user.vendorAdmin) {
+        VendorAdmin admin = vendorAdminMapper.selectById(adminId);
+        if (admin == null) {
             throw new BizException(ErrorCode.BIZ_422, "admin not found");
         }
-        user.status = status;
-        userMapper.updateById(user);
+        admin.status = status;
+        admin.updatedAt = LocalDateTime.now();
+        vendorAdminMapper.updateById(admin);
     }
 
-    private void syncPhoneAuthentication(User user) {
-        if (user == null || user.id == null || user.phone == null) {
+    private void syncPhoneAuthentication(VendorAdmin admin) {
+        if (admin == null || admin.id == null || admin.phone == null) {
             return;
         }
-        long exists = userAuthenticationMapper.selectCount(
-                new QueryWrapper<UserAuthentication>()
-                        .eq("user_id", user.id)
+        long exists = vendorAdminAuthenticationMapper.selectCount(
+                new QueryWrapper<VendorAdminAuthentication>()
+                        .eq("admin_id", admin.id)
                         .eq("auth_type", AuthenticationType.PHONE.name())
         );
         if (exists > 0) {
             return;
         }
-        UserAuthentication auth = new UserAuthentication();
+        VendorAdminAuthentication auth = new VendorAdminAuthentication();
         auth.id = UUID.randomUUID().toString();
-        auth.userId = user.id;
+        auth.adminId = admin.id;
         auth.authType = AuthenticationType.PHONE;
-        auth.authIdentifier = user.phone;
-        auth.passwordHash = user.password;
-        auth.verifiedAt = user.createdAt;
+        auth.authIdentifier = admin.phone;
+        auth.passwordHash = admin.password;
+        auth.verifiedAt = admin.createdAt;
         auth.status = AuthenticationStatus.ACTIVE;
-        auth.createdAt = user.createdAt != null ? user.createdAt : LocalDateTime.now();
+        auth.createdAt = admin.createdAt != null ? admin.createdAt : LocalDateTime.now();
         auth.updatedAt = auth.createdAt;
-        userAuthenticationMapper.insert(auth);
+        vendorAdminAuthenticationMapper.insert(auth);
     }
 }

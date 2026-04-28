@@ -650,16 +650,12 @@ async function handleLogin() {
   }
   loginLoading.value = true
   try {
-    await authStore.login(loginForm.phone.trim(), loginForm.password.trim())
+    await authStore.loginVendor(loginForm.phone.trim(), loginForm.password.trim())
     authStore.saveToStorage()
-    if (!authStore.vendorAdmin) {
-      ElMessage.error('您没有超管平台访问权限')
-      authStore.logout()
-      return
-    }
     ElMessage.success('登录成功')
     void loadTenants()
     void loadAdmins()
+    void loadSaasUsers()
   } catch (error: any) {
     ElMessage.error(error.message || '登录失败')
   } finally {

@@ -5,6 +5,7 @@ import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.domain.User;
+import com.indcrm.crm.domain.VendorAdmin;
 import com.indcrm.crm.service.SessionService;
 import com.indcrm.crm.service.VendorTenantService;
 import jakarta.validation.Valid;
@@ -118,7 +119,7 @@ public class VendorTenantController {
     }
 
     @PostMapping("/admins")
-    public ApiResponse<User> createAdmin(@RequestBody @Valid CreateAdminReq req) {
+    public ApiResponse<?> createAdmin(@RequestBody @Valid CreateAdminReq req) {
         requireVendorAdmin();
         return ApiResponse.ok(vendorTenantService.createAvailableAdmin(
                 req.name(),

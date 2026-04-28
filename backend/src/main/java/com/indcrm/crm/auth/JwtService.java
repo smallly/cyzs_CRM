@@ -25,9 +25,13 @@ public class JwtService {
     }
 
     public String issue(String userId, String tenantId) {
+        return issue(userId, tenantId, "USER");
+    }
+
+    public String issue(String userId, String tenantId, String type) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .claims(Map.of("uid", userId, "tid", tenantId))
+                .claims(Map.of("uid", userId, "tid", tenantId, "type", type))
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(expireDays, ChronoUnit.DAYS)))
                 .signWith(key)
