@@ -414,7 +414,6 @@
     <template #footer>
       <el-space>
         <el-button @click="openDialogVisible = false">取消</el-button>
-        <el-button @click="resetForm">重置</el-button>
         <el-button type="primary" :loading="creating" @click="openTenant">保存</el-button>
       </el-space>
     </template>
