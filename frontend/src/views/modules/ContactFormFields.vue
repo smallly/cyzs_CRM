@@ -41,7 +41,7 @@
       </select>
     </label>
     <label class="field" style="grid-column: span 2">
-      <span class="field-label required">关联项目（多选）</span>
+      <span class="field-label">关联项目（多选）</span>
       <div ref="projectMultiSelectRef" class="multi-select" :class="{ disabled: !!fixedProjectId }">
         <button type="button" class="multi-select-trigger" :disabled="!!fixedProjectId" @click="toggleProjectMultiSelect">
           <span>{{ getProjectMultiSelectText() }}</span>

@@ -189,7 +189,7 @@ const formFields: FormField[] = [
 const formRules = {
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   phone1: [{ required: true, message: '请输入手机号1', trigger: 'blur' }],
-  projectIds: [{ required: true, message: '请选择关联项目', trigger: 'change' }]
+  projectIds: []
 }
 
 onMounted(async () => {

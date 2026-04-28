@@ -70,7 +70,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="24">
-          <el-form-item label="关联项目" prop="projectIds">
+          <el-form-item label="关联项目">
             <el-select v-model="formData.projectIds" multiple filterable placeholder="请选择关联项目">
               <el-option
                 v-for="p in projects"
@@ -132,7 +132,7 @@ const formData = reactive({
 const formRules = {
   name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
   phone1: [{ required: true, message: '请输入手机号1', trigger: 'blur' }],
-  projectIds: [{ required: true, message: '请选择关联项目', trigger: 'change' }]
+  projectIds: []
 }
 
 onMounted(async () => {
