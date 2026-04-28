@@ -6,6 +6,17 @@ export function getApiBaseUrl(): string {
 
 export type AuthErrorHandler = (message: string) => void;
 
+export class AuthRequiredError extends Error {
+  constructor(message = "请先登录") {
+    super(message);
+    this.name = "AuthRequiredError";
+  }
+}
+
+export function isAuthRequiredError(error: unknown): boolean {
+  return error instanceof AuthRequiredError || (error as any)?.name === "AuthRequiredError";
+}
+
 export function createApiClient(getToken: AuthTokenProvider, onAuthError?: AuthErrorHandler) {
   const apiBase = getApiBaseUrl();
 
@@ -30,8 +41,10 @@ export function createApiClient(getToken: AuthTokenProvider, onAuthError?: AuthE
     }
 
     if (!res.ok) {
-      if (res.status === 401 && onAuthError) {
-        onAuthError(payload?.message || "请先登录");
+      if (res.status === 401 || res.status === 403) {
+        const message = payload?.message || "请先登录";
+        onAuthError?.(message);
+        throw new AuthRequiredError(message);
       }
       if (payload && typeof payload.message === "string") {
         throw new Error(payload.message);
@@ -41,9 +54,10 @@ export function createApiClient(getToken: AuthTokenProvider, onAuthError?: AuthE
 
     if (payload && typeof payload.code === "number") {
       if (payload.code !== 0) {
-        // Treat 401-like business codes as auth errors
-        if ((payload.code === 401 || payload.code === 403) && onAuthError) {
-          onAuthError(payload.message || "请先登录");
+        if (payload.code === 401 || payload.code === 403) {
+          const message = payload.message || "请先登录";
+          onAuthError?.(message);
+          throw new AuthRequiredError(message);
         }
         throw new Error(payload.message || "request failed");
       }

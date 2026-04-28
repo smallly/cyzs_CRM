@@ -133,7 +133,15 @@ export const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('crm_auth')
+  const stored = localStorage.getItem('crm_auth')
+  let token = ''
+  if (stored) {
+    try {
+      token = JSON.parse(stored)?.token || ''
+    } catch {
+      token = ''
+    }
+  }
   const requiresAuth = to.meta.requiresAuth !== false
 
   if (requiresAuth && !token) {

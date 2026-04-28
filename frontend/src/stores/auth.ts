@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { createApiClient } from '../api/http'
+import { router } from '../router'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string>('')
@@ -13,7 +14,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value)
 
-  const api = createApiClient(() => token.value, () => logout())
+  const api = createApiClient(() => token.value, () => {
+    const wasVendor = vendorAdmin.value
+    logout()
+    localStorage.removeItem('crm_auth')
+    if (wasVendor) {
+      window.location.reload()
+    } else {
+      router.replace('/login').catch(() => {})
+    }
+  })
 
   async function login(phone: string, password: string) {
     const res = await api<{
