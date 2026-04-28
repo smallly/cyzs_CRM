@@ -495,8 +495,6 @@
       <div>租户：{{ lastCreated?.tenantName }}（{{ lastCreated?.tenantId }}）</div>
       <div>管理员手机号：{{ lastCreated?.adminPhone }}</div>
       <div>管理员密码：{{ lastCreated?.usedExistingAdminPhone ? '沿用原密码' : (lastCreated?.adminPassword || '-') }}</div>
-      <div>开始日期：{{ lastCreated?.openTime || '-' }}</div>
-      <div>到期日期：{{ lastCreated?.expireTime || '-' }}</div>
       <div>SaaS 登录地址：{{ saasUrl }}</div>
     </div>
     <template #footer>
@@ -1000,8 +998,6 @@ async function copySuccessInfo() {
     `租户：${lastCreated.value.tenantName}（${lastCreated.value.tenantId}）`,
     `管理员手机号：${lastCreated.value.adminPhone}`,
     `管理员密码：${lastCreated.value.usedExistingAdminPhone ? '沿用原密码' : (lastCreated.value.adminPassword || '-')}`,
-    `开通时间：${lastCreated.value.openTime || '-'}`,
-    `到期时间：${lastCreated.value.expireTime || '-'}`,
     `SaaS 登录地址：${saasUrl.value}`
   ].join('\n')
 
