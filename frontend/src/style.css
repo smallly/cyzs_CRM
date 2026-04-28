@@ -331,7 +331,7 @@ body,
 input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner),
 select,
 textarea,
-button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next) {
+button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.vendor-menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next) {
   font-size: 13px;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
@@ -403,7 +403,7 @@ textarea {
   margin: 0;
 }
 
-button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next) {
+button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.vendor-menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next) {
   background: var(--primary-blue);
   color: #fff;
   border-color: var(--primary-blue);
@@ -416,7 +416,7 @@ button.secondary:not(.el-button) {
   border-color: var(--primary-blue-border);
 }
 
-button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next):hover {
+button:not(.el-button):not(.el-dialog__headerbtn):not(.el-drawer__close-btn):not(.el-message-box__headerbtn):not(.menu-item):not(.vendor-menu-item):not(.el-picker-panel__icon-btn):not(.btn-prev):not(.btn-next):hover {
   background: var(--primary-blue-hover);
   border-color: var(--primary-blue-hover);
 }
