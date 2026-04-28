@@ -132,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
@@ -156,6 +156,21 @@ import {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+
+onMounted(() => {
+  if (authStore.isLoggedIn && authStore.tenantId) {
+    authStore.api<{ tenantName?: string; tenantId?: string }>('/api/me')
+      .then((res) => {
+        if (res.tenantName && res.tenantName !== authStore.tenantName) {
+          authStore.tenantName = res.tenantName
+          authStore.saveToStorage()
+        }
+      })
+      .catch(() => {
+        // ignore
+      })
+  }
+})
 
 const isCollapsed = ref(false)
 

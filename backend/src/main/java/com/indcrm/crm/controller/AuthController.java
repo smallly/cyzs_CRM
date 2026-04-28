@@ -73,9 +73,12 @@ public class AuthController {
         User actor = sessionService.requireUser();
         String tenantId = authService.switchTenant(actor, req.tenantId());
         String token = jwtService.issue(actor.id, tenantId);
+        Tenant tenant = tenantMapper.selectById(tenantId);
+        String tenantName = tenant != null ? tenant.name : tenantId;
         return ApiResponse.ok(Map.of(
                 "token", token,
                 "tenantId", tenantId,
+                "tenantName", tenantName,
                 "defaultTenantId", tenantId
         ));
     }

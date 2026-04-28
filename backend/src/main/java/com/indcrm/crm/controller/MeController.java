@@ -1,7 +1,9 @@
 package com.indcrm.crm.controller;
 
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.domain.Tenant;
 import com.indcrm.crm.domain.User;
+import com.indcrm.crm.mapper.TenantMapper;
 import com.indcrm.crm.service.ProfileService;
 import com.indcrm.crm.service.SessionService;
 import org.springframework.web.bind.annotation.*;
@@ -13,20 +15,25 @@ import java.util.Map;
 public class MeController {
     private final SessionService sessionService;
     private final ProfileService profileService;
+    private final TenantMapper tenantMapper;
 
-    public MeController(SessionService sessionService, ProfileService profileService) {
+    public MeController(SessionService sessionService, ProfileService profileService, TenantMapper tenantMapper) {
         this.sessionService = sessionService;
         this.profileService = profileService;
+        this.tenantMapper = tenantMapper;
     }
 
     @GetMapping
     public ApiResponse<?> me() {
         User user = sessionService.requireUser();
+        Tenant tenant = tenantMapper.selectById(user.tenantId);
+        String tenantName = tenant != null ? tenant.name : (user.tenantId == null ? "" : user.tenantId);
         return ApiResponse.ok(Map.of(
                 "userId", user.id,
                 "name", user.name == null ? "" : user.name,
                 "phone", user.phone == null ? "" : user.phone,
                 "tenantId", user.tenantId == null ? "" : user.tenantId,
+                "tenantName", tenantName,
                 "bizRole", user.bizRole == null ? "" : user.bizRole.name(),
                 "systemAdmin", user.systemAdmin,
                 "vendorAdmin", user.vendorAdmin
