@@ -10,27 +10,36 @@
           </div>
         </div>
 
-        <div v-if="!isCollapsed && authStore.hasMultipleTenants" class="tenant-switcher">
-          <el-dropdown trigger="click" popper-class="tenant-switcher-popper" @command="handleTenantCommand">
-            <div class="tenant-trigger">
-              <el-icon><OfficeBuilding /></el-icon>
-              <span class="tenant-name">{{ authStore.tenantName || authStore.tenantId }}</span>
-              <el-icon class="tenant-switch-icon"><Switch /></el-icon>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item
+        <div v-if="!isCollapsed && authStore.hasMultipleTenants" class="org-switcher">
+          <el-popover placement="bottom-start" :width="260" trigger="click" popper-class="org-switcher-popper">
+            <template #reference>
+              <div class="org-trigger">
+                <span class="org-name">{{ authStore.tenantName || authStore.tenantId }}</span>
+                <el-icon class="org-caret"><ArrowDown /></el-icon>
+              </div>
+            </template>
+            <div class="org-panel">
+              <div class="org-panel-head">切换组织</div>
+              <div class="org-list">
+                <div
                   v-for="t in authStore.tenants"
                   :key="t.tenantId"
-                  :command="t.tenantId"
-                  :class="{ 'tenant-active': t.tenantId === authStore.tenantId }"
+                  class="org-item"
+                  :class="{ active: t.tenantId === authStore.tenantId }"
+                  @click="handleTenantCommand(t.tenantId)"
                 >
-                  <span>{{ t.tenantName || t.tenantId }}</span>
-                  <el-tag v-if="t.tenantId === authStore.tenantId" type="success" size="small">当前</el-tag>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+                  <div class="org-item-icon">
+                    <el-icon size="20"><OfficeBuilding /></el-icon>
+                  </div>
+                  <div class="org-item-info">
+                    <div class="org-item-name">{{ t.tenantName || t.tenantId }}</div>
+                    <div v-if="t.tenantId === authStore.tenantId" class="org-item-current">当前组织</div>
+                  </div>
+                  <el-icon v-if="t.tenantId === authStore.tenantId" class="org-item-check" color="#2f5cf6" :size="16"><Check /></el-icon>
+                </div>
+              </div>
+            </div>
+          </el-popover>
         </div>
 
         <nav class="menu">
@@ -188,7 +197,8 @@ import {
   Lock,
   SwitchButton,
   OfficeBuilding,
-  Switch
+  ArrowDown,
+  Check
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -648,17 +658,17 @@ function isMenuActive(menuRoute: string): boolean {
   color: #2f5cf6;
 }
 
-.tenant-switcher {
+.org-switcher {
   padding: 0 10px 10px;
   border-bottom: 1px solid #e5eaf3;
   margin-bottom: 8px;
 }
 
-.tenant-trigger {
+.org-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 8px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -666,23 +676,101 @@ function isMenuActive(menuRoute: string): boolean {
   font-size: 13px;
   color: #334155;
   transition: all 0.15s ease;
+  max-width: 100%;
 }
 
-.tenant-trigger:hover {
+.org-trigger:hover {
   border-color: #dbe6fb;
   background: #eff4ff;
 }
 
-.tenant-name {
+.org-name {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.org-caret {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+:deep(.org-switcher-popper) {
+  padding: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+}
+
+.org-panel {
+  padding: 8px 0;
+}
+
+.org-panel-head {
+  padding: 0 14px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.org-list {
+  padding: 4px 0;
+}
+
+.org-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.org-item:hover {
+  background: #f8fafc;
+}
+
+.org-item.active {
+  background: #eff4ff;
+}
+
+.org-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2f5cf6, #57a0ff);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.org-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.org-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tenant-switch-icon {
-  color: #64748b;
-  font-size: 14px;
+.org-item-current {
+  font-size: 11px;
+  color: #2f5cf6;
+}
+
+.org-item-check {
+  flex-shrink: 0;
 }
 </style>
 
