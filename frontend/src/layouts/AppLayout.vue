@@ -614,6 +614,11 @@ function isMenuActive(menuRoute: string): boolean {
   max-width: 100%;
   min-width: 0;
 }
+
+.tenant-active {
+  background: #eff4ff;
+  color: #2f5cf6;
+}
 </style>
 
 
