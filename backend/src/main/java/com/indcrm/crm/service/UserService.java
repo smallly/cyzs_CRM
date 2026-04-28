@@ -39,13 +39,15 @@ public class UserService {
     }
 
     public List<User> listMembers(User actor) {
-        ensureSystemMenuAllowed(actor);
         List<User> list = userMapper.selectList(new QueryWrapper<User>().eq("tenant_id", actor.tenantId));
         list.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
             LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
             return bt.compareTo(at);
         });
+        for (User user : list) {
+            user.password = null;
+        }
         return list;
     }
 
