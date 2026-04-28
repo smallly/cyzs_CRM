@@ -55,15 +55,26 @@ public class VendorTenantController {
         return ApiResponse.ok(vendorTenantService.adminPhoneExists(phone));
     }
 
+    @GetMapping("/available-admins")
+    public ApiResponse<?> listAvailableAdmins(
+            @RequestParam(value = "keyword", required = false) String keyword
+    ) {
+        requireVendorAdmin();
+        return ApiResponse.ok(vendorTenantService.listAvailableAdmins(keyword));
+    }
+
     @PostMapping
-    public ApiResponse<VendorTenantService.TenantOpenResult> open(@RequestBody OpenTenantReq req) {
+    public ApiResponse<VendorTenantService.TenantOpenResult> open(@RequestBody @Valid OpenTenantReq req) {
         requireVendorAdmin();
         return ApiResponse.ok(vendorTenantService.openTenant(
                 req.tenantName(),
                 req.tenantId(),
+                req.adminUserId(),
                 req.adminName(),
                 req.adminPhone(),
-                req.adminPassword()
+                req.adminPassword(),
+                req.openTime(),
+                req.expireTime()
         ));
     }
 
@@ -109,9 +120,12 @@ public class VendorTenantController {
     public record OpenTenantReq(
             @NotBlank String tenantName,
             String tenantId,
-            @NotBlank String adminName,
-            @NotBlank String adminPhone,
-            String adminPassword
+            String adminUserId,
+            String adminName,
+            String adminPhone,
+            String adminPassword,
+            String openTime,
+            String expireTime
     ) {
     }
 

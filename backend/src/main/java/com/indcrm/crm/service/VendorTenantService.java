@@ -5,14 +5,18 @@ import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
 import com.indcrm.crm.mapper.DepartmentMapper;
+import com.indcrm.crm.mapper.OrganizationMembershipMapper;
 import com.indcrm.crm.mapper.TenantMapper;
 import com.indcrm.crm.mapper.TenantOrderMapper;
+import com.indcrm.crm.mapper.TenantUserMapper;
 import com.indcrm.crm.mapper.UserMapper;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -26,35 +30,53 @@ public class VendorTenantService {
     private final DepartmentMapper departmentMapper;
     private final TenantMapper tenantMapper;
     private final TenantOrderMapper tenantOrderMapper;
+    private final TenantUserMapper tenantUserMapper;
+    private final OrganizationMembershipMapper organizationMembershipMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper) {
+    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper, TenantUserMapper tenantUserMapper, OrganizationMembershipMapper organizationMembershipMapper, PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
         this.tenantMapper = tenantMapper;
         this.tenantOrderMapper = tenantOrderMapper;
+        this.tenantUserMapper = tenantUserMapper;
+        this.organizationMembershipMapper = organizationMembershipMapper;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public List<AvailableAdmin> listAvailableAdmins(String keyword) {
+        List<User> users = userMapper.selectList(
+                new QueryWrapper<User>()
+                        .eq("vendor_admin", false)
+                        .eq("status", UserStatus.ENABLED.name())
+        );
+        List<AvailableAdmin> result = new ArrayList<>();
+        String kw = keyword == null ? "" : keyword.trim();
+        for (User user : users) {
+            if (user == null) continue;
+            if (!kw.isEmpty()) {
+                String name = user.name == null ? "" : user.name;
+                String phone = user.phone == null ? "" : user.phone;
+                if (!name.contains(kw) && !phone.contains(kw)) {
+                    continue;
+                }
+            }
+            Tenant tenant = user.tenantId == null ? null : tenantMapper.selectById(user.tenantId);
+            result.add(new AvailableAdmin(
+                    user.id,
+                    user.name,
+                    user.phone,
+                    user.tenantId,
+                    tenant != null ? tenant.name : user.tenantId
+            ));
+        }
+        result.sort(Comparator.comparing((AvailableAdmin a) -> a.name == null ? "" : a.name));
+        return result;
     }
 
     @Transactional
-    public TenantOpenResult openTenant(String tenantName, String requestedTenantId, String adminName, String adminPhone, String adminPassword) {
+    public TenantOpenResult openTenant(String tenantName, String requestedTenantId, String adminUserId, String adminName, String adminPhone, String adminPassword, String openTime, String expireTime) {
         String normalizedName = normalizeRequired(tenantName, "租户名称不能为空");
-        String normalizedAdminName = normalizeRequired(adminName, "管理员姓名不能为空");
-        String normalizedPhone = normalizeRequired(adminPhone, "管理员手机号不能为空");
-
-        User existingByPhone = findUserByPhone(normalizedPhone);
-        boolean usedExistingAdminPhone = existingByPhone != null;
-
-        String normalizedPassword;
-        if (usedExistingAdminPhone) {
-            normalizedPassword = Objects.requireNonNullElse(existingByPhone.password, "");
-            if (normalizedPassword.isBlank()) {
-                throw new BizException(ErrorCode.BIZ_422, "该手机号账号无可用密码，请改用新手机号开通");
-            }
-        } else {
-            normalizedPassword = normalizeRequired(adminPassword, "管理员密码不能为空");
-            if (normalizedPassword.length() < 6) {
-                throw new BizException(ErrorCode.BIZ_422, "管理员密码至少 6 位");
-            }
-        }
 
         String tenantId = generateTenantId(requestedTenantId, normalizedName);
         if (tenantMapper.selectById(tenantId) != null) {
@@ -62,17 +84,64 @@ public class VendorTenantService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        User admin = new User();
-        admin.id = UUID.randomUUID().toString();
-        admin.tenantId = tenantId;
-        admin.phone = normalizedPhone;
-        admin.password = normalizedPassword;
-        admin.name = normalizedAdminName;
-        admin.bizRole = BizRole.PROJECT_ADMIN;
-        admin.systemAdmin = true;
-        admin.status = UserStatus.ENABLED;
-        admin.createdAt = now;
-        userMapper.insert(admin);
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        // Parse dates
+        LocalDate startDate;
+        LocalDate expireDate;
+        try {
+            startDate = openTime != null && !openTime.isBlank() ? LocalDate.parse(openTime, dateFormatter) : LocalDate.now();
+        } catch (Exception e) {
+            startDate = LocalDate.now();
+        }
+        try {
+            expireDate = expireTime != null && !expireTime.isBlank() ? LocalDate.parse(expireTime, dateFormatter) : startDate.plusYears(1);
+        } catch (Exception e) {
+            expireDate = startDate.plusYears(1);
+        }
+
+        User admin;
+        boolean usedExistingAdmin;
+        String normalizedAdminName;
+        String normalizedPhone;
+
+        if (adminUserId != null && !adminUserId.isBlank()) {
+            // Mode B: Use existing user
+            admin = userMapper.selectById(adminUserId);
+            if (admin == null) {
+                throw new BizException(ErrorCode.BIZ_422, "所选管理员不存在");
+            }
+            usedExistingAdmin = true;
+            normalizedAdminName = admin.name;
+            normalizedPhone = admin.phone;
+        } else {
+            // Mode A: Create new user
+            normalizedAdminName = normalizeRequired(adminName, "管理员姓名不能为空");
+            normalizedPhone = normalizeRequired(adminPhone, "管理员手机号不能为空");
+
+            User existingByPhone = findUserByPhone(normalizedPhone);
+            if (existingByPhone != null) {
+                throw new BizException(ErrorCode.BIZ_409, "手机号已存在，请选择已有账号");
+            }
+
+            String normalizedPassword = normalizeRequired(adminPassword, "管理员密码不能为空");
+            if (normalizedPassword.length() < 6) {
+                throw new BizException(ErrorCode.BIZ_422, "管理员密码至少 6 位");
+            }
+
+            admin = new User();
+            admin.id = UUID.randomUUID().toString();
+            admin.tenantId = tenantId;
+            admin.phone = normalizedPhone;
+            admin.password = passwordEncoder.encode(normalizedPassword);
+            admin.name = normalizedAdminName;
+            admin.bizRole = BizRole.PROJECT_ADMIN;
+            admin.systemAdmin = true;
+            admin.status = UserStatus.ENABLED;
+            admin.createdAt = now;
+            userMapper.insert(admin);
+            usedExistingAdmin = false;
+        }
 
         Department rootDept = new Department();
         rootDept.id = UUID.randomUUID().toString();
@@ -85,9 +154,37 @@ public class VendorTenantService {
         rootDept.updatedAt = now;
         departmentMapper.insert(rootDept);
 
-        admin.deptId = rootDept.id;
-        admin.managerId = null;
-        userMapper.updateById(admin);
+        // Create tenant_user and organization_membership for existing user
+        if (adminUserId != null && !adminUserId.isBlank()) {
+            TenantUser tenantUser = new TenantUser();
+            tenantUser.id = UUID.randomUUID().toString();
+            tenantUser.tenantId = tenantId;
+            tenantUser.userId = admin.id;
+            tenantUser.name = admin.name;
+            tenantUser.status = TenantUserStatus.ACTIVE;
+            tenantUser.activated = true;
+            tenantUser.firstLoginAt = now;
+            tenantUser.lastLoginAt = now;
+            tenantUser.createdAt = now;
+            tenantUser.updatedAt = now;
+            tenantUserMapper.insert(tenantUser);
+
+            OrganizationMembership membership = new OrganizationMembership();
+            membership.id = UUID.randomUUID().toString();
+            membership.tenantUserId = tenantUser.id;
+            membership.departmentId = rootDept.id;
+            membership.roleId = admin.bizRole == null ? null : admin.bizRole.name();
+            membership.primary = true;
+            membership.joinedAt = now;
+            membership.status = MembershipStatus.ACTIVE;
+            membership.createdAt = now;
+            membership.updatedAt = now;
+            organizationMembershipMapper.insert(membership);
+        } else {
+            admin.deptId = rootDept.id;
+            admin.managerId = null;
+            userMapper.updateById(admin);
+        }
 
         Tenant tenant = new Tenant();
         tenant.id = tenantId;
@@ -95,7 +192,7 @@ public class VendorTenantService {
         tenant.adminUserId = admin.id;
         tenant.adminPhone = admin.phone;
         tenant.status = TenantStatus.ACTIVE;
-        tenant.expireAt = now.plusYears(1);
+        tenant.expireAt = expireDate.atStartOfDay();
         tenant.createdAt = now;
         tenant.updatedAt = now;
         tenantMapper.insert(tenant);
@@ -103,8 +200,8 @@ public class VendorTenantService {
         TenantOrder order = new TenantOrder();
         order.id = UUID.randomUUID().toString();
         order.tenantId = tenantId;
-        order.startTime = LocalDate.now();
-        order.expireTime = tenant.expireAt != null ? tenant.expireAt.toLocalDate() : null;
+        order.startTime = startDate;
+        order.expireTime = expireDate;
         order.createdAt = now;
         tenantOrderMapper.insert(order);
 
@@ -114,8 +211,8 @@ public class VendorTenantService {
                 admin.id,
                 admin.name,
                 admin.phone,
-                usedExistingAdminPhone ? null : admin.password,
-                usedExistingAdminPhone,
+                usedExistingAdmin ? null : adminPassword,
+                usedExistingAdmin,
                 tenant.status.name(),
                 tenant.expireAt,
                 tenant.createdAt
@@ -337,6 +434,15 @@ public class VendorTenantService {
             String status,
             LocalDateTime expireAt,
             LocalDateTime createdAt
+    ) {
+    }
+
+    public record AvailableAdmin(
+            String userId,
+            String name,
+            String phone,
+            String tenantId,
+            String tenantName
     ) {
     }
 }

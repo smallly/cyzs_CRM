@@ -368,8 +368,8 @@ public class BootstrapService {
         }
         long exists = userAuthenticationMapper.selectCount(
                 new QueryWrapper<UserAuthentication>()
-                        .eq("user_id", user.id)
                         .eq("auth_type", AuthenticationType.PHONE.name())
+                        .eq("auth_identifier", user.phone)
         );
         if (exists > 0) {
             return;

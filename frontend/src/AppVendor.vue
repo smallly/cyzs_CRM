@@ -238,6 +238,65 @@
     </template>
   </el-dialog>
 
+  <!-- 选择管理员弹窗 -->
+  <el-dialog
+    v-model="adminSelectDialogVisible"
+    title="选择管理员"
+    width="720px"
+    :close-on-click-modal="false"
+  >
+    <div class="admin-select-header">
+      <el-input
+        v-model="adminSearchKeyword"
+        placeholder="搜索姓名或手机号"
+        clearable
+        style="width: 280px"
+        @keyup.enter="loadAvailableAdmins"
+      >
+        <template #suffix>
+          <el-icon @click="loadAvailableAdmins" style="cursor: pointer"><Search /></el-icon>
+        </template>
+      </el-input>
+      <el-button type="primary" @click="openCreateAdminInDialog">新建用户</el-button>
+    </div>
+
+    <el-table :data="availableAdmins" v-loading="adminSelectLoading" style="margin-top: 16px">
+      <el-table-column prop="name" label="姓名" min-width="120" />
+      <el-table-column prop="phone" label="手机号" min-width="140" />
+      <el-table-column prop="tenantName" label="所属租户" min-width="160" />
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" type="primary" @click="selectAdmin(row)">选择</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 弹窗内新建用户表单 -->
+    <el-dialog
+      v-model="createAdminInDialogVisible"
+      title="新建用户"
+      width="480px"
+      append-to-body
+      :close-on-click-modal="false"
+    >
+      <el-form :model="createAdminForm" label-width="80px">
+        <el-form-item label="姓名" required>
+          <el-input v-model="createAdminForm.name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="手机号" required>
+          <el-input v-model="createAdminForm.phone" placeholder="请输入手机号" />
+        </el-form-item>
+        <el-form-item label="密码" required>
+          <el-input v-model="createAdminForm.password" type="password" show-password placeholder="至少6位" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createAdminInDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="creatingAdminInDialog" @click="submitCreateAdminInDialog">保存</el-button>
+      </template>
+    </el-dialog>
+  </el-dialog>
+
   <!-- 开通组织弹窗 -->
   <el-dialog
     v-model="openDialogVisible"
@@ -261,31 +320,23 @@
       </el-row>
 
       <div class="form-section-title">管理员信息</div>
-      <el-row :gutter="24">
+      <el-form-item label="管理员" required>
+        <div class="admin-selector" @click="openAdminSelectDialog">
+          <span v-if="selectedAdmin" class="admin-selected">
+            {{ selectedAdmin.name }} ({{ selectedAdmin.phone }})
+          </span>
+          <span v-else class="admin-placeholder">请选择管理员</span>
+          <el-icon class="admin-selector-icon"><Plus /></el-icon>
+        </div>
+      </el-form-item>
+      <!-- 新建管理员时显示密码字段 -->
+      <el-row v-if="isNewAdmin" :gutter="24">
         <el-col :span="12">
-          <el-form-item label="姓名" required>
-            <el-input v-model="form.adminName" placeholder="例如：张三" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="手机号" required>
-            <el-input
-              v-model="form.adminPhone"
-              placeholder="例如：13800001234"
-              @blur="checkAdminPhoneExists"
-              @change="checkAdminPhoneExists"
-            />
-            <div v-if="checkingAdminPhone" class="hint-text-col">正在检查手机号...</div>
-            <div v-else-if="adminPhoneExists" class="hint-text-col">该手机号已存在，将沿用原密码</div>
-            <div v-else-if="isPhoneFormatValid(form.adminPhone)" class="hint-text-col">该手机号未注册，需设置密码</div>
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="密码" :required="!adminPhoneExists">
+          <el-form-item label="密码" required>
             <el-input
               v-model="form.adminPassword"
               show-password
-              :placeholder="adminPhoneExists ? '可留空沿用原密码' : '至少 6 位'"
+              placeholder="至少 6 位"
             />
           </el-form-item>
         </el-col>
@@ -414,7 +465,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from './stores/auth'
-import { Lock, User, SwitchButton } from '@element-plus/icons-vue'
+import { Lock, User, SwitchButton, Plus, Search } from '@element-plus/icons-vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from './api/page'
 
 interface TenantSummary {
@@ -497,6 +548,23 @@ const adminDialogVisible = ref(false)
 const adminCreating = ref(false)
 const admins = ref<any[]>([])
 const adminForm = reactive({
+  name: '',
+  phone: '',
+  password: ''
+})
+
+// Admin selector in open tenant dialog
+const adminSelectDialogVisible = ref(false)
+const adminSelectLoading = ref(false)
+const adminSearchKeyword = ref('')
+const availableAdmins = ref<any[]>([])
+const selectedAdmin = ref<any | null>(null)
+const isNewAdmin = ref(false)
+
+// Create admin inside selector dialog
+const createAdminInDialogVisible = ref(false)
+const creatingAdminInDialog = ref(false)
+const createAdminForm = reactive({
   name: '',
   phone: '',
   password: ''
@@ -716,33 +784,118 @@ async function toggleTenantStatus(row: TenantSummary) {
   }
 }
 
+function openAdminSelectDialog() {
+  adminSelectDialogVisible.value = true
+  adminSearchKeyword.value = ''
+  void loadAvailableAdmins()
+}
+
+async function loadAvailableAdmins() {
+  adminSelectLoading.value = true
+  try {
+    const keyword = adminSearchKeyword.value.trim()
+    const url = keyword
+      ? `/api/vendor/tenants/available-admins?keyword=${encodeURIComponent(keyword)}`
+      : '/api/vendor/tenants/available-admins'
+    availableAdmins.value = await authStore.api<any[]>(url)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '加载用户列表失败')
+    availableAdmins.value = []
+  } finally {
+    adminSelectLoading.value = false
+  }
+}
+
+function selectAdmin(row: any) {
+  selectedAdmin.value = row
+  isNewAdmin.value = false
+  form.adminName = row.name
+  form.adminPhone = row.phone
+  adminSelectDialogVisible.value = false
+}
+
+function openCreateAdminInDialog() {
+  createAdminForm.name = ''
+  createAdminForm.phone = ''
+  createAdminForm.password = ''
+  createAdminInDialogVisible.value = true
+}
+
+async function submitCreateAdminInDialog() {
+  if (!createAdminForm.name.trim()) {
+    ElMessage.warning('请输入姓名')
+    return
+  }
+  if (!createAdminForm.phone.trim()) {
+    ElMessage.warning('请输入手机号')
+    return
+  }
+  if (!isPhoneFormatValid(createAdminForm.phone)) {
+    ElMessage.warning('请输入正确的 11 位手机号')
+    return
+  }
+  if (!createAdminForm.password || createAdminForm.password.length < 6) {
+    ElMessage.warning('密码至少 6 位')
+    return
+  }
+
+  creatingAdminInDialog.value = true
+  try {
+    const created = await authStore.api<any>('/api/vendor/admins', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: createAdminForm.name.trim(),
+        phone: createAdminForm.phone.trim(),
+        password: createAdminForm.password
+      })
+    })
+    ElMessage.success('用户已创建')
+    createAdminInDialogVisible.value = false
+    // Auto select the newly created admin
+    selectedAdmin.value = created
+    isNewAdmin.value = true
+    form.adminName = created.name
+    form.adminPhone = created.phone
+    adminSelectDialogVisible.value = false
+  } catch (error: any) {
+    ElMessage.error(error?.message || '创建失败')
+  } finally {
+    creatingAdminInDialog.value = false
+  }
+}
+
 async function openTenant() {
   if (!form.tenantName.trim()) return ElMessage.warning('请输入组织名称')
-  if (!form.adminName.trim()) return ElMessage.warning('请输入管理员姓名')
-  if (!form.adminPhone.trim()) return ElMessage.warning('请输入管理员手机号')
-  if (!isPhoneFormatValid(form.adminPhone)) return ElMessage.warning('请输入正确的 11 位手机号')
   if (!form.openTime) return ElMessage.warning('请选择开通时间')
   if (!form.expireTime) return ElMessage.warning('请选择到期时间')
 
-  await checkAdminPhoneExists()
-  if (!adminPhoneExists.value) {
+  const body: any = {
+    tenantName: form.tenantName.trim(),
+    tenantId: form.tenantId.trim() || undefined,
+    openTime: form.openTime,
+    expireTime: form.expireTime
+  }
+
+  if (selectedAdmin.value) {
+    // Use existing admin
+    body.adminUserId = selectedAdmin.value.userId || selectedAdmin.value.id
+  } else {
+    // Create new admin
+    if (!form.adminName.trim()) return ElMessage.warning('请选择或新建管理员')
+    if (!form.adminPhone.trim()) return ElMessage.warning('请选择或新建管理员')
+    if (!isPhoneFormatValid(form.adminPhone)) return ElMessage.warning('请输入正确的 11 位手机号')
     const password = form.adminPassword.trim()
     if (!password || password.length < 6) return ElMessage.warning('管理员密码至少 6 位')
+    body.adminName = form.adminName.trim()
+    body.adminPhone = form.adminPhone.trim()
+    body.adminPassword = password
   }
 
   creating.value = true
   try {
     const created = await authStore.api<TenantOpenResult>('/api/vendor/tenants', {
       method: 'POST',
-      body: JSON.stringify({
-        tenantName: form.tenantName.trim(),
-        tenantId: form.tenantId.trim() || undefined,
-        adminName: form.adminName.trim(),
-        adminPhone: form.adminPhone.trim(),
-        adminPassword: form.adminPassword.trim() || undefined,
-        openTime: form.openTime,
-        expireTime: form.expireTime
-      })
+      body: JSON.stringify(body)
     })
     lastCreated.value = created
     successDialogVisible.value = true
@@ -788,6 +941,8 @@ function resetForm() {
   form.openTime = new Date().toISOString().split('T')[0]
   form.expireTime = ''
   adminPhoneExists.value = false
+  selectedAdmin.value = null
+  isNewAdmin.value = false
 }
 
 // Admin management functions
@@ -918,11 +1073,16 @@ function formatDateTime(value?: string) {
 .vendor-menu-item {
   border: 1px solid transparent;
   background: #ffffff;
-  color: #334155;
+  color: #1e293b;
   border-radius: 8px;
   padding: 10px 12px;
   text-align: left;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vendor-menu-item:hover {
+  background: #f1f5f9;
 }
 
 .vendor-menu-item.active {
@@ -1004,6 +1164,43 @@ function formatDateTime(value?: string) {
 
 .open-form .el-form-item:last-child {
   margin-bottom: 0;
+}
+
+.admin-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 36px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.admin-selector:hover {
+  border-color: #2f5cf6;
+}
+
+.admin-selected {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.admin-placeholder {
+  color: #a8abb2;
+  font-size: 14px;
+}
+
+.admin-selector-icon {
+  color: #2f5cf6;
+  font-size: 16px;
+}
+
+.admin-select-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .vendor-login-page {
