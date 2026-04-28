@@ -10,6 +10,29 @@
           </div>
         </div>
 
+        <div v-if="!isCollapsed && authStore.hasMultipleTenants" class="tenant-switcher">
+          <el-dropdown trigger="click" popper-class="tenant-switcher-popper" @command="handleTenantCommand">
+            <div class="tenant-trigger">
+              <el-icon><OfficeBuilding /></el-icon>
+              <span class="tenant-name">{{ authStore.tenantName || authStore.tenantId }}</span>
+              <el-icon class="tenant-switch-icon"><Switch /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-for="t in authStore.tenants"
+                  :key="t.tenantId"
+                  :command="t.tenantId"
+                  :class="{ 'tenant-active': t.tenantId === authStore.tenantId }"
+                >
+                  <span>{{ t.tenantName || t.tenantId }}</span>
+                  <el-tag v-if="t.tenantId === authStore.tenantId" type="success" size="small">当前</el-tag>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+
         <nav class="menu">
           <div class="menu-group">
             <div v-if="!isCollapsed" class="menu-group-title">业务</div>
@@ -164,7 +187,8 @@ import {
   CollectionTag,
   Lock,
   SwitchButton,
-  OfficeBuilding
+  OfficeBuilding,
+  Switch
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -292,6 +316,10 @@ async function submitChangePassword() {
   } finally {
     changePasswordLoading.value = false
   }
+}
+
+function handleTenantCommand(tenantId: string) {
+  authStore.switchTenant(tenantId)
 }
 
 function handleUserCommand(command: string | number | object) {
@@ -618,6 +646,43 @@ function isMenuActive(menuRoute: string): boolean {
 .tenant-active {
   background: #eff4ff;
   color: #2f5cf6;
+}
+
+.tenant-switcher {
+  padding: 0 10px 10px;
+  border-bottom: 1px solid #e5eaf3;
+  margin-bottom: 8px;
+}
+
+.tenant-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+  transition: all 0.15s ease;
+}
+
+.tenant-trigger:hover {
+  border-color: #dbe6fb;
+  background: #eff4ff;
+}
+
+.tenant-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-switch-icon {
+  color: #64748b;
+  font-size: 14px;
 }
 </style>
 
