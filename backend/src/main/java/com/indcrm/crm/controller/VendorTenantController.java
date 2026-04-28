@@ -67,6 +67,7 @@ public class VendorTenantController {
     @PostMapping
     public ApiResponse<VendorTenantService.TenantOpenResult> open(@RequestBody @Valid OpenTenantReq req) {
         requireVendorAdmin();
+        User user = sessionService.requireUser();
         return ApiResponse.ok(vendorTenantService.openTenant(
                 req.tenantName(),
                 req.tenantId(),
@@ -75,7 +76,8 @@ public class VendorTenantController {
                 req.adminPhone(),
                 req.adminPassword(),
                 req.openTime(),
-                req.expireTime()
+                req.expireTime(),
+                user.id
         ));
     }
 
@@ -94,8 +96,9 @@ public class VendorTenantController {
             @RequestBody RenewReq req
     ) {
         requireVendorAdmin();
+        User user = sessionService.requireUser();
         int days = req.days() == null ? 30 : req.days();
-        return ApiResponse.ok(vendorTenantService.renewTenant(tenantId, days));
+        return ApiResponse.ok(vendorTenantService.renewTenant(tenantId, days, user.id));
     }
 
     @PutMapping("/{tenantId}")

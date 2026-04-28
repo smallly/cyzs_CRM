@@ -476,6 +476,7 @@
     <el-table :data="orderRecords" v-loading="orderLoading" border stripe max-height="400">
       <el-table-column prop="startTime" label="开始日期" min-width="140" />
       <el-table-column prop="expireTime" label="到期日期" min-width="140" />
+      <el-table-column prop="createdByName" label="创建人" min-width="120" />
       <el-table-column prop="createdAt" label="创建时间" min-width="180">
         <template #default="{ row }">
           {{ formatDateTime(row.createdAt) }}

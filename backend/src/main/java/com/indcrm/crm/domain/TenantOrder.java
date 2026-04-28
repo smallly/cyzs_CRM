@@ -20,4 +20,8 @@ public class TenantOrder {
     public LocalDate expireTime;
     @TableField("created_at")
     public LocalDateTime createdAt;
+    @TableField("created_by")
+    public String createdBy;
+    @TableField(exist = false)
+    public String createdByName;
 }

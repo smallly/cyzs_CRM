@@ -293,6 +293,7 @@ CREATE TABLE IF NOT EXISTS tenant_orders (
   tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
   start_time DATE DEFAULT NULL COMMENT '开始日期',
   expire_time DATE DEFAULT NULL COMMENT '到期日期',
+  created_by VARCHAR(64) DEFAULT NULL COMMENT '创建人ID',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   KEY idx_orders_tenant (tenant_id)

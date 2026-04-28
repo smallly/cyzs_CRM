@@ -144,7 +144,7 @@ public class VendorTenantService {
     }
 
     @Transactional
-    public TenantOpenResult openTenant(String tenantName, String requestedTenantId, String adminUserId, String adminName, String adminPhone, String adminPassword, String openTime, String expireTime) {
+    public TenantOpenResult openTenant(String tenantName, String requestedTenantId, String adminUserId, String adminName, String adminPhone, String adminPassword, String openTime, String expireTime, String createdBy) {
         String normalizedName = normalizeRequired(tenantName, "租户名称不能为空");
 
         String tenantId = generateTenantId(requestedTenantId, normalizedName);
@@ -271,6 +271,7 @@ public class VendorTenantService {
         order.tenantId = tenantId;
         order.startTime = startDate;
         order.expireTime = expireDate;
+        order.createdBy = createdBy;
         order.createdAt = now;
         tenantOrderMapper.insert(order);
 
@@ -289,9 +290,16 @@ public class VendorTenantService {
     }
 
     public List<TenantOrder> listOrders(String tenantId) {
-        return tenantOrderMapper.selectList(
+        List<TenantOrder> orders = tenantOrderMapper.selectList(
                 new QueryWrapper<TenantOrder>().eq("tenant_id", tenantId).orderByDesc("created_at")
         );
+        for (TenantOrder order : orders) {
+            if (order.createdBy != null && !order.createdBy.isBlank()) {
+                User creator = userMapper.selectById(order.createdBy);
+                order.createdByName = creator != null ? creator.name : order.createdBy;
+            }
+        }
+        return orders;
     }
 
     public List<TenantSummary> listTenants() {
@@ -366,7 +374,7 @@ public class VendorTenantService {
     }
 
     @Transactional
-    public TenantSummary renewTenant(String tenantId, int days) {
+    public TenantSummary renewTenant(String tenantId, int days, String createdBy) {
         if (days <= 0) {
             throw new BizException(ErrorCode.BIZ_422, "续期天数必须大于 0");
         }
@@ -378,6 +386,9 @@ public class VendorTenantService {
         if (tenant.status == null) {
             tenant.status = TenantStatus.ACTIVE;
         }
+        if (tenant.status == TenantStatus.DISABLED && tenant.expireAt != null && tenant.expireAt.isAfter(now)) {
+            tenant.status = TenantStatus.ACTIVE;
+        }
         tenantMapper.updateById(tenant);
 
         TenantOrder order = new TenantOrder();
@@ -385,6 +396,7 @@ public class VendorTenantService {
         order.tenantId = tenantId;
         order.startTime = base.toLocalDate();
         order.expireTime = tenant.expireAt != null ? tenant.expireAt.toLocalDate() : null;
+        order.createdBy = createdBy;
         order.createdAt = now;
         tenantOrderMapper.insert(order);
 
