@@ -134,10 +134,11 @@
                 {{ formatDateTime(row.createdAt) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="320" fixed="right">
+            <el-table-column label="操作" width="380" fixed="right">
               <template #default="{ row }">
                 <el-space>
                   <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
+                  <el-button size="small" @click="openChangeAdminDialog(row)">更换管理员</el-button>
                   <el-button size="small" @click="openOrderDialog(row)">订单记录</el-button>
                   <el-button size="small" @click="openRenewDialog(row)">续费</el-button>
                   <el-button
@@ -287,7 +288,7 @@
   <!-- 选择管理员弹窗 -->
   <el-dialog
     v-model="adminSelectDialogVisible"
-    title="选择管理员"
+    :title="changeAdminTarget ? '更换管理员' : '选择管理员'"
     width="720px"
     :close-on-click-modal="false"
   >
@@ -312,7 +313,7 @@
       <el-table-column prop="tenantName" label="所属租户" min-width="160" />
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" @click="selectAdmin(row)">选择</el-button>
+          <el-button size="small" type="primary" :loading="changeAdminSubmitting" @click="selectAdmin(row)">选择</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -611,6 +612,10 @@ const availableAdmins = ref<any[]>([])
 const selectedAdmin = ref<any | null>(null)
 const isNewAdmin = ref(false)
 
+// Change admin
+const changeAdminTarget = ref<TenantSummary | null>(null)
+const changeAdminSubmitting = ref(false)
+
 // Create admin inside selector dialog
 const createAdminInDialogVisible = ref(false)
 const creatingAdminInDialog = ref(false)
@@ -832,6 +837,14 @@ async function toggleTenantStatus(row: TenantSummary) {
 }
 
 function openAdminSelectDialog() {
+  changeAdminTarget.value = null
+  adminSelectDialogVisible.value = true
+  adminSearchKeyword.value = ''
+  void loadAvailableAdmins()
+}
+
+function openChangeAdminDialog(row: TenantSummary) {
+  changeAdminTarget.value = row
   adminSelectDialogVisible.value = true
   adminSearchKeyword.value = ''
   void loadAvailableAdmins()
@@ -853,7 +866,28 @@ async function loadAvailableAdmins() {
   }
 }
 
-function selectAdmin(row: any) {
+async function selectAdmin(row: any) {
+  if (changeAdminTarget.value) {
+    const tenantId = changeAdminTarget.value.tenantId
+    const userId = row.userId || row.id
+    changeAdminSubmitting.value = true
+    try {
+      await authStore.api(`/api/vendor/tenants/${tenantId}/admin`, {
+        method: 'PUT',
+        body: JSON.stringify({ adminUserId: userId })
+      })
+      ElMessage.success('管理员已更换')
+      adminSelectDialogVisible.value = false
+      changeAdminTarget.value = null
+      await loadTenants()
+    } catch (error: any) {
+      ElMessage.error(error?.message || '更换管理员失败')
+    } finally {
+      changeAdminSubmitting.value = false
+    }
+    return
+  }
+
   selectedAdmin.value = row
   isNewAdmin.value = false
   form.adminName = row.name

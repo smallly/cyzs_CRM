@@ -435,6 +435,83 @@ public class VendorTenantService {
         }
     }
 
+    @Transactional
+    public TenantSummary changeTenantAdmin(String tenantId, String adminUserId) {
+        Tenant tenant = mustGetTenant(tenantId);
+        User newAdmin = userMapper.selectById(adminUserId);
+        if (newAdmin == null) {
+            throw new BizException(ErrorCode.BIZ_422, "管理员用户不存在");
+        }
+
+        tenant.adminUserId = newAdmin.id;
+        tenant.adminPhone = newAdmin.phone;
+        tenant.updatedAt = LocalDateTime.now();
+        tenantMapper.updateById(tenant);
+
+        ensureTenantUserForAdmin(tenantId, newAdmin);
+
+        Department rootDept = departmentMapper.selectOne(
+                new QueryWrapper<Department>()
+                        .eq("tenant_id", tenantId)
+                        .isNull("parent_id")
+                        .last("LIMIT 1")
+        );
+        if (rootDept != null) {
+            rootDept.headUserId = newAdmin.id;
+            rootDept.updatedAt = LocalDateTime.now();
+            departmentMapper.updateById(rootDept);
+        }
+
+        return toSummary(tenant);
+    }
+
+    private void ensureTenantUserForAdmin(String tenantId, User admin) {
+        TenantUser existing = tenantUserMapper.selectOne(
+                new QueryWrapper<TenantUser>()
+                        .eq("tenant_id", tenantId)
+                        .eq("user_id", admin.id)
+        );
+        LocalDateTime now = LocalDateTime.now();
+        if (existing == null) {
+            TenantUser tenantUser = new TenantUser();
+            tenantUser.id = UUID.randomUUID().toString();
+            tenantUser.tenantId = tenantId;
+            tenantUser.userId = admin.id;
+            tenantUser.name = admin.name;
+            tenantUser.status = TenantUserStatus.ACTIVE;
+            tenantUser.activated = true;
+            tenantUser.firstLoginAt = now;
+            tenantUser.lastLoginAt = now;
+            tenantUser.createdAt = now;
+            tenantUser.updatedAt = now;
+            tenantUserMapper.insert(tenantUser);
+
+            Department rootDept = departmentMapper.selectOne(
+                    new QueryWrapper<Department>()
+                            .eq("tenant_id", tenantId)
+                            .isNull("parent_id")
+                            .last("LIMIT 1")
+            );
+            if (rootDept != null) {
+                OrganizationMembership membership = new OrganizationMembership();
+                membership.id = UUID.randomUUID().toString();
+                membership.tenantUserId = tenantUser.id;
+                membership.departmentId = rootDept.id;
+                membership.roleId = admin.bizRole == null ? BizRole.PROJECT_ADMIN.name() : admin.bizRole.name();
+                membership.primary = true;
+                membership.joinedAt = now;
+                membership.status = MembershipStatus.ACTIVE;
+                membership.createdAt = now;
+                membership.updatedAt = now;
+                organizationMembershipMapper.insert(membership);
+            }
+        } else {
+            existing.name = admin.name;
+            existing.updatedAt = now;
+            tenantUserMapper.updateById(existing);
+        }
+    }
+
     private boolean isExpired(Tenant tenant, LocalDateTime now) {
         return tenant.expireAt != null && tenant.expireAt.isBefore(now);
     }

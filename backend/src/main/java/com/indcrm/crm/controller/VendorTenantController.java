@@ -112,6 +112,15 @@ public class VendorTenantController {
         ));
     }
 
+    @PutMapping("/{tenantId}/admin")
+    public ApiResponse<VendorTenantService.TenantSummary> changeAdmin(
+            @PathVariable("tenantId") String tenantId,
+            @RequestBody @Valid ChangeAdminReq req
+    ) {
+        requireVendorAdmin();
+        return ApiResponse.ok(vendorTenantService.changeTenantAdmin(tenantId, req.adminUserId()));
+    }
+
     @GetMapping("/{tenantId}/orders")
     public ApiResponse<?> listOrders(@PathVariable("tenantId") String tenantId) {
         requireVendorAdmin();
@@ -151,6 +160,9 @@ public class VendorTenantController {
             @NotBlank String adminName,
             @NotBlank String adminPhone
     ) {
+    }
+
+    public record ChangeAdminReq(@NotBlank String adminUserId) {
     }
 
     public record CreateAdminReq(
