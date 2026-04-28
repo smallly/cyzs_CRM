@@ -118,9 +118,10 @@
                 {{ formatDateTime(row.createdAt) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="280" fixed="right">
+            <el-table-column label="操作" width="320" fixed="right">
               <template #default="{ row }">
                 <el-space>
+                  <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
                   <el-button size="small" @click="openOrderDialog(row)">订单记录</el-button>
                   <el-button size="small" @click="openRenewDialog(row)">续费</el-button>
                   <el-button
@@ -190,6 +191,33 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <!-- 编辑组织弹窗 -->
+  <el-dialog v-model="editDialogVisible" title="编辑组织" width="560px" :close-on-click-modal="false">
+    <el-form :model="editForm" label-position="top">
+      <el-form-item label="组织名称" required>
+        <el-input v-model="editForm.tenantName" placeholder="请输入组织名称" />
+      </el-form-item>
+      <el-row :gutter="24">
+        <el-col :span="12">
+          <el-form-item label="管理员姓名" required>
+            <el-input v-model="editForm.adminName" placeholder="请输入管理员姓名" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="管理员手机号" required>
+            <el-input v-model="editForm.adminPhone" placeholder="请输入管理员手机号" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+    <template #footer>
+      <el-space>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="submitEdit">保存</el-button>
+      </el-space>
+    </template>
+  </el-dialog>
 
   <!-- 添加管理员弹窗 -->
   <el-dialog v-model="adminDialogVisible" title="添加管理员" width="480px" :close-on-click-modal="false">
@@ -453,6 +481,16 @@ const renewTarget = ref<TenantSummary | null>(null)
 const orderTarget = ref<TenantSummary | null>(null)
 const orderRecords = ref<any[]>([])
 
+// Edit tenant
+const editDialogVisible = ref(false)
+const editSubmitting = ref(false)
+const editTarget = ref<TenantSummary | null>(null)
+const editForm = reactive({
+  tenantName: '',
+  adminName: '',
+  adminPhone: ''
+})
+
 // Admin management
 const adminLoading = ref(false)
 const adminDialogVisible = ref(false)
@@ -531,6 +569,49 @@ async function openOrderDialog(row: TenantSummary) {
     orderRecords.value = []
   } finally {
     orderLoading.value = false
+  }
+}
+
+function openEditDialog(row: TenantSummary) {
+  editTarget.value = row
+  editForm.tenantName = row.tenantName
+  editForm.adminName = row.adminName
+  editForm.adminPhone = row.adminPhone
+  editDialogVisible.value = true
+}
+
+async function submitEdit() {
+  if (!editTarget.value) return
+  if (!editForm.tenantName.trim()) {
+    ElMessage.warning('请输入组织名称')
+    return
+  }
+  if (!editForm.adminName.trim()) {
+    ElMessage.warning('请输入管理员姓名')
+    return
+  }
+  if (!editForm.adminPhone.trim()) {
+    ElMessage.warning('请输入管理员手机号')
+    return
+  }
+
+  editSubmitting.value = true
+  try {
+    await authStore.api(`/api/vendor/tenants/${editTarget.value.tenantId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        tenantName: editForm.tenantName.trim(),
+        adminName: editForm.adminName.trim(),
+        adminPhone: editForm.adminPhone.trim()
+      })
+    })
+    ElMessage.success('组织信息已更新')
+    editDialogVisible.value = false
+    await loadTenants()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '更新失败')
+  } finally {
+    editSubmitting.value = false
   }
 }
 

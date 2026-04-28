@@ -7,6 +7,7 @@ import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.domain.User;
 import com.indcrm.crm.service.SessionService;
 import com.indcrm.crm.service.VendorTenantService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -85,6 +86,20 @@ public class VendorTenantController {
         return ApiResponse.ok(vendorTenantService.renewTenant(tenantId, days));
     }
 
+    @PutMapping("/{tenantId}")
+    public ApiResponse<VendorTenantService.TenantSummary> update(
+            @PathVariable("tenantId") String tenantId,
+            @RequestBody @Valid UpdateTenantReq req
+    ) {
+        requireVendorAdmin();
+        return ApiResponse.ok(vendorTenantService.updateTenant(
+                tenantId,
+                req.tenantName(),
+                req.adminName(),
+                req.adminPhone()
+        ));
+    }
+
     @GetMapping("/{tenantId}/orders")
     public ApiResponse<?> listOrders(@PathVariable("tenantId") String tenantId) {
         requireVendorAdmin();
@@ -104,5 +119,12 @@ public class VendorTenantController {
     }
 
     public record RenewReq(Integer days) {
+    }
+
+    public record UpdateTenantReq(
+            @NotBlank String tenantName,
+            @NotBlank String adminName,
+            @NotBlank String adminPhone
+    ) {
     }
 }
