@@ -39,7 +39,18 @@ public class UserService {
     }
 
     public List<User> listMembers(User actor) {
-        List<User> list = userMapper.selectList(new QueryWrapper<User>().eq("tenant_id", actor.tenantId));
+        // 通过 tenant_users 表查询当前租户下的所有关联用户（支持多租户切换）
+        List<TenantUser> tenantUsers = tenantUserMapper.selectList(
+                new QueryWrapper<TenantUser>().eq("tenant_id", actor.tenantId));
+        if (tenantUsers.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<String> userIds = tenantUsers.stream()
+                .map(tu -> tu.userId)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+        List<User> list = userMapper.selectList(
+                new QueryWrapper<User>().in("id", userIds));
         list.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
             LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
