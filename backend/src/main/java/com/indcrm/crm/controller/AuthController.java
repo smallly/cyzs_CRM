@@ -2,8 +2,10 @@ package com.indcrm.crm.controller;
 
 import com.indcrm.crm.auth.JwtService;
 import com.indcrm.crm.common.ApiResponse;
+import com.indcrm.crm.domain.Tenant;
 import com.indcrm.crm.domain.User;
 import com.indcrm.crm.domain.VendorAdmin;
+import com.indcrm.crm.mapper.TenantMapper;
 import com.indcrm.crm.service.AuthService;
 import com.indcrm.crm.service.VendorAdminAuthService;
 import com.indcrm.crm.service.SessionService;
@@ -21,12 +23,14 @@ public class AuthController {
     private final VendorAdminAuthService vendorAdminAuthService;
     private final JwtService jwtService;
     private final SessionService sessionService;
+    private final TenantMapper tenantMapper;
 
-    public AuthController(AuthService authService, VendorAdminAuthService vendorAdminAuthService, JwtService jwtService, SessionService sessionService) {
+    public AuthController(AuthService authService, VendorAdminAuthService vendorAdminAuthService, JwtService jwtService, SessionService sessionService, TenantMapper tenantMapper) {
         this.authService = authService;
         this.vendorAdminAuthService = vendorAdminAuthService;
         this.jwtService = jwtService;
         this.sessionService = sessionService;
+        this.tenantMapper = tenantMapper;
     }
 
     @PostMapping("/login")
@@ -35,11 +39,14 @@ public class AuthController {
         String defaultTenantId = authService.resolveDefaultTenantId(user);
         String token = jwtService.issue(user.id, defaultTenantId);
         var tenants = authService.listActiveTenants(user);
+        Tenant tenant = tenantMapper.selectById(defaultTenantId);
+        String tenantName = tenant != null ? tenant.name : defaultTenantId;
         return ApiResponse.ok(Map.of(
                 "token", token,
                 "userId", user.id,
                 "name", user.name,
                 "tenantId", defaultTenantId,
+                "tenantName", tenantName,
                 "defaultTenantId", defaultTenantId,
                 "tenants", tenants,
                 "bizRole", user.bizRole.name(),
