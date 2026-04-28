@@ -354,24 +354,13 @@ public class VendorTenantService {
     }
 
     @Transactional
-    public TenantSummary updateTenant(String tenantId, String tenantName, String adminName, String adminPhone) {
+    public TenantSummary updateTenant(String tenantId, String tenantName) {
         Tenant tenant = mustGetTenant(tenantId);
         String normalizedName = normalizeRequired(tenantName, "组织名称不能为空");
-        String normalizedAdminName = normalizeRequired(adminName, "管理员姓名不能为空");
-        String normalizedPhone = normalizeRequired(adminPhone, "管理员手机号不能为空");
 
         tenant.name = normalizedName;
         tenant.updatedAt = LocalDateTime.now();
         tenantMapper.updateById(tenant);
-
-        User admin = tenant.adminUserId != null ? userMapper.selectById(tenant.adminUserId) : null;
-        if (admin != null) {
-            admin.name = normalizedAdminName;
-            admin.phone = normalizedPhone;
-            userMapper.updateById(admin);
-            tenant.adminPhone = normalizedPhone;
-            tenantMapper.updateById(tenant);
-        }
 
         return toSummary(tenant);
     }

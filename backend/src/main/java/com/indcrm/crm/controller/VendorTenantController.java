@@ -106,9 +106,7 @@ public class VendorTenantController {
         requireVendorAdmin();
         return ApiResponse.ok(vendorTenantService.updateTenant(
                 tenantId,
-                req.tenantName(),
-                req.adminName(),
-                req.adminPhone()
+                req.tenantName()
         ));
     }
 
@@ -155,11 +153,7 @@ public class VendorTenantController {
     public record RenewReq(Integer days) {
     }
 
-    public record UpdateTenantReq(
-            @NotBlank String tenantName,
-            @NotBlank String adminName,
-            @NotBlank String adminPhone
-    ) {
+    public record UpdateTenantReq(@NotBlank String tenantName) {
     }
 
     public record ChangeAdminReq(@NotBlank String adminUserId) {
