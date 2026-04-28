@@ -1286,6 +1286,30 @@ function formatDateTime(value?: string) {
   align-items: center;
 }
 
+/* Fix dialog header alignment */
+:deep(.el-dialog__header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  margin-right: 0;
+}
+
+:deep(.el-dialog__title) {
+  line-height: 1;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+:deep(.el-dialog__headerbtn) {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
 .vendor-login-page {
   min-height: 100vh;
   display: flex;
