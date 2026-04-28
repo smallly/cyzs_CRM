@@ -11,8 +11,10 @@ export const useAuthStore = defineStore('auth', () => {
   const tenantId = ref<string>('')
   const tenantName = ref<string>('')
   const vendorAdmin = ref<boolean>(false)
+  const tenants = ref<Array<{ tenantId: string; tenantName: string; isDefault: boolean }>>([])
 
   const isLoggedIn = computed(() => !!token.value)
+  const hasMultipleTenants = computed(() => !vendorAdmin.value && tenants.value.length > 1)
 
   const api = createApiClient(() => token.value, () => {
     const wasVendor = vendorAdmin.value
@@ -49,6 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
     tenantId.value = res.tenantId || res.tid || ''
     tenantName.value = res.tenantName || res.orgName || tenantId.value
     vendorAdmin.value = false
+    tenants.value = (res as any).tenants || []
   }
 
   async function loginVendor(phone: string, password: string) {
@@ -79,6 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
     tenantId.value = ''
     tenantName.value = ''
     vendorAdmin.value = false
+    tenants.value = []
   }
 
   function restoreFromStorage() {
@@ -99,6 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
         phoneRef.value = data.phone || ''
         tenantName.value = data.tenantName || tenantId.value || ''
         vendorAdmin.value = !!data.vendorAdmin
+        tenants.value = data.tenants || []
       } catch {
         // ignore parse errors
       }
@@ -121,6 +126,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function switchTenant(targetTenantId: string) {
+    const res = await api<{
+      token: string
+      tenantId: string
+      tenantName: string
+      defaultTenantId: string
+    }>('/api/auth/current-tenant', {
+      method: 'PUT',
+      body: JSON.stringify({ tenantId: targetTenantId })
+    })
+    token.value = res.token
+    tenantId.value = res.tenantId || res.defaultTenantId || targetTenantId
+    tenantName.value = res.tenantName || targetTenantId
+    tenants.value = tenants.value.map((t) => ({
+      ...t,
+      isDefault: t.tenantId === targetTenantId
+    }))
+    saveToStorage()
+    window.location.reload()
+  }
+
   function saveToStorage() {
     localStorage.setItem('crm_auth', JSON.stringify({
       token: token.value,
@@ -129,7 +155,8 @@ export const useAuthStore = defineStore('auth', () => {
       userName: userName.value,
       phone: phoneRef.value,
       tenantName: tenantName.value,
-      vendorAdmin: vendorAdmin.value
+      vendorAdmin: vendorAdmin.value,
+      tenants: tenants.value
     }))
   }
 
@@ -141,13 +168,16 @@ export const useAuthStore = defineStore('auth', () => {
     tenantId,
     tenantName,
     vendorAdmin,
+    tenants,
     isLoggedIn,
+    hasMultipleTenants,
     api,
     login,
     loginVendor,
     logout,
     restoreFromStorage,
     syncUserNameFromUsers,
-    saveToStorage
+    saveToStorage,
+    switchTenant
   }
 })

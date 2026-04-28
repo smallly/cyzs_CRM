@@ -103,6 +103,6 @@ public class ContactController {
             String gender,
             Boolean decisionMaker,
             String remark,
-            @NotEmpty List<String> projectIds
+            List<String> projectIds
     ) {}
 }
