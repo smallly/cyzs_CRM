@@ -16,6 +16,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const hasMultipleTenants = computed(() => !vendorAdmin.value && tenants.value.length > 1)
 
+  // Restore auth state immediately on store creation
+  restoreFromStorage()
+
   const api = createApiClient(() => token.value, () => {
     const wasVendor = vendorAdmin.value
     logout()

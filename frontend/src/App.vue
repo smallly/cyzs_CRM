@@ -11,7 +11,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 onMounted(async () => {
-  authStore.restoreFromStorage()
   await authStore.syncUserNameFromUsers()
   if (!authStore.isLoggedIn && router.currentRoute.value.path !== '/login') {
     router.push('/login')
