@@ -21,6 +21,7 @@ public class ProjectService {
     private final ContractMapper contractMapper;
     private final PaymentMapper paymentMapper;
     private final UserMapper userMapper;
+    private final TenantUserMapper tenantUserMapper;
     private final PermissionService permissionService;
     private final CodeService codeService;
     private final AuditService auditService;
@@ -33,6 +34,7 @@ public class ProjectService {
             ContractMapper contractMapper,
             PaymentMapper paymentMapper,
             UserMapper userMapper,
+            TenantUserMapper tenantUserMapper,
             PermissionService permissionService,
             CodeService codeService,
             AuditService auditService,
@@ -44,6 +46,7 @@ public class ProjectService {
         this.contractMapper = contractMapper;
         this.paymentMapper = paymentMapper;
         this.userMapper = userMapper;
+        this.tenantUserMapper = tenantUserMapper;
         this.permissionService = permissionService;
         this.codeService = codeService;
         this.auditService = auditService;
@@ -93,7 +96,7 @@ public class ProjectService {
         }
         validateAreaRange(intendedAreaMin, intendedAreaMax);
         User owner = userMapper.selectById(normalizedOwnerId);
-        if (owner == null || !actor.tenantId.equals(owner.tenantId)) {
+        if (owner == null || !isTenantMember(actor.tenantId, normalizedOwnerId)) {
             throw new BizException(ErrorCode.BIZ_422, "Owner does not exist");
         }
 
@@ -262,7 +265,7 @@ public class ProjectService {
             throw new BizException(ErrorCode.BIZ_422, "newOwnerId is required");
         }
         User newOwner = userMapper.selectById(normalizedOwnerId);
-        if (newOwner == null || !actor.tenantId.equals(newOwner.tenantId)) {
+        if (newOwner == null || !isTenantMember(actor.tenantId, normalizedOwnerId)) {
             throw new BizException(ErrorCode.BIZ_422, "New owner does not exist");
         }
         p.ownerId = normalizedOwnerId;
@@ -371,5 +374,14 @@ public class ProjectService {
         if (owner != null) {
             p.ownerName = owner.name;
         }
+    }
+
+    private boolean isTenantMember(String tenantId, String userId) {
+        if (tenantId == null || userId == null) {
+            return false;
+        }
+        return tenantUserMapper.selectCount(
+                Wrappers.<TenantUser>query().eq("tenant_id", tenantId).eq("user_id", userId)
+        ) > 0;
     }
 }
