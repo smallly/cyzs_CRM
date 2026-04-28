@@ -42,8 +42,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (token != null && !token.isBlank()) {
                 Claims claims = jwtService.parse(token);
                 String uid = claims.get("uid", String.class);
+                String tid = claims.get("tid", String.class);
                 User user = userMapper.selectById(uid);
                 if (user != null) {
+                    if (tid != null && !tid.isBlank()) {
+                        user.tenantId = tid;
+                    }
                     AuthContext.set(user);
                 }
             }
