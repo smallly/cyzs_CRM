@@ -1175,9 +1175,9 @@ function formatDateTime(value?: string) {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid transparent;
+  border: 1px solid #fff;
   background: transparent;
-  color: #334155;
+  color: #475569;
   border-radius: 8px;
   padding: 10px 12px;
   text-align: left;
@@ -1188,14 +1188,14 @@ function formatDateTime(value?: string) {
 }
 
 .vendor-menu-item:hover {
-  border-color: #dbe6fb;
+  border-color: #fff;
   background: #eff4ff;
   color: #1e293b;
 }
 
 .vendor-menu-item.active {
   background: linear-gradient(135deg, #2f5cf6, #1d4ed8);
-  border-color: #2f5cf6;
+  border-color: #fff;
   color: #fff;
   box-shadow: 0 3px 10px rgba(47, 92, 246, 0.24);
 }
