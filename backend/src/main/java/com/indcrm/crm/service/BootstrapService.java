@@ -8,6 +8,7 @@ import com.indcrm.crm.mapper.*;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,7 @@ public class BootstrapService {
     private final VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public BootstrapService(UserMapper userMapper, UserAuthenticationMapper userAuthenticationMapper,
                             TenantUserMapper tenantUserMapper, OrganizationMembershipMapper organizationMembershipMapper,
@@ -54,7 +56,8 @@ public class BootstrapService {
                             ProjectDictConfigMapper projectDictConfigMapper,
                             VendorAdminMapper vendorAdminMapper,
                             VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper,
-                            JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+                            JdbcTemplate jdbcTemplate, ObjectMapper objectMapper,
+                            PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
         this.userAuthenticationMapper = userAuthenticationMapper;
         this.tenantUserMapper = tenantUserMapper;
@@ -72,6 +75,7 @@ public class BootstrapService {
         this.vendorAdminAuthenticationMapper = vendorAdminAuthenticationMapper;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostConstruct
@@ -88,6 +92,7 @@ public class BootstrapService {
             normalizeSeedUserNames();
             ensureIdentityStructuresForExistingUsers();
         }
+        ensureDefaultSaasAdminPassword();
         migrateBusinessEntitiesFromStateStore();
     }
 
@@ -241,7 +246,7 @@ public class BootstrapService {
         saasAdmin.id = UUID.randomUUID().toString();
         saasAdmin.tenantId = "tenant-a";
         saasAdmin.phone = DEFAULT_SAAS_ADMIN_PHONE;
-        saasAdmin.password = DEFAULT_SAAS_ADMIN_PASSWORD;
+        saasAdmin.password = passwordEncoder.encode(DEFAULT_SAAS_ADMIN_PASSWORD);
         saasAdmin.name = DEFAULT_SAAS_ADMIN_NAME;
         saasAdmin.lastTenantId = saasAdmin.tenantId;
         saasAdmin.bizRole = BizRole.PROJECT_ADMIN;
@@ -272,7 +277,7 @@ public class BootstrapService {
         sales.id = UUID.randomUUID().toString();
         sales.tenantId = "tenant-a";
         sales.phone = DEFAULT_SALES_PHONE;
-        sales.password = "Sales@123";
+        sales.password = passwordEncoder.encode("Sales@123");
         sales.name = DEFAULT_SALES_NAME;
         sales.lastTenantId = sales.tenantId;
         sales.bizRole = BizRole.SALES;
@@ -284,6 +289,29 @@ public class BootstrapService {
         userMapper.insert(sales);
         seedTenantUser(sales, rootDept.id, true);
         seedPhoneAuthentication(sales);
+    }
+
+    private void ensureDefaultSaasAdminPassword() {
+        User admin = userMapper.selectOne(
+                new QueryWrapper<User>().eq("phone", DEFAULT_SAAS_ADMIN_PHONE)
+        );
+        if (admin == null) {
+            return;
+        }
+        String encoded = passwordEncoder.encode(DEFAULT_SAAS_ADMIN_PASSWORD);
+        admin.password = encoded;
+        userMapper.updateById(admin);
+
+        UserAuthentication auth = userAuthenticationMapper.selectOne(
+                new QueryWrapper<UserAuthentication>()
+                        .eq("user_id", admin.id)
+                        .eq("auth_type", AuthenticationType.PHONE.name())
+        );
+        if (auth != null) {
+            auth.passwordHash = encoded;
+            auth.updatedAt = LocalDateTime.now();
+            userAuthenticationMapper.updateById(auth);
+        }
     }
 
     private void ensureTenantsForExistingUsers() {
