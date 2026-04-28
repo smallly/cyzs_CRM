@@ -1152,23 +1152,26 @@ function formatDateTime(value?: string) {
 
 .vendor-menu-item {
   border: 1px solid transparent;
-  background: #ffffff;
-  color: #1e293b;
-  border-radius: 8px;
-  padding: 10px 12px;
+  background: transparent;
+  color: #475569;
+  border-radius: 6px;
+  padding: 8px 12px;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-size: 14px;
 }
 
 .vendor-menu-item:hover {
   background: #f1f5f9;
+  color: #1e293b;
 }
 
 .vendor-menu-item.active {
-  color: #fff;
-  border-color: #2f5cf6;
-  background: linear-gradient(135deg, #2f5cf6, #1d4ed8);
+  color: #2f5cf6;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  font-weight: 500;
 }
 
 .vendor-header {
