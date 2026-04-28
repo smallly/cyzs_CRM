@@ -81,7 +81,7 @@ public class BootstrapService {
         removeVendorAdminColumnFromUsers();
         ensureVendorAdminExists();
         cleanupLegacyVendorAdminUser();
-        cleanupLegacyTenantA();
+        ensureDefaultSaasTenantExists();
         if (userMapper.selectCount(null) > 0) {
             ensureTenantsForExistingUsers();
             ensureDefaultDepartmentForExistingUsers();
@@ -105,25 +105,14 @@ public class BootstrapService {
         }
     }
 
-    private void cleanupLegacyTenantA() {
-        Tenant tenantA = tenantMapper.selectById("tenant-a");
-        if (tenantA == null) {
+    private void ensureDefaultSaasTenantExists() {
+        if (tenantMapper.selectCount(null) > 0) {
             return;
         }
-        jdbcTemplate.update("DELETE FROM payments WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM contracts WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM followups WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM projects WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM contacts WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM organization_memberships WHERE tenant_user_id IN (SELECT id FROM tenant_users WHERE tenant_id = ?)", "tenant-a");
-        jdbcTemplate.update("DELETE FROM tenant_users WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM user_authentications WHERE user_id IN (SELECT id FROM users WHERE tenant_id = ?)", "tenant-a");
-        jdbcTemplate.update("DELETE FROM users WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM departments WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM project_dict_configs WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM scope_configs WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM audit_logs WHERE tenant_id = ?", "tenant-a");
-        jdbcTemplate.update("DELETE FROM tenants WHERE id = ?", "tenant-a");
+        if (userMapper.selectCount(new QueryWrapper<User>().eq("phone", DEFAULT_SAAS_ADMIN_PHONE)) > 0) {
+            return;
+        }
+        seedData();
     }
 
     private void cleanupLegacyVendorAdminUser() {

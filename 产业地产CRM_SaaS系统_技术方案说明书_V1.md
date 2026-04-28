@@ -97,6 +97,7 @@ V1 在组织成员域采用四层模型，避免把手机号、密码、成员�
 6. 一个 `tenant_users` 可绑定多条 `organization_memberships`
 7. 平台管理员独立存储在 `vendor_admins`，不再占用租户用户主体表 `users`
 8. SaaS 租户用户体系与超管平台用户体系互不关联，旧库中的 `users.phone = admin` 和 `vendor-default` 租户数据会在启动迁移时清理
+9. 当租户表为空时，启动初始化会补创建默认 SaaS 租户，避免超管组织列表无基础数据
 
 ---
 
