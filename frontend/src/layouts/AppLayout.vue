@@ -217,6 +217,21 @@ onMounted(() => {
       .catch(() => {
         // ignore
       })
+    // 刷新租户列表以同步最新组织名称
+    authStore.api<Array<{ tenantId: string; tenantName: string; isDefault: boolean }>>('/api/auth/tenants')
+      .then((list) => {
+        if (list && list.length) {
+          authStore.tenants = list
+          const current = list.find((t) => t.tenantId === authStore.tenantId)
+          if (current && current.tenantName !== authStore.tenantName) {
+            authStore.tenantName = current.tenantName
+          }
+          authStore.saveToStorage()
+        }
+      })
+      .catch(() => {
+        // ignore
+      })
   }
 })
 

@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -66,6 +67,12 @@ public class AuthController {
                 "defaultTenantId", "vendor-default",
                 "vendorAdmin", true
         ));
+    }
+
+    @GetMapping("/tenants")
+    public ApiResponse<List<Map<String, Object>>> listTenants() {
+        User actor = sessionService.requireUser();
+        return ApiResponse.ok(authService.listActiveTenants(actor));
     }
 
     @PutMapping("/current-tenant")
