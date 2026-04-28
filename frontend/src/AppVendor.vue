@@ -1176,7 +1176,7 @@ function formatDateTime(value?: string) {
   align-items: center;
   gap: 10px;
   border: 1px solid #fff;
-  background: #ffffff;
+  background: transparent;
   color: #475569;
   border-radius: 8px;
   padding: 10px 12px;
