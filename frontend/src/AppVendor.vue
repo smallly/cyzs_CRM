@@ -1176,7 +1176,7 @@ function formatDateTime(value?: string) {
   align-items: center;
   gap: 10px;
   border: 1px solid #fff;
-  background: transparent;
+  background: #ffffff;
   color: #475569;
   border-radius: 8px;
   padding: 10px 12px;
@@ -1194,10 +1194,10 @@ function formatDateTime(value?: string) {
 }
 
 .vendor-menu-item.active {
-  background: linear-gradient(135deg, #2f5cf6, #1d4ed8);
-  border-color: #fff;
-  color: #fff;
-  box-shadow: 0 3px 10px rgba(47, 92, 246, 0.24);
+  background: #ffffff;
+  border-color: #2f5cf6;
+  color: #2f5cf6;
+  box-shadow: 0 1px 4px rgba(47, 92, 246, 0.12);
 }
 
 .menu-icon {
