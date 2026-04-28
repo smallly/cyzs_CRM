@@ -96,6 +96,7 @@ V1 在组织成员域采用四层模型，避免把手机号、密码、成员�
 5. 一个 `users` 可绑定多条 `user_authentications`
 6. 一个 `tenant_users` 可绑定多条 `organization_memberships`
 7. 平台管理员独立存储在 `vendor_admins`，不再占用租户用户主体表 `users`
+8. SaaS 租户用户体系与超管平台用户体系互不关联，旧库中的 `users.phone = admin` 和 `vendor-default` 租户数据会在启动迁移时清理
 
 ---
 
@@ -219,6 +220,7 @@ V1 已完成全部 15 个实体的关系型表迁移，采用纯关系型表策�
 2. `vendor_admins.phone` 全局唯一，用于平台管理端登录
 3. `vendor_admin_authentications` 保存平台管理员认证方式，按 `auth_type + auth_identifier` 唯一
 4. 平台管理员登录态通过 JWT `type=VENDOR` 区分，不写入 `users.vendor_admin`
+5. 旧版本遗留的 `users.phone = admin` 会随其 `user_authentications`、`tenant_users`、`organization_memberships` 一并清理，避免超管账号从 SaaS 登录口进入
 
 #### `tenant_users`
 

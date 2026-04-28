@@ -80,6 +80,7 @@ public class BootstrapService {
         migrateSchema();
         removeVendorAdminColumnFromUsers();
         ensureVendorAdminExists();
+        cleanupLegacyVendorAdminUser();
         cleanupLegacyTenantA();
         if (userMapper.selectCount(null) > 0) {
             ensureTenantsForExistingUsers();
@@ -123,6 +124,41 @@ public class BootstrapService {
         jdbcTemplate.update("DELETE FROM scope_configs WHERE tenant_id = ?", "tenant-a");
         jdbcTemplate.update("DELETE FROM audit_logs WHERE tenant_id = ?", "tenant-a");
         jdbcTemplate.update("DELETE FROM tenants WHERE id = ?", "tenant-a");
+    }
+
+    private void cleanupLegacyVendorAdminUser() {
+        List<String> legacyUserIds = jdbcTemplate.queryForList(
+                "SELECT id FROM users WHERE phone = ?",
+                String.class,
+                DEFAULT_VENDOR_ADMIN_PHONE
+        );
+        for (String userId : legacyUserIds) {
+            jdbcTemplate.update("UPDATE departments SET head_user_id = NULL WHERE head_user_id = ?", userId);
+            jdbcTemplate.update("UPDATE users SET manager_id = NULL WHERE manager_id = ?", userId);
+            jdbcTemplate.update("UPDATE tenants SET admin_user_id = NULL, admin_phone = NULL WHERE admin_user_id = ? OR admin_phone = ?", userId, DEFAULT_VENDOR_ADMIN_PHONE);
+            jdbcTemplate.update("DELETE FROM organization_memberships WHERE tenant_user_id IN (SELECT id FROM tenant_users WHERE user_id = ?)", userId);
+            jdbcTemplate.update("DELETE FROM tenant_users WHERE user_id = ?", userId);
+            jdbcTemplate.update("DELETE FROM user_authentications WHERE user_id = ? OR auth_identifier = ?", userId, DEFAULT_VENDOR_ADMIN_PHONE);
+            jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+        }
+        jdbcTemplate.update("DELETE FROM user_authentications WHERE auth_identifier = ?", DEFAULT_VENDOR_ADMIN_PHONE);
+        cleanupLegacyVendorDefaultTenant();
+    }
+
+    private void cleanupLegacyVendorDefaultTenant() {
+        jdbcTemplate.update("DELETE FROM payments WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM contracts WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM followups WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM projects WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM contacts WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM organization_memberships WHERE tenant_user_id IN (SELECT id FROM tenant_users WHERE tenant_id = ?)", "vendor-default");
+        jdbcTemplate.update("DELETE FROM tenant_users WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM departments WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM tenant_orders WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM project_dict_configs WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM scope_configs WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM audit_logs WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM tenants WHERE id = ?", "vendor-default");
     }
 
     private void migrateSchema() {
