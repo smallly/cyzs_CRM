@@ -9,6 +9,7 @@ import com.indcrm.crm.mapper.OrganizationMembershipMapper;
 import com.indcrm.crm.mapper.TenantMapper;
 import com.indcrm.crm.mapper.TenantOrderMapper;
 import com.indcrm.crm.mapper.TenantUserMapper;
+import com.indcrm.crm.mapper.UserAuthenticationMapper;
 import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,16 +33,85 @@ public class VendorTenantService {
     private final TenantOrderMapper tenantOrderMapper;
     private final TenantUserMapper tenantUserMapper;
     private final OrganizationMembershipMapper organizationMembershipMapper;
+    private final UserAuthenticationMapper userAuthenticationMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper, TenantUserMapper tenantUserMapper, OrganizationMembershipMapper organizationMembershipMapper, PasswordEncoder passwordEncoder) {
+    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper, TenantUserMapper tenantUserMapper, OrganizationMembershipMapper organizationMembershipMapper, UserAuthenticationMapper userAuthenticationMapper, PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
         this.tenantMapper = tenantMapper;
         this.tenantOrderMapper = tenantOrderMapper;
         this.tenantUserMapper = tenantUserMapper;
         this.organizationMembershipMapper = organizationMembershipMapper;
+        this.userAuthenticationMapper = userAuthenticationMapper;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @Transactional
+    public User createAvailableAdmin(String name, String phone, String password) {
+        if (name == null || name.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "name is required");
+        }
+        if (phone == null || phone.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "phone is required");
+        }
+        if (password == null || password.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "password is required");
+        }
+        if (password.length() < 6) {
+            throw new BizException(ErrorCode.BIZ_422, "password at least 6 characters");
+        }
+
+        String normalizedPhone = phone.trim();
+        long exists = userMapper.selectCount(
+                new QueryWrapper<User>().eq("phone", normalizedPhone)
+        );
+        if (exists > 0) {
+            throw new BizException(ErrorCode.BIZ_409, "phone already exists");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        User user = new User();
+        user.id = UUID.randomUUID().toString();
+        user.tenantId = "vendor-default";
+        user.phone = normalizedPhone;
+        user.password = passwordEncoder.encode(password);
+        user.name = name.trim();
+        user.lastTenantId = user.tenantId;
+        user.bizRole = BizRole.SALES;
+        user.systemAdmin = false;
+        user.vendorAdmin = false;
+        user.status = UserStatus.ENABLED;
+        user.createdAt = now;
+
+        userMapper.insert(user);
+        syncPhoneAuthentication(user);
+        return user;
+    }
+
+    private void syncPhoneAuthentication(User user) {
+        if (user == null || user.id == null || user.phone == null) {
+            return;
+        }
+        long exists = userAuthenticationMapper.selectCount(
+                new QueryWrapper<UserAuthentication>()
+                        .eq("auth_type", AuthenticationType.PHONE.name())
+                        .eq("auth_identifier", user.phone)
+        );
+        if (exists > 0) {
+            return;
+        }
+        UserAuthentication auth = new UserAuthentication();
+        auth.id = UUID.randomUUID().toString();
+        auth.userId = user.id;
+        auth.authType = AuthenticationType.PHONE;
+        auth.authIdentifier = user.phone;
+        auth.passwordHash = user.password;
+        auth.verifiedAt = user.createdAt;
+        auth.status = AuthenticationStatus.ACTIVE;
+        auth.createdAt = user.createdAt != null ? user.createdAt : LocalDateTime.now();
+        auth.updatedAt = auth.createdAt;
+        userAuthenticationMapper.insert(auth);
     }
 
     public List<AvailableAdmin> listAvailableAdmins(String keyword) {

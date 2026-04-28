@@ -841,7 +841,7 @@ async function submitCreateAdminInDialog() {
 
   creatingAdminInDialog.value = true
   try {
-    const created = await authStore.api<any>('/api/vendor/admins', {
+    const created = await authStore.api<any>('/api/vendor/tenants/admins', {
       method: 'POST',
       body: JSON.stringify({
         name: createAdminForm.name.trim(),

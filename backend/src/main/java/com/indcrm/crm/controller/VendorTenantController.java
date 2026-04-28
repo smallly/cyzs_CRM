@@ -117,6 +117,16 @@ public class VendorTenantController {
         return ApiResponse.ok(vendorTenantService.listOrders(tenantId));
     }
 
+    @PostMapping("/admins")
+    public ApiResponse<User> createAdmin(@RequestBody @Valid CreateAdminReq req) {
+        requireVendorAdmin();
+        return ApiResponse.ok(vendorTenantService.createAvailableAdmin(
+                req.name(),
+                req.phone(),
+                req.password()
+        ));
+    }
+
     public record OpenTenantReq(
             @NotBlank String tenantName,
             String tenantId,
@@ -139,6 +149,13 @@ public class VendorTenantController {
             @NotBlank String tenantName,
             @NotBlank String adminName,
             @NotBlank String adminPhone
+    ) {
+    }
+
+    public record CreateAdminReq(
+            @NotBlank String name,
+            @NotBlank String phone,
+            @NotBlank String password
     ) {
     }
 }
