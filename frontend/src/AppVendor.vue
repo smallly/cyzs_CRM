@@ -36,32 +36,39 @@
         <!-- 组织管理分组 -->
         <div class="menu-group">
           <div class="menu-group-title">组织管理</div>
-          <button
-            class="vendor-menu-item"
-            :class="{ active: activeMenu === 'tenants' }"
-            @click="activeMenu = 'tenants'"
-          >
-            组织管理
-          </button>
-          <button
-            class="vendor-menu-item"
-            :class="{ active: activeMenu === 'admins' }"
-            @click="activeMenu = 'admins'"
-          >
-            管理员管理
-          </button>
+          <div class="menu-group-items">
+            <button
+              class="vendor-menu-item"
+              :class="{ active: activeMenu === 'tenants' }"
+              @click="activeMenu = 'tenants'"
+            >
+              <el-icon class="menu-icon"><OfficeBuilding /></el-icon>
+              <span>组织管理</span>
+            </button>
+            <button
+              class="vendor-menu-item"
+              :class="{ active: activeMenu === 'admins' }"
+              @click="activeMenu = 'admins'"
+            >
+              <el-icon class="menu-icon"><UserFilled /></el-icon>
+              <span>管理员管理</span>
+            </button>
+          </div>
         </div>
 
         <!-- 系统设置分组 -->
         <div class="menu-group">
           <div class="menu-group-title">系统设置</div>
-          <button
-            class="vendor-menu-item"
-            :class="{ active: activeMenu === 'users' }"
-            @click="activeMenu = 'users'"
-          >
-            用户管理
-          </button>
+          <div class="menu-group-items">
+            <button
+              class="vendor-menu-item"
+              :class="{ active: activeMenu === 'users' }"
+              @click="activeMenu = 'users'"
+            >
+              <el-icon class="menu-icon"><User /></el-icon>
+              <span>用户管理</span>
+            </button>
+          </div>
         </div>
       </div>
     </el-aside>
@@ -510,7 +517,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from './stores/auth'
-import { Lock, User, SwitchButton, Plus, Search } from '@element-plus/icons-vue'
+import { Lock, User, SwitchButton, Plus, Search, OfficeBuilding, UserFilled } from '@element-plus/icons-vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from './api/page'
 
 interface TenantSummary {
@@ -1157,47 +1164,74 @@ function formatDateTime(value?: string) {
 .vendor-menu {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
 }
 
 .menu-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-bottom: 0;
 }
 
 .menu-group-title {
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 0 12px;
-  margin-bottom: 4px;
+  color: #64748b;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0;
+  margin: 0 0 6px 0;
+}
+
+.menu-group-items {
+  background: rgba(247, 249, 252, 0.6);
+  border-radius: 8px;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .vendor-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   border: 1px solid transparent;
   background: transparent;
-  color: #475569;
-  border-radius: 6px;
-  padding: 8px 12px;
+  color: #334155;
+  border-radius: 8px;
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .vendor-menu-item:hover {
-  background: #f1f5f9;
+  border-color: #dbe6fb;
+  background: #eff4ff;
   color: #1e293b;
 }
 
 .vendor-menu-item.active {
-  color: #2f5cf6;
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  font-weight: 500;
+  background: linear-gradient(135deg, #2f5cf6, #1d4ed8);
+  border-color: #2f5cf6;
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(47, 92, 246, 0.24);
+}
+
+.menu-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  color: currentColor;
 }
 
 .vendor-header {
