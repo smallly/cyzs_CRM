@@ -88,6 +88,19 @@
                     </div>
                   </div>
                 </el-dropdown-item>
+                <el-dropdown-item v-if="authStore.hasMultipleTenants" divided disabled>
+                  <div style="font-size:12px;color:#64748b">切换组织</div>
+                </el-dropdown-item>
+                <el-dropdown-item
+                  v-for="t in authStore.tenants"
+                  :key="t.tenantId"
+                  :command="'tenant:' + t.tenantId"
+                  :class="{ 'tenant-active': t.tenantId === authStore.tenantId }"
+                >
+                  <el-icon><OfficeBuilding /></el-icon>
+                  <span>{{ t.tenantName || t.tenantId }}</span>
+                  <el-tag v-if="t.tenantId === authStore.tenantId" type="success" size="small" style="margin-left:auto">当前</el-tag>
+                </el-dropdown-item>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
                   <span>个人中心</span>
@@ -150,7 +163,8 @@ import {
   Key,
   CollectionTag,
   Lock,
-  SwitchButton
+  SwitchButton,
+  OfficeBuilding
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -281,16 +295,23 @@ async function submitChangePassword() {
 }
 
 function handleUserCommand(command: string | number | object) {
-  if (command === 'logout') {
+  const cmd = String(command)
+  if (cmd === 'logout') {
     handleLogout()
     return
   }
-  if (command === 'change-password') {
+  if (cmd === 'change-password') {
     openChangePasswordDialog()
     return
   }
-  if (command === 'profile') {
+  if (cmd === 'profile') {
     router.push('/profile')
+    return
+  }
+  if (cmd.startsWith('tenant:')) {
+    const targetTenantId = cmd.slice('tenant:'.length)
+    authStore.switchTenant(targetTenantId)
+    return
   }
 }
 

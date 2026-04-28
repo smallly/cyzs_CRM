@@ -195,16 +195,13 @@ public class ContactService {
 
     private List<String> normalizeProjectIds(List<String> projectIds) {
         if (projectIds == null) {
-            throw new BizException(ErrorCode.BIZ_422, "projectIds is required");
+            return new ArrayList<>();
         }
         Set<String> dedup = new HashSet<>();
         for (String id : projectIds) {
             if (id == null) continue;
             String v = id.trim();
             if (!v.isEmpty()) dedup.add(v);
-        }
-        if (dedup.isEmpty()) {
-            throw new BizException(ErrorCode.BIZ_422, "At least one linked project is required");
         }
         return new ArrayList<>(dedup);
     }
