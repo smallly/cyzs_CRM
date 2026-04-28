@@ -33,20 +33,36 @@
         </div>
       </div>
       <div class="vendor-menu">
-        <button
-          class="vendor-menu-item"
-          :class="{ active: activeMenu === 'tenants' }"
-          @click="activeMenu = 'tenants'"
-        >
-          组织管理
-        </button>
-        <button
-          class="vendor-menu-item"
-          :class="{ active: activeMenu === 'admins' }"
-          @click="activeMenu = 'admins'"
-        >
-          管理员管理
-        </button>
+        <!-- 组织管理分组 -->
+        <div class="menu-group">
+          <div class="menu-group-title">组织管理</div>
+          <button
+            class="vendor-menu-item"
+            :class="{ active: activeMenu === 'tenants' }"
+            @click="activeMenu = 'tenants'"
+          >
+            组织管理
+          </button>
+          <button
+            class="vendor-menu-item"
+            :class="{ active: activeMenu === 'admins' }"
+            @click="activeMenu = 'admins'"
+          >
+            管理员管理
+          </button>
+        </div>
+
+        <!-- 系统设置分组 -->
+        <div class="menu-group">
+          <div class="menu-group-title">系统设置</div>
+          <button
+            class="vendor-menu-item"
+            :class="{ active: activeMenu === 'users' }"
+            @click="activeMenu = 'users'"
+          >
+            用户管理
+          </button>
+        </div>
       </div>
     </el-aside>
 
@@ -184,6 +200,36 @@
                 >
                   {{ row.status === 'ENABLED' ? '停用' : '启用' }}
                 </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+
+        <!-- 用户管理 -->
+        <el-card v-if="activeMenu === 'users'">
+          <template #header>
+            <div class="card-header">
+              <span>用户管理</span>
+              <el-space>
+                <el-button type="primary" @click="openAdminDialog">添加用户</el-button>
+              </el-space>
+            </div>
+          </template>
+
+          <el-table :data="saasUsers" v-loading="saasUserLoading">
+            <el-table-column prop="name" label="姓名" min-width="120" />
+            <el-table-column prop="phone" label="手机号" min-width="130" />
+            <el-table-column prop="tenantName" label="所属租户" min-width="160" />
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
+                  {{ row.status === 'ENABLED' ? '已启用' : '已停用' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="创建时间" min-width="170">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdAt) }}
               </template>
             </el-table-column>
           </el-table>
@@ -511,7 +557,7 @@ const userAvatarText = computed(() => {
   return name ? name.charAt(0).toUpperCase() : 'U'
 })
 
-const activeMenu = ref<'tenants' | 'admins'>('tenants')
+const activeMenu = ref<'tenants' | 'admins' | 'users'>('tenants')
 
 const loading = ref(false)
 const page = ref(1)
@@ -553,6 +599,10 @@ const adminForm = reactive({
   password: ''
 })
 
+// SaaS User management (under System Settings)
+const saasUserLoading = ref(false)
+const saasUsers = ref<any[]>([])
+
 // Admin selector in open tenant dialog
 const adminSelectDialogVisible = ref(false)
 const adminSelectLoading = ref(false)
@@ -589,6 +639,7 @@ onMounted(() => {
   if (isLoggedIn.value) {
     void loadTenants()
     void loadAdmins()
+    void loadSaasUsers()
   }
 })
 
@@ -959,6 +1010,19 @@ async function loadAdmins() {
   }
 }
 
+async function loadSaasUsers() {
+  saasUserLoading.value = true
+  try {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/vendor/tenants/available-admins')
+    const pageData = normalizePageResult<any>(res)
+    saasUsers.value = pageData.records
+  } catch (error: any) {
+    ElMessage.error(error?.message || '用户列表加载失败')
+  } finally {
+    saasUserLoading.value = false
+  }
+}
+
 function openAdminDialog() {
   adminForm.name = ''
   adminForm.phone = ''
@@ -1067,7 +1131,23 @@ function formatDateTime(value?: string) {
 .vendor-menu {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+}
+
+.menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-group-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0 12px;
+  margin-bottom: 4px;
 }
 
 .vendor-menu-item {
