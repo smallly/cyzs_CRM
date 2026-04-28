@@ -303,6 +303,12 @@ public class VendorTenantService {
             }
             normalizeTenantDefaults(tenant, now);
 
+            if (tenant.status == TenantStatus.ACTIVE && isExpired(tenant, now)) {
+                tenant.status = TenantStatus.DISABLED;
+                tenant.updatedAt = now;
+                tenantMapper.updateById(tenant);
+            }
+
             User admin = tenant.adminUserId != null ? userMapper.selectById(tenant.adminUserId) : null;
             long userCount = userMapper.selectCount(
                     new QueryWrapper<User>().eq("tenant_id", tenant.id)
@@ -399,6 +405,13 @@ public class VendorTenantService {
     private TenantSummary toSummary(Tenant tenant) {
         LocalDateTime now = LocalDateTime.now();
         normalizeTenantDefaults(tenant, now);
+
+        if (tenant.status == TenantStatus.ACTIVE && isExpired(tenant, now)) {
+            tenant.status = TenantStatus.DISABLED;
+            tenant.updatedAt = now;
+            tenantMapper.updateById(tenant);
+        }
+
         User admin = tenant.adminUserId != null ? userMapper.selectById(tenant.adminUserId) : null;
         long userCount = userMapper.selectCount(
                 new QueryWrapper<User>().eq("tenant_id", tenant.id)

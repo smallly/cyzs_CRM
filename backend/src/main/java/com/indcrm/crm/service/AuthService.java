@@ -40,17 +40,20 @@ public class AuthService {
             if (user.status != UserStatus.ENABLED) {
                 throw new BizException(ErrorCode.AUTH_403, "account is disabled");
             }
-            Tenant tenant = user.tenantId == null ? null : tenantMapper.selectById(user.tenantId);
-            if (tenant != null) {
-                if (tenant.status == TenantStatus.DISABLED) {
+
+            String activeTenantId = resolveDefaultTenantId(user);
+            Tenant activeTenant = activeTenantId == null ? null : tenantMapper.selectById(activeTenantId);
+            if (activeTenant != null) {
+                if (activeTenant.status == TenantStatus.DISABLED) {
                     throw new BizException(ErrorCode.AUTH_403, "tenant is disabled");
                 }
-                if (tenant.expireAt != null && tenant.expireAt.isBefore(now)) {
+                if (activeTenant.expireAt != null && activeTenant.expireAt.isBefore(now)) {
                     throw new BizException(ErrorCode.AUTH_403, "tenant is expired");
                 }
             }
+
             if (user.lastTenantId == null || user.lastTenantId.isBlank()) {
-                user.lastTenantId = resolveDefaultTenantId(user);
+                user.lastTenantId = activeTenantId;
             }
             return user;
         }
