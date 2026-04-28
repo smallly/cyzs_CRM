@@ -32,7 +32,6 @@ public class SseService {
     public void publishTenantEvent(String tenantId, String event, Object payload, List<User> tenantUsers) {
         String data = buildPayload(event, payload);
         for (User u : tenantUsers) {
-            if (!tenantId.equals(u.tenantId)) continue;
             SseEmitter emitter = emitters.get(u.id);
             if (emitter != null) {
                 try {

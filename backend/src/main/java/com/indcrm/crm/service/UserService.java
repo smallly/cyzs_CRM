@@ -193,7 +193,12 @@ public class UserService {
 
     private User requireTenantUser(User actor, String userId) {
         User user = userMapper.selectById(userId);
-        if (user == null || !actor.tenantId.equals(user.tenantId)) {
+        if (user == null) {
+            throw new BizException(ErrorCode.BIZ_422, "user not found");
+        }
+        long count = tenantUserMapper.selectCount(
+                new QueryWrapper<TenantUser>().eq("tenant_id", actor.tenantId).eq("user_id", userId));
+        if (count == 0) {
             throw new BizException(ErrorCode.BIZ_422, "user not found");
         }
         return user;

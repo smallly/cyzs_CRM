@@ -7,6 +7,7 @@ import com.indcrm.crm.domain.Department;
 import com.indcrm.crm.domain.DepartmentStatus;
 import com.indcrm.crm.domain.User;
 import com.indcrm.crm.mapper.DepartmentMapper;
+import com.indcrm.crm.mapper.TenantUserMapper;
 import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,13 +21,16 @@ import java.util.UUID;
 public class DepartmentService {
     private final DepartmentMapper departmentMapper;
     private final UserMapper userMapper;
+    private final TenantUserMapper tenantUserMapper;
     private final PermissionService permissionService;
     private final AuditService auditService;
 
     public DepartmentService(DepartmentMapper departmentMapper, UserMapper userMapper,
+                             TenantUserMapper tenantUserMapper,
                              PermissionService permissionService, AuditService auditService) {
         this.departmentMapper = departmentMapper;
         this.userMapper = userMapper;
+        this.tenantUserMapper = tenantUserMapper;
         this.permissionService = permissionService;
         this.auditService = auditService;
     }
@@ -147,7 +151,14 @@ public class DepartmentService {
             return null;
         }
         User head = userMapper.selectById(headUserId);
-        if (head == null || !actor.tenantId.equals(head.tenantId)) {
+        if (head == null) {
+            throw new BizException(ErrorCode.BIZ_422, "Department head not found");
+        }
+        long count = tenantUserMapper.selectCount(
+                new QueryWrapper<com.indcrm.crm.domain.TenantUser>()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("user_id", headUserId));
+        if (count == 0) {
             throw new BizException(ErrorCode.BIZ_422, "Department head not found");
         }
         return head.id;

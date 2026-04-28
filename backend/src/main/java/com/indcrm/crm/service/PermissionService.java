@@ -3,6 +3,7 @@ package com.indcrm.crm.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indcrm.crm.domain.*;
 import com.indcrm.crm.mapper.DepartmentMapper;
+import com.indcrm.crm.mapper.TenantUserMapper;
 import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 
@@ -12,11 +13,14 @@ import java.util.*;
 public class PermissionService {
     private final UserMapper userMapper;
     private final DepartmentMapper departmentMapper;
+    private final TenantUserMapper tenantUserMapper;
     private final SystemConfigService configService;
 
-    public PermissionService(UserMapper userMapper, DepartmentMapper departmentMapper, SystemConfigService configService) {
+    public PermissionService(UserMapper userMapper, DepartmentMapper departmentMapper,
+                             TenantUserMapper tenantUserMapper, SystemConfigService configService) {
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
+        this.tenantUserMapper = tenantUserMapper;
         this.configService = configService;
     }
 
@@ -65,9 +69,7 @@ public class PermissionService {
         }
         Set<String> deptScope = getDepartmentSubtreeIds(user.tenantId, managedDeptIds, allDepts);
         Set<String> ids = new HashSet<>();
-        List<User> members = userMapper.selectList(
-                new QueryWrapper<User>().eq("tenant_id", user.tenantId)
-        );
+        List<User> members = listTenantUsers(user.tenantId);
         for (User member : members) {
             if (member == null) continue;
             if (member.deptId != null && deptScope.contains(member.deptId) && !user.id.equals(member.id)) {
@@ -82,9 +84,7 @@ public class PermissionService {
             return Set.of(user.id);
         }
         Set<String> ids = new HashSet<>();
-        List<User> members = userMapper.selectList(
-                new QueryWrapper<User>().eq("tenant_id", user.tenantId)
-        );
+        List<User> members = listTenantUsers(user.tenantId);
         for (User member : members) {
             if (member == null) continue;
             if (user.deptId.equals(member.deptId)) {
@@ -106,9 +106,7 @@ public class PermissionService {
         );
         Set<String> deptIds = getDepartmentSubtreeIds(user.tenantId, Set.of(user.deptId), allDepts);
         Set<String> userIds = new HashSet<>();
-        List<User> members = userMapper.selectList(
-                new QueryWrapper<User>().eq("tenant_id", user.tenantId)
-        );
+        List<User> members = listTenantUsers(user.tenantId);
         for (User member : members) {
             if (member == null) continue;
             if (member.deptId != null && deptIds.contains(member.deptId)) {
@@ -117,6 +115,20 @@ public class PermissionService {
         }
         if (userIds.isEmpty()) userIds.add(user.id);
         return userIds;
+    }
+
+    private List<User> listTenantUsers(String tenantId) {
+        List<TenantUser> tenantUsers = tenantUserMapper.selectList(
+                new QueryWrapper<TenantUser>().eq("tenant_id", tenantId));
+        if (tenantUsers.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> userIds = tenantUsers.stream()
+                .map(tu -> tu.userId)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+        return userMapper.selectList(
+                new QueryWrapper<User>().in("id", userIds));
     }
 
     private Set<String> getDepartmentSubtreeIds(String tenantId, Set<String> roots, List<Department> allDepts) {
