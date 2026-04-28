@@ -1071,7 +1071,7 @@ type PaymentRow = {
 type AuditRow = { id: string; actorId: string; action: string; objectType: string; objectId: string; detail: string; createdAt: string };
 
 const apiBase = getApiBaseUrl();
-const api = createApiClient(() => token.value);
+const api = createApiClient(() => token.value, () => logout());
 const stageOptions = ["PROSPECTING", "VISITING", "NEGOTIATING", "SIGNING", "COLLECTING", "MOVED_IN"] as const;
 const dealTypeOptions = ["RENT", "BUY", "BOTH"] as const;
 const followupMethodOptions = ["电话", "微信", "面谈", "邮件", "其他"] as const;

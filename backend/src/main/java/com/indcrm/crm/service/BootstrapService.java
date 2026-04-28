@@ -40,6 +40,8 @@ public class BootstrapService {
     private final PaymentMapper paymentMapper;
     private final ScopeConfigMapper scopeConfigMapper;
     private final ProjectDictConfigMapper projectDictConfigMapper;
+    private final VendorAdminMapper vendorAdminMapper;
+    private final VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
@@ -50,6 +52,8 @@ public class BootstrapService {
                             FollowupMapper followupMapper, ContractMapper contractMapper,
                             PaymentMapper paymentMapper, ScopeConfigMapper scopeConfigMapper,
                             ProjectDictConfigMapper projectDictConfigMapper,
+                            VendorAdminMapper vendorAdminMapper,
+                            VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper,
                             JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
         this.userMapper = userMapper;
         this.userAuthenticationMapper = userAuthenticationMapper;
@@ -64,6 +68,8 @@ public class BootstrapService {
         this.paymentMapper = paymentMapper;
         this.scopeConfigMapper = scopeConfigMapper;
         this.projectDictConfigMapper = projectDictConfigMapper;
+        this.vendorAdminMapper = vendorAdminMapper;
+        this.vendorAdminAuthenticationMapper = vendorAdminAuthenticationMapper;
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
     }
@@ -72,6 +78,7 @@ public class BootstrapService {
     @Transactional
     public void init() {
         migrateSchema();
+        removeVendorAdminColumnFromUsers();
         ensureVendorAdminExists();
         cleanupLegacyTenantA();
         if (userMapper.selectCount(null) > 0) {
@@ -81,6 +88,20 @@ public class BootstrapService {
             ensureIdentityStructuresForExistingUsers();
         }
         migrateBusinessEntitiesFromStateStore();
+    }
+
+    private void removeVendorAdminColumnFromUsers() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'vendor_admin'",
+                Integer.class
+            );
+            if (count != null && count > 0) {
+                jdbcTemplate.execute("ALTER TABLE users DROP COLUMN vendor_admin");
+            }
+        } catch (Exception e) {
+            // ignore
+        }
     }
 
     private void cleanupLegacyTenantA() {
@@ -118,27 +139,47 @@ public class BootstrapService {
     }
 
     private void ensureVendorAdminExists() {
-        User existing = userMapper.selectOne(
-                new QueryWrapper<User>().eq("phone", DEFAULT_VENDOR_ADMIN_PHONE)
+        VendorAdmin existing = vendorAdminMapper.selectOne(
+                new QueryWrapper<VendorAdmin>().eq("phone", DEFAULT_VENDOR_ADMIN_PHONE)
         );
         if (existing != null) {
             return;
         }
-        User vendorAdmin = new User();
+        VendorAdmin vendorAdmin = new VendorAdmin();
         vendorAdmin.id = UUID.randomUUID().toString();
-        vendorAdmin.tenantId = "vendor-default";
         vendorAdmin.phone = DEFAULT_VENDOR_ADMIN_PHONE;
         vendorAdmin.password = DEFAULT_VENDOR_ADMIN_PASSWORD;
         vendorAdmin.name = DEFAULT_VENDOR_ADMIN_NAME;
-        vendorAdmin.lastTenantId = vendorAdmin.tenantId;
-        vendorAdmin.bizRole = BizRole.PROJECT_ADMIN;
-        vendorAdmin.systemAdmin = true;
-        vendorAdmin.vendorAdmin = true;
         vendorAdmin.status = UserStatus.ENABLED;
         vendorAdmin.createdAt = LocalDateTime.now();
-        userMapper.insert(vendorAdmin);
-        ensureTenantExists(vendorAdmin.tenantId, "超管平台", vendorAdmin.id, vendorAdmin.phone, vendorAdmin.createdAt);
-        seedPhoneAuthentication(vendorAdmin);
+        vendorAdmin.updatedAt = vendorAdmin.createdAt;
+        vendorAdminMapper.insert(vendorAdmin);
+        seedVendorAdminAuthentication(vendorAdmin);
+    }
+
+    private void seedVendorAdminAuthentication(VendorAdmin admin) {
+        if (admin == null || admin.id == null || admin.phone == null) {
+            return;
+        }
+        long exists = vendorAdminAuthenticationMapper.selectCount(
+                new QueryWrapper<VendorAdminAuthentication>()
+                        .eq("admin_id", admin.id)
+                        .eq("auth_type", AuthenticationType.PHONE.name())
+        );
+        if (exists > 0) {
+            return;
+        }
+        VendorAdminAuthentication auth = new VendorAdminAuthentication();
+        auth.id = UUID.randomUUID().toString();
+        auth.adminId = admin.id;
+        auth.authType = AuthenticationType.PHONE;
+        auth.authIdentifier = admin.phone;
+        auth.passwordHash = admin.password;
+        auth.verifiedAt = admin.createdAt;
+        auth.status = AuthenticationStatus.ACTIVE;
+        auth.createdAt = admin.createdAt != null ? admin.createdAt : LocalDateTime.now();
+        auth.updatedAt = auth.createdAt;
+        vendorAdminAuthenticationMapper.insert(auth);
     }
 
     private void migrateBusinessEntitiesFromStateStore() {
@@ -170,23 +211,6 @@ public class BootstrapService {
     }
 
     private void seedData() {
-        // 创建超管平台管理员 (admin / admin123)
-        User vendorAdmin = new User();
-        vendorAdmin.id = UUID.randomUUID().toString();
-        vendorAdmin.tenantId = "vendor-default";
-        vendorAdmin.phone = DEFAULT_VENDOR_ADMIN_PHONE;
-        vendorAdmin.password = DEFAULT_VENDOR_ADMIN_PASSWORD;
-        vendorAdmin.name = DEFAULT_VENDOR_ADMIN_NAME;
-        vendorAdmin.lastTenantId = vendorAdmin.tenantId;
-        vendorAdmin.bizRole = BizRole.PROJECT_ADMIN;
-        vendorAdmin.systemAdmin = true;
-        vendorAdmin.vendorAdmin = true;
-        vendorAdmin.status = UserStatus.ENABLED;
-        vendorAdmin.createdAt = LocalDateTime.now();
-        userMapper.insert(vendorAdmin);
-        ensureTenantExists(vendorAdmin.tenantId, "超管平台", vendorAdmin.id, vendorAdmin.phone, vendorAdmin.createdAt);
-        seedPhoneAuthentication(vendorAdmin);
-
         // 创建 SaaS 平台管理员 (13800000000 / Admin@123)
         User saasAdmin = new User();
         saasAdmin.id = UUID.randomUUID().toString();

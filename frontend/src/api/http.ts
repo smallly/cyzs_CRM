@@ -4,7 +4,9 @@ export function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 }
 
-export function createApiClient(getToken: AuthTokenProvider) {
+export type AuthErrorHandler = (message: string) => void;
+
+export function createApiClient(getToken: AuthTokenProvider, onAuthError?: AuthErrorHandler) {
   const apiBase = getApiBaseUrl();
 
   return async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -28,6 +30,9 @@ export function createApiClient(getToken: AuthTokenProvider) {
     }
 
     if (!res.ok) {
+      if (res.status === 401 && onAuthError) {
+        onAuthError(payload?.message || "请先登录");
+      }
       if (payload && typeof payload.message === "string") {
         throw new Error(payload.message);
       }
@@ -36,6 +41,10 @@ export function createApiClient(getToken: AuthTokenProvider) {
 
     if (payload && typeof payload.code === "number") {
       if (payload.code !== 0) {
+        // Treat 401-like business codes as auth errors
+        if ((payload.code === 401 || payload.code === 403) && onAuthError) {
+          onAuthError(payload.message || "请先登录");
+        }
         throw new Error(payload.message || "request failed");
       }
       return payload.data as T;

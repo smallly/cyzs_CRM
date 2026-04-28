@@ -21,7 +21,7 @@ public class User {
     public BizRole bizRole;
     @TableField("system_admin")
     public boolean systemAdmin;
-    @TableField("vendor_admin")
+    @TableField(exist = false)
     public boolean vendorAdmin;
     public UserStatus status;
     @TableField("dept_id")

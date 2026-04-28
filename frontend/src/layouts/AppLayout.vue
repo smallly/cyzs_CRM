@@ -200,11 +200,6 @@ function handleLeadingAction() {
   isCollapsed.value = !isCollapsed.value
 }
 
-function handleRefresh() {
-  // TODO: refresh data
-  console.log('Refresh data')
-}
-
 function handleLogout() {
   authStore.logout()
   localStorage.removeItem('crm_auth')
@@ -584,6 +579,5 @@ function isMenuActive(menuRoute: string): boolean {
   min-width: 0;
 }
 </style>
-
 
 

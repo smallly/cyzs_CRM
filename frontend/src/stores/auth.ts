@@ -13,7 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value)
 
-  const api = createApiClient(() => token.value)
+  const api = createApiClient(() => token.value, () => logout())
 
   async function login(phone: string, password: string) {
     const res = await api<{
@@ -134,6 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     api,
     login,
+    loginVendor,
     logout,
     restoreFromStorage,
     syncUserNameFromUsers,

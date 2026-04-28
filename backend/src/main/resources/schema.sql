@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS users (
   last_tenant_id VARCHAR(64) DEFAULT NULL COMMENT '最近登录租户ID',
   biz_role VARCHAR(32) DEFAULT NULL COMMENT '业务角色',
   system_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否系统管理员',
-  vendor_admin TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否平台管理员',
   status VARCHAR(20) NOT NULL DEFAULT 'ENABLED' COMMENT '用户状态',
   dept_id VARCHAR(64) DEFAULT NULL COMMENT '部门ID',
   manager_id VARCHAR(64) DEFAULT NULL COMMENT '直属上级ID',
@@ -42,6 +41,33 @@ CREATE TABLE IF NOT EXISTS user_authentications (
   UNIQUE KEY uk_user_auth (auth_type, auth_identifier),
   KEY idx_user_auth_user_id (user_id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='用户认证方式表';
+
+CREATE TABLE IF NOT EXISTS vendor_admins (
+  id VARCHAR(64) NOT NULL COMMENT '平台管理员ID',
+  phone VARCHAR(20) NOT NULL COMMENT '主手机号',
+  password VARCHAR(255) NOT NULL COMMENT '密码密文',
+  name VARCHAR(100) DEFAULT NULL COMMENT '管理员姓名',
+  status VARCHAR(20) NOT NULL DEFAULT 'ENABLED' COMMENT '账号状态',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_vendor_admins_phone (phone)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='平台管理员表';
+
+CREATE TABLE IF NOT EXISTS vendor_admin_authentications (
+  id VARCHAR(64) NOT NULL COMMENT '认证记录ID',
+  admin_id VARCHAR(64) NOT NULL COMMENT '平台管理员ID',
+  auth_type VARCHAR(32) NOT NULL COMMENT '认证类型',
+  auth_identifier VARCHAR(128) NOT NULL COMMENT '认证标识',
+  password_hash VARCHAR(255) DEFAULT NULL COMMENT '密码密文',
+  verified_at DATETIME DEFAULT NULL COMMENT '验证时间',
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '认证方式状态',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_vendor_admin_auth (auth_type, auth_identifier),
+  KEY idx_vendor_admin_auth_admin_id (admin_id)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='平台管理员认证方式表';
 
 CREATE TABLE IF NOT EXISTS tenant_users (
   id VARCHAR(64) NOT NULL COMMENT '租户用户记录ID',

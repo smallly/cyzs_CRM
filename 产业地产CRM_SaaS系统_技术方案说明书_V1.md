@@ -95,6 +95,7 @@ V1 在组织成员域采用四层模型，避免把手机号、密码、成员�
 4. `tenant_users.activated` 表示成员是否首次登录过当前租户
 5. 一个 `users` 可绑定多条 `user_authentications`
 6. 一个 `tenant_users` 可绑定多条 `organization_memberships`
+7. 平台管理员独立存储在 `vendor_admins`，不再占用租户用户主体表 `users`
 
 ---
 
@@ -171,6 +172,8 @@ V1 已完成全部 15 个实体的关系型表迁移，采用纯关系型表策�
 |---|---|---|---|
 | 成员域 | User | `users` | 平台级用户主体 |
 | 成员域 | UserAuthentication | `user_authentications` | 认证方式绑定 |
+| 成员域 | VendorAdmin | `vendor_admins` | 平台管理员主体 |
+| 成员域 | VendorAdminAuthentication | `vendor_admin_authentications` | 平台管理员认证方式绑定 |
 | 成员域 | TenantUser | `tenant_users` | 租户成员档案 |
 | 成员域 | OrganizationMembership | `organization_memberships` | 部门归属 |
 | 成员域 | Department | `departments` | 部门树 |
@@ -209,6 +212,13 @@ V1 已完成全部 15 个实体的关系型表迁移，采用纯关系型表策�
 2. `auth_type` 先支持 `phone`，后续扩展 `dingtalk`
 3. `password_hash` 仅手机号类认证使用
 4. 后续接钉钉时只扩展该表，不改 `users` 主体结构
+
+#### `vendor_admins` / `vendor_admin_authentications`
+
+1. `vendor_admins` 保存平台管理员主体信息，主键为 `id`（VARCHAR(64)，UUID）
+2. `vendor_admins.phone` 全局唯一，用于平台管理端登录
+3. `vendor_admin_authentications` 保存平台管理员认证方式，按 `auth_type + auth_identifier` 唯一
+4. 平台管理员登录态通过 JWT `type=VENDOR` 区分，不写入 `users.vendor_admin`
 
 #### `tenant_users`
 
