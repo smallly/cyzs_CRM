@@ -1098,7 +1098,7 @@ function formatDateTime(value?: string) {
 
 .vendor-aside {
   border-right: 1px solid #e2e8f0;
-  background: #ffffff;
+  background: #f8fafc;
   padding: 16px 12px;
 }
 
@@ -1162,7 +1162,7 @@ function formatDateTime(value?: string) {
 }
 
 .menu-group-items {
-  background: #ffffff;
+  background: rgba(247, 249, 252, 0.6);
   border-radius: 8px;
   padding: 6px 4px;
   display: flex;
