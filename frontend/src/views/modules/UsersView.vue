@@ -134,13 +134,8 @@ onMounted(async () => {
 
 async function loadAll() {
   loading.value = true
-  try {
-    await Promise.all([loadUsersPage(), loadUsers(), loadDepartments(), loadRoles()])
-  } catch (error: any) {
-    ElMessage.error(error.message || '加载失败')
-  } finally {
-    loading.value = false
-  }
+  await Promise.allSettled([loadUsersPage(), loadUsers(), loadDepartments(), loadRoles()])
+  loading.value = false
 }
 
 async function loadUsers() {
