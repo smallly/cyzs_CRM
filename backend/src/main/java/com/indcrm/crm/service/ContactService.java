@@ -113,6 +113,14 @@ public class ContactService {
         return list;
     }
 
+    public Contact get(User actor, String id) {
+        Contact c = mustGet(actor.tenantId, id);
+        if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "No permission to view contact");
+        }
+        return c;
+    }
+
     public Contact update(
             User actor,
             String id,

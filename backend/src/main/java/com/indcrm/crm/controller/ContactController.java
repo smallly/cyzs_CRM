@@ -63,6 +63,11 @@ public class ContactController {
         );
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<?> get(@PathVariable("id") String id) {
+        return ApiResponse.ok(contactService.get(sessionService.requireUser(), id));
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<?> update(@PathVariable("id") String id, @Valid @RequestBody ContactReq req) {
         return ApiResponse.ok(

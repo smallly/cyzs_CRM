@@ -1231,7 +1231,7 @@ function toDateTimeValue(value?: string | null): string | null {
 }
 
 function goContact(contactId: string) {
-  router.push({ path: '/contacts', query: { editId: contactId } })
+  router.push(`/contacts/${contactId}`)
 }
 
 function openContractDialog() {

@@ -32,6 +32,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '新增联系人' }
       },
       {
+        path: 'contacts/:id',
+        name: 'ContactDetail',
+        component: () => import('../views/pages/ContactDetailPage.vue'),
+        meta: { title: '联系人详情' }
+      },
+      {
         path: 'projects',
         name: 'Projects',
         component: () => import('../views/modules/ProjectsListView.vue'),

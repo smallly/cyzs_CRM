@@ -22,7 +22,7 @@
       @page-change="handlePageChange"
     >
       <template #name="{ row }">
-        <el-button link @click="editContact(row)">{{ row.name || '-' }}</el-button>
+        <el-button link @click="goDetail(row)">{{ row.name || '-' }}</el-button>
       </template>
 
       <template #linkedProjects="{ row }">
@@ -200,7 +200,7 @@ onMounted(async () => {
   const editId = route.query.editId
   if (typeof editId === 'string' && editId) {
     await ensureFormDependencies()
-    const contact = contacts.value.find((c) => c.id === editId)
+    const contact = await getContactForEdit(editId)
     if (contact) await editContact(contact)
   }
 })
@@ -301,6 +301,11 @@ function goCreate() {
   router.push('/contacts/create')
 }
 
+function goDetail(contact: any) {
+  if (!contact?.id) return
+  router.push(`/contacts/${contact.id}`)
+}
+
 async function editContact(contact: any) {
   await ensureFormDependencies()
   const linkedProjectIds = projects.value
@@ -323,6 +328,17 @@ async function editContact(contact: any) {
     remark: contact.remark || ''
   })
   drawerVisible.value = true
+}
+
+async function getContactForEdit(id: string) {
+  const existing = contacts.value.find((c) => c.id === id)
+  if (existing) return existing
+  try {
+    return await authStore.api<any>(`/api/contacts/${id}`)
+  } catch (error: any) {
+    ElMessage.error(error.message || '联系人详情加载失败')
+    return null
+  }
 }
 
 function closeDrawer() {

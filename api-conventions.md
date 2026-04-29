@@ -77,6 +77,7 @@ public record ApiResponse<T>(int code, String message, T data) {
 | 模块 | 方法 | 路径 | 说明 |
 |---|---|---|---|
 | 联系人 | GET | `/api/contacts` | 列表（支持分页 `?page=&size=`） |
+| 联系人 | GET | `/api/contacts/{id}` | 详情 |
 | 联系人 | POST | `/api/contacts` | 新建 |
 | 联系人 | PUT | `/api/contacts/{id}` | 编辑（含关联项目多选同步） |
 | 联系人 | DELETE | `/api/contacts/{id}` | 删除（已被项目关联则拒绝） |
