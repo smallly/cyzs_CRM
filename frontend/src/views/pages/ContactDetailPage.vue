@@ -3,14 +3,14 @@
     <el-card class="detail-card" v-loading="loading">
       <template #header>
         <div class="card-header">
-          <div>
-            <div class="header-title">{{ contact.name || '-' }}</div>
-            <div class="header-subtitle">{{ contact.enterpriseName || '未填写企业名称' }}</div>
+          <div class="header-left">
+            <el-button link :icon="ArrowLeft" @click="router.push('/contacts')" />
+            <div>
+              <div class="header-title">{{ contact.name || '-' }}</div>
+              <div class="header-subtitle">{{ contact.enterpriseName || '未填写企业名称' }}</div>
+            </div>
           </div>
-          <el-space>
-            <el-button @click="router.push('/contacts')">返回列表</el-button>
-            <el-button type="primary" @click="editContact">编辑</el-button>
-          </el-space>
+          <el-button type="primary" @click="editContact">编辑</el-button>
         </div>
       </template>
 
@@ -65,6 +65,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
@@ -163,6 +164,12 @@ function formatDateTime(value?: string | null): string {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .header-title {

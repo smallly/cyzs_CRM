@@ -6,7 +6,6 @@
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
           <span>新增回款</span>
         </div>
-        <el-button @click="router.push('/payments')">返回回款列表</el-button>
       </div>
     </template>
 

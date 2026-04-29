@@ -6,7 +6,6 @@
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
           <span>新增合同</span>
         </div>
-        <el-button @click="router.push('/contracts')">返回合同列表</el-button>
       </div>
     </template>
 

@@ -6,7 +6,6 @@
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
           <span>新增跟进记录</span>
         </div>
-        <el-button @click="router.push('/followups')">返回跟进列表</el-button>
       </div>
     </template>
 

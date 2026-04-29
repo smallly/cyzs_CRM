@@ -6,7 +6,6 @@
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
           <span>新增联系人</span>
         </div>
-        <el-button @click="router.push('/contacts')">返回联系人列表</el-button>
       </div>
     </template>
 
