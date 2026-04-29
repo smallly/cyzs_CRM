@@ -61,7 +61,7 @@
             </el-form-item>
           </el-form>
 
-          <div class="login-tip">默认管理员：13800000000 / Admin@123</div>
+          <div class="login-tip">默认管理员：13800000000 / admin123</div>
         </div>
       </section>
     </div>
@@ -83,7 +83,7 @@ const loading = ref(false)
 
 const form = reactive({
   phone: '13800000000',
-  password: 'Admin@123'
+  password: 'admin123'
 })
 
 const rules = {

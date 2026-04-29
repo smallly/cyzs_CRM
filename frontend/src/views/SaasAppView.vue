@@ -57,7 +57,7 @@
           <div class="row">
             <button @click="doLogin">登录</button>
           </div>
-          <p class="muted">默认管理员：13800000000 / Admin@123</p>
+          <p class="muted">默认管理员：13800000000 / admin123</p>
         </div>
 
         <template v-else>
@@ -1238,7 +1238,7 @@ const firstPaymentDate = computed<string | undefined>(() => {
   return asc[0]?.paidDate;
 });
 
-const loginForm = reactive({ phone: "13800000000", password: "Admin@123" });
+const loginForm = reactive({ phone: "13800000000", password: "admin123" });
 const contactForm = reactive({
   name: "",
   enterpriseName: "",

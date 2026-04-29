@@ -23,7 +23,7 @@ public class BootstrapService {
     private static final String DEFAULT_VENDOR_ADMIN_PASSWORD = "admin123";
     private static final String DEFAULT_VENDOR_ADMIN_NAME = "\u8d85\u7ba1\u7ba1\u7406\u5458";
     private static final String DEFAULT_SAAS_ADMIN_PHONE = "13800000000";
-    private static final String DEFAULT_SAAS_ADMIN_PASSWORD = "Admin@123";
+    private static final String DEFAULT_SAAS_ADMIN_PASSWORD = "admin123";
     private static final String DEFAULT_SAAS_ADMIN_NAME = "\u7cfb\u7edf\u7ba1\u7406\u5458";
     private static final String DEFAULT_SALES_PHONE = "13800000001";
     private static final String DEFAULT_SALES_NAME = "\u9500\u552eA";
@@ -296,6 +296,7 @@ public class BootstrapService {
                 new QueryWrapper<User>().eq("phone", DEFAULT_SAAS_ADMIN_PHONE)
         );
         if (admin == null) {
+            seedData();
             return;
         }
         String encoded = passwordEncoder.encode(DEFAULT_SAAS_ADMIN_PASSWORD);
