@@ -553,7 +553,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from './stores/auth'
 import { Lock, User, SwitchButton, Plus, Search, OfficeBuilding, UserFilled } from '@element-plus/icons-vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from './api/page'
@@ -1113,7 +1113,7 @@ async function loadAdmins() {
 async function loadSaasUsers() {
   saasUserLoading.value = true
   try {
-    const res = await authStore.api<PageResult<any> | any[]>('/api/vendor/tenants/available-admins')
+    const res = await authStore.api<PageResult<any> | any[]>('/api/vendor/admins')
     const pageData = normalizePageResult<any>(res)
     saasUsers.value = pageData.records
   } catch (error: any) {
@@ -1121,6 +1121,67 @@ async function loadSaasUsers() {
     ElMessage.error(error?.message || '用户列表加载失败')
   } finally {
     saasUserLoading.value = false
+  }
+}
+
+function openSaasUserEditDialog(row: any) {
+  saasUserEditTarget.value = row
+  saasUserEditForm.name = row.name || ''
+  saasUserEditDialogVisible.value = true
+}
+
+async function submitSaasUserEdit() {
+  if (!saasUserEditTarget.value) return
+  if (!saasUserEditForm.name.trim()) {
+    ElMessage.warning('请输入姓名')
+    return
+  }
+  saasUserEditSubmitting.value = true
+  try {
+    await authStore.api(`/api/vendor/admins/${saasUserEditTarget.value.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: saasUserEditForm.name.trim() })
+    })
+    ElMessage.success('用户信息已更新')
+    saasUserEditDialogVisible.value = false
+    await Promise.all([loadSaasUsers(), loadAdmins()])
+  } catch (error: any) {
+    if (handleAuthRequired(error)) return
+    ElMessage.error(error?.message || '更新失败')
+  } finally {
+    saasUserEditSubmitting.value = false
+  }
+}
+
+async function toggleSaasUserStatus(row: any) {
+  const target = row.status === 'ENABLED' ? 'DISABLED' : 'ENABLED'
+  try {
+    await authStore.api(`/api/vendor/admins/${row.id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: target })
+    })
+    ElMessage.success(target === 'ENABLED' ? '已启用' : '已停用')
+    await Promise.all([loadSaasUsers(), loadAdmins()])
+  } catch (error: any) {
+    if (handleAuthRequired(error)) return
+    ElMessage.error(error?.message || '状态更新失败')
+  }
+}
+
+async function deleteSaasUser(row: any) {
+  try {
+    await ElMessageBox.confirm(`确认删除用户「${row.name || row.phone || '-'}」？`, '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消'
+    })
+    await authStore.api(`/api/vendor/admins/${row.id}`, { method: 'DELETE' })
+    ElMessage.success('用户已删除')
+    await Promise.all([loadSaasUsers(), loadAdmins()])
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    if (handleAuthRequired(error)) return
+    ElMessage.error(error?.message || '删除失败')
   }
 }
 

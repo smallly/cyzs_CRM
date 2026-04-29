@@ -7,6 +7,7 @@ import com.indcrm.crm.common.PageUtils;
 import com.indcrm.crm.domain.User;
 import com.indcrm.crm.domain.VendorAdmin;
 import com.indcrm.crm.service.SessionService;
+import com.indcrm.crm.service.VendorAdminService;
 import com.indcrm.crm.service.VendorTenantService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -27,10 +28,12 @@ import java.util.List;
 @Validated
 public class VendorTenantController {
     private final VendorTenantService vendorTenantService;
+    private final VendorAdminService vendorAdminService;
     private final SessionService sessionService;
 
-    public VendorTenantController(VendorTenantService vendorTenantService, SessionService sessionService) {
+    public VendorTenantController(VendorTenantService vendorTenantService, VendorAdminService vendorAdminService, SessionService sessionService) {
         this.vendorTenantService = vendorTenantService;
+        this.vendorAdminService = vendorAdminService;
         this.sessionService = sessionService;
     }
 
@@ -131,7 +134,7 @@ public class VendorTenantController {
     @PostMapping("/admins")
     public ApiResponse<?> createAdmin(@RequestBody @Valid CreateAdminReq req) {
         requireVendorAdmin();
-        return ApiResponse.ok(vendorTenantService.createAvailableAdmin(
+        return ApiResponse.ok(vendorAdminService.createAdmin(
                 req.name(),
                 req.phone(),
                 req.password()
