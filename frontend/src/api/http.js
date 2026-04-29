@@ -1,7 +1,16 @@
 export function getApiBaseUrl() {
     return import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 }
-export function createApiClient(getToken) {
+export class AuthRequiredError extends Error {
+    constructor(message = "请先登录") {
+        super(message);
+        this.name = "AuthRequiredError";
+    }
+}
+export function isAuthRequiredError(error) {
+    return error instanceof AuthRequiredError || error?.name === "AuthRequiredError";
+}
+export function createApiClient(getToken, onAuthError) {
     const apiBase = getApiBaseUrl();
     return async function api(path, init) {
         const normalizedPath = path.startsWith("/") ? path : "/" + path;
@@ -23,6 +32,11 @@ export function createApiClient(getToken) {
             payload = null;
         }
         if (!res.ok) {
+            if (res.status === 401 || res.status === 403) {
+                const message = payload?.message || "请先登录";
+                onAuthError?.(message);
+                throw new AuthRequiredError(message);
+            }
             if (payload && typeof payload.message === "string") {
                 throw new Error(payload.message);
             }
@@ -30,6 +44,11 @@ export function createApiClient(getToken) {
         }
         if (payload && typeof payload.code === "number") {
             if (payload.code !== 0) {
+                if (payload.code === 401 || payload.code === 403) {
+                    const message = payload.message || "请先登录";
+                    onAuthError?.(message);
+                    throw new AuthRequiredError(message);
+                }
                 throw new Error(payload.message || "request failed");
             }
             return payload.data;

@@ -507,6 +507,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from './stores/auth'
 import { Lock, User, SwitchButton, Plus, Search, OfficeBuilding, UserFilled } from '@element-plus/icons-vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from './api/page'
+import { isAuthRequiredError } from './api/http'
 
 interface TenantSummary {
   tenantId: string
@@ -661,8 +662,20 @@ async function handleLogin() {
 
 function handleLogout() {
   authStore.logout()
-  authStore.saveToStorage()
+  localStorage.removeItem('crm_auth')
   ElMessage.success('已退出登录')
+}
+
+function handleAuthRequired(error: unknown): boolean {
+  if (!isAuthRequiredError(error)) {
+    return false
+  }
+  tenants.value = []
+  admins.value = []
+  saasUsers.value = []
+  availableAdmins.value = []
+  total.value = 0
+  return true
 }
 
 function openDialog() {
@@ -676,6 +689,7 @@ async function openOrderDialog(row: TenantSummary) {
   try {
     orderRecords.value = await authStore.api<any[]>(`/api/vendor/tenants/${row.tenantId}/orders`)
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '订单记录加载失败')
     orderRecords.value = []
   } finally {
@@ -708,6 +722,7 @@ async function submitEdit() {
     editDialogVisible.value = false
     await loadTenants()
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '更新失败')
   } finally {
     editSubmitting.value = false
@@ -748,6 +763,7 @@ async function submitRenew() {
     renewDialogVisible.value = false
     await loadTenants()
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '保存失败')
   } finally {
     renewing.value = false
@@ -769,6 +785,7 @@ async function checkAdminPhoneExists() {
   try {
     adminPhoneExists.value = await authStore.api<boolean>(`/api/vendor/tenants/admin-phone-exists?phone=${encodeURIComponent(phone)}`)
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '手机号校验失败')
   } finally {
     checkingAdminPhone.value = false
@@ -784,6 +801,7 @@ async function loadTenants() {
     tenants.value = pageData.records
     total.value = pageData.total
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '组织列表加载失败')
   } finally {
     loading.value = false
@@ -811,6 +829,7 @@ async function toggleTenantStatus(row: TenantSummary) {
     ElMessage.success(target === 'ACTIVE' ? '已启用组织' : '已停用组织')
     await loadTenants()
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '状态更新失败')
   }
 }
@@ -838,6 +857,7 @@ async function loadAvailableAdmins() {
       : '/api/vendor/tenants/available-admins'
     availableAdmins.value = await authStore.api<any[]>(url)
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '加载用户列表失败')
     availableAdmins.value = []
   } finally {
@@ -860,6 +880,7 @@ async function selectAdmin(row: any) {
       changeAdminTarget.value = null
       await loadTenants()
     } catch (error: any) {
+      if (handleAuthRequired(error)) return
       ElMessage.error(error?.message || '更换管理员失败')
     } finally {
       changeAdminSubmitting.value = false
@@ -918,6 +939,7 @@ async function submitCreateAdminInDialog() {
     form.adminPhone = created.phone
     adminSelectDialogVisible.value = false
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '创建失败')
   } finally {
     creatingAdminInDialog.value = false
@@ -963,6 +985,7 @@ async function openTenant() {
     await loadTenants()
     resetForm()
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '组织开通失败')
   } finally {
     creating.value = false
@@ -1011,6 +1034,7 @@ async function loadAdmins() {
     const pageData = normalizePageResult<any>(res)
     admins.value = pageData.records
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '管理员列表加载失败')
   } finally {
     adminLoading.value = false
@@ -1024,6 +1048,7 @@ async function loadSaasUsers() {
     const pageData = normalizePageResult<any>(res)
     saasUsers.value = pageData.records
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '用户列表加载失败')
   } finally {
     saasUserLoading.value = false
@@ -1064,6 +1089,7 @@ async function submitAdmin() {
     adminDialogVisible.value = false
     await loadAdmins()
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '添加失败')
   } finally {
     adminCreating.value = false
@@ -1080,6 +1106,7 @@ async function toggleAdminStatus(row: any) {
     ElMessage.success(target === 'ENABLED' ? '已启用' : '已停用')
     await loadAdmins()
   } catch (error: any) {
+    if (handleAuthRequired(error)) return
     ElMessage.error(error?.message || '状态更新失败')
   }
 }
