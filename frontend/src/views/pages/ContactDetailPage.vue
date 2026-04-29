@@ -46,7 +46,7 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-empty v-else description="暂无关联项目" />
+        <el-empty v-else description="暂无关联项目" class="compact-empty" />
 
         <div class="section-title">系统信息</div>
         <el-descriptions :column="2" border>
@@ -186,5 +186,17 @@ function formatDateTime(value?: string | null): string {
 
 .section-title:first-child {
   margin-top: 0;
+}
+
+.compact-empty {
+  padding: 16px 0;
+}
+
+.compact-empty :deep(.el-empty__image) {
+  width: 60px;
+}
+
+.compact-empty :deep(.el-empty__description) {
+  margin-top: 8px;
 }
 </style>
