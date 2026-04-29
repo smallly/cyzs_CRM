@@ -62,4 +62,6 @@ public class Project {
 
     @TableField(exist = false)
     public String ownerName;
+    @TableField(exist = false)
+    public String creatorName;
 }

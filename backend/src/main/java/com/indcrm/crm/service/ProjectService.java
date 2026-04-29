@@ -128,6 +128,7 @@ public class ProjectService {
         p.createdAt = LocalDateTime.now();
 
         projectMapper.insert(p);
+        hydrateUserNames(p);
         auditService.log(actor, "PROJECT_CREATE", "Project", p.id, p.code);
         return p;
     }
@@ -142,7 +143,7 @@ public class ProjectService {
         for (Project p : all) {
             if (permissionService.canOperateByOwner(actor, p.ownerId)) {
                 hydrateAreaRange(p);
-                hydrateOwnerName(p);
+                hydrateUserNames(p);
                 list.add(p);
             }
         }
@@ -159,7 +160,7 @@ public class ProjectService {
         if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
             throw new BizException(ErrorCode.AUTH_403, "No permission to view project");
         }
-        hydrateOwnerName(p);
+        hydrateUserNames(p);
         return p;
     }
 
@@ -201,6 +202,7 @@ public class ProjectService {
         p.intendedArea = null;
         p.remark = normalizeNullable(remark);
         projectMapper.updateById(p);
+        hydrateUserNames(p);
         auditService.log(actor, "PROJECT_UPDATE", "Project", p.id, p.code);
         return p;
     }
@@ -251,6 +253,7 @@ public class ProjectService {
         }
         p.stage = stage;
         projectMapper.updateById(p);
+        hydrateUserNames(p);
         auditService.log(actor, "PROJECT_STAGE", "Project", p.id, stage.name());
         return p;
     }
@@ -366,13 +369,18 @@ public class ProjectService {
         }
     }
 
-    private void hydrateOwnerName(Project p) {
-        if (p.ownerId == null || p.ownerId.isBlank()) {
-            return;
+    private void hydrateUserNames(Project p) {
+        if (p.ownerId != null && !p.ownerId.isBlank()) {
+            User owner = userMapper.selectById(p.ownerId);
+            if (owner != null) {
+                p.ownerName = owner.name;
+            }
         }
-        User owner = userMapper.selectById(p.ownerId);
-        if (owner != null) {
-            p.ownerName = owner.name;
+        if (p.creatorId != null && !p.creatorId.isBlank()) {
+            User creator = userMapper.selectById(p.creatorId);
+            if (creator != null) {
+                p.creatorName = creator.name;
+            }
         }
     }
 

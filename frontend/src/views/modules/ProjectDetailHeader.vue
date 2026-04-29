@@ -52,7 +52,7 @@
     <div class="project-base-grid">
       <div class="project-base-item">
         <span class="base-label">项目负责人</span>
-        <span class="base-value">{{ getUserDisplayName(project.ownerId) }}</span>
+        <span class="base-value">{{ getUserDisplayName(project.ownerId, project.ownerName) }}</span>
       </div>
       <div class="project-base-item">
         <span class="base-label">项目级别</span>
@@ -97,7 +97,7 @@ defineProps<{
   getStageLabel: (stage?: string) => string;
   getStageFieldLabel: (stageCode: any) => string;
   getStageFieldValue: (stageCode: any) => string;
-  getUserDisplayName: (userId?: string) => string;
+  getUserDisplayName: (userId?: string, displayName?: string) => string;
   formatAreaRange: (project?: any) => string;
   formatDateTime: (value?: string | null) => string;
   openStageUpdateDialog: (project: any) => void;

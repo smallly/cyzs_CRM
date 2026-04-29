@@ -1015,6 +1015,9 @@ type ProjectRow = {
   contactId: string;
   contactIds?: string[];
   ownerId: string;
+  ownerName?: string;
+  creatorId?: string;
+  creatorName?: string;
   stage: string;
   dealType?: "RENT" | "BUY" | "BOTH";
   level?: string;
@@ -1388,8 +1391,9 @@ function setError(err: unknown) {
     errorToastTimer = null;
   }, 2000);
 }
-function getUserDisplayName(userId?: string): string {
+function getUserDisplayName(userId?: string, displayName?: string): string {
   if (!userId) return "-";
+  if (displayName) return displayName;
   return userNameById.value[userId] || userId;
 }
 function getDeptDisplayName(deptId?: string | null): string {
@@ -2940,5 +2944,4 @@ function disconnectSse() {
   sseConnected.value = false;
 }
 </script>
-
 
