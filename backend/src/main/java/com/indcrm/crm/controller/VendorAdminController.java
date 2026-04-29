@@ -56,6 +56,14 @@ public class VendorAdminController {
         return ApiResponse.ok(null);
     }
 
+    @PutMapping("/{id}")
+    public ApiResponse<Void> update(@PathVariable("id") String id, @RequestBody UpdateReq req) {
+        requireVendorAdmin();
+        vendorAdminService.updateName(id, req.name());
+        return ApiResponse.ok(null);
+    }
+
     public record CreateReq(@NotBlank String name, @NotBlank String phone, @NotBlank String password) {}
     public record StatusReq(UserStatus status) {}
+    public record UpdateReq(@NotBlank String name) {}
 }

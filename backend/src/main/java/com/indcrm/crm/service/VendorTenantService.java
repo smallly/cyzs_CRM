@@ -5,15 +5,15 @@ import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
 import com.indcrm.crm.mapper.DepartmentMapper;
-import com.indcrm.crm.mapper.OrganizationMembershipMapper;
 import com.indcrm.crm.mapper.TenantMapper;
 import com.indcrm.crm.mapper.TenantOrderMapper;
-import com.indcrm.crm.mapper.TenantUserMapper;
-import com.indcrm.crm.mapper.UserAuthenticationMapper;
 import com.indcrm.crm.mapper.UserMapper;
+import com.indcrm.crm.mapper.VendorAdminMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.indcrm.crm.domain.VendorAdmin;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,112 +31,41 @@ public class VendorTenantService {
     private final DepartmentMapper departmentMapper;
     private final TenantMapper tenantMapper;
     private final TenantOrderMapper tenantOrderMapper;
-    private final TenantUserMapper tenantUserMapper;
-    private final OrganizationMembershipMapper organizationMembershipMapper;
-    private final UserAuthenticationMapper userAuthenticationMapper;
+    private final VendorAdminMapper vendorAdminMapper;
     private final PasswordEncoder passwordEncoder;
+    private final VendorAdminService vendorAdminService;
 
-    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper, TenantUserMapper tenantUserMapper, OrganizationMembershipMapper organizationMembershipMapper, UserAuthenticationMapper userAuthenticationMapper, PasswordEncoder passwordEncoder) {
+    public VendorTenantService(UserMapper userMapper, DepartmentMapper departmentMapper, TenantMapper tenantMapper, TenantOrderMapper tenantOrderMapper, VendorAdminMapper vendorAdminMapper, PasswordEncoder passwordEncoder, VendorAdminService vendorAdminService) {
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
         this.tenantMapper = tenantMapper;
         this.tenantOrderMapper = tenantOrderMapper;
-        this.tenantUserMapper = tenantUserMapper;
-        this.organizationMembershipMapper = organizationMembershipMapper;
-        this.userAuthenticationMapper = userAuthenticationMapper;
+        this.vendorAdminMapper = vendorAdminMapper;
         this.passwordEncoder = passwordEncoder;
-    }
-
-    @Transactional
-    public User createAvailableAdmin(String name, String phone, String password) {
-        if (name == null || name.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "name is required");
-        }
-        if (phone == null || phone.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "phone is required");
-        }
-        if (password == null || password.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "password is required");
-        }
-        if (password.length() < 6) {
-            throw new BizException(ErrorCode.BIZ_422, "password at least 6 characters");
-        }
-
-        String normalizedPhone = phone.trim();
-        long exists = userMapper.selectCount(
-                new QueryWrapper<User>().eq("phone", normalizedPhone)
-        );
-        if (exists > 0) {
-            throw new BizException(ErrorCode.BIZ_409, "phone already exists");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        User user = new User();
-        user.id = UUID.randomUUID().toString();
-        user.tenantId = "vendor-default";
-        user.phone = normalizedPhone;
-        user.password = passwordEncoder.encode(password);
-        user.name = name.trim();
-        user.lastTenantId = user.tenantId;
-        user.bizRole = BizRole.SALES;
-        user.systemAdmin = false;
-        user.vendorAdmin = false;
-        user.status = UserStatus.ENABLED;
-        user.createdAt = now;
-
-        userMapper.insert(user);
-        syncPhoneAuthentication(user);
-        return user;
-    }
-
-    private void syncPhoneAuthentication(User user) {
-        if (user == null || user.id == null || user.phone == null) {
-            return;
-        }
-        long exists = userAuthenticationMapper.selectCount(
-                new QueryWrapper<UserAuthentication>()
-                        .eq("auth_type", AuthenticationType.PHONE.name())
-                        .eq("auth_identifier", user.phone)
-        );
-        if (exists > 0) {
-            return;
-        }
-        UserAuthentication auth = new UserAuthentication();
-        auth.id = UUID.randomUUID().toString();
-        auth.userId = user.id;
-        auth.authType = AuthenticationType.PHONE;
-        auth.authIdentifier = user.phone;
-        auth.passwordHash = user.password;
-        auth.verifiedAt = user.createdAt;
-        auth.status = AuthenticationStatus.ACTIVE;
-        auth.createdAt = user.createdAt != null ? user.createdAt : LocalDateTime.now();
-        auth.updatedAt = auth.createdAt;
-        userAuthenticationMapper.insert(auth);
+        this.vendorAdminService = vendorAdminService;
     }
 
     public List<AvailableAdmin> listAvailableAdmins(String keyword) {
-        List<User> users = userMapper.selectList(
-                new QueryWrapper<User>()
+        List<VendorAdmin> admins = vendorAdminMapper.selectList(
+                new QueryWrapper<VendorAdmin>()
                         .eq("status", UserStatus.ENABLED.name())
         );
         List<AvailableAdmin> result = new ArrayList<>();
         String kw = keyword == null ? "" : keyword.trim();
-        for (User user : users) {
-            if (user == null) continue;
+        for (VendorAdmin admin : admins) {
+            if (admin == null) continue;
             if (!kw.isEmpty()) {
-                String name = user.name == null ? "" : user.name;
-                String phone = user.phone == null ? "" : user.phone;
+                String name = admin.name == null ? "" : admin.name;
+                String phone = admin.phone == null ? "" : admin.phone;
                 if (!name.contains(kw) && !phone.contains(kw)) {
                     continue;
                 }
             }
-            Tenant tenant = user.tenantId == null ? null : tenantMapper.selectById(user.tenantId);
             result.add(new AvailableAdmin(
-                    user.id,
-                    user.name,
-                    user.phone,
-                    user.tenantId,
-                    tenant != null ? tenant.name : user.tenantId
+                    admin.id,
+                    admin.name,
+                    admin.phone,
+                    admin.status == null ? null : admin.status.name()
             ));
         }
         result.sort(Comparator.comparing((AvailableAdmin a) -> a.name == null ? "" : a.name));
@@ -170,19 +99,21 @@ public class VendorTenantService {
         }
 
         User admin;
+        VendorAdmin vendorAdmin;
         boolean usedExistingAdmin;
         String normalizedAdminName;
         String normalizedPhone;
 
         if (adminUserId != null && !adminUserId.isBlank()) {
-            // Mode B: Use existing user
-            admin = userMapper.selectById(adminUserId);
-            if (admin == null) {
+            // Mode B: Use existing vendor admin. Vendor platform admins are isolated from SaaS tenant users.
+            vendorAdmin = vendorAdminMapper.selectById(adminUserId);
+            if (vendorAdmin == null) {
                 throw new BizException(ErrorCode.BIZ_422, "所选管理员不存在");
             }
+            admin = null;
             usedExistingAdmin = true;
-            normalizedAdminName = admin.name;
-            normalizedPhone = admin.phone;
+            normalizedAdminName = vendorAdmin.name;
+            normalizedPhone = vendorAdmin.phone;
         } else {
             // Mode A: Create new user
             normalizedAdminName = normalizeRequired(adminName, "管理员姓名不能为空");
@@ -199,6 +130,7 @@ public class VendorTenantService {
             }
 
             admin = new User();
+            vendorAdmin = null;
             admin.id = UUID.randomUUID().toString();
             admin.tenantId = tenantId;
             admin.phone = normalizedPhone;
@@ -217,39 +149,13 @@ public class VendorTenantService {
         rootDept.tenantId = tenantId;
         rootDept.name = "总部";
         rootDept.parentId = null;
-        rootDept.headUserId = admin.id;
+        rootDept.headUserId = admin != null ? admin.id : null;
         rootDept.status = DepartmentStatus.ENABLED;
         rootDept.createdAt = now;
         rootDept.updatedAt = now;
         departmentMapper.insert(rootDept);
 
-        // Create tenant_user and organization_membership for existing user
-        if (adminUserId != null && !adminUserId.isBlank()) {
-            TenantUser tenantUser = new TenantUser();
-            tenantUser.id = UUID.randomUUID().toString();
-            tenantUser.tenantId = tenantId;
-            tenantUser.userId = admin.id;
-            tenantUser.name = admin.name;
-            tenantUser.status = TenantUserStatus.ACTIVE;
-            tenantUser.activated = true;
-            tenantUser.firstLoginAt = now;
-            tenantUser.lastLoginAt = now;
-            tenantUser.createdAt = now;
-            tenantUser.updatedAt = now;
-            tenantUserMapper.insert(tenantUser);
-
-            OrganizationMembership membership = new OrganizationMembership();
-            membership.id = UUID.randomUUID().toString();
-            membership.tenantUserId = tenantUser.id;
-            membership.departmentId = rootDept.id;
-            membership.roleId = admin.bizRole == null ? null : admin.bizRole.name();
-            membership.primary = true;
-            membership.joinedAt = now;
-            membership.status = MembershipStatus.ACTIVE;
-            membership.createdAt = now;
-            membership.updatedAt = now;
-            organizationMembershipMapper.insert(membership);
-        } else {
+        if (admin != null) {
             admin.deptId = rootDept.id;
             admin.managerId = null;
             userMapper.updateById(admin);
@@ -258,8 +164,8 @@ public class VendorTenantService {
         Tenant tenant = new Tenant();
         tenant.id = tenantId;
         tenant.name = normalizedName;
-        tenant.adminUserId = admin.id;
-        tenant.adminPhone = admin.phone;
+        tenant.adminUserId = admin != null ? admin.id : vendorAdmin.id;
+        tenant.adminPhone = normalizedPhone;
         tenant.status = TenantStatus.ACTIVE;
         tenant.expireAt = expireDate.atStartOfDay();
         tenant.createdAt = now;
@@ -278,9 +184,9 @@ public class VendorTenantService {
         return new TenantOpenResult(
                 tenant.id,
                 tenant.name,
-                admin.id,
-                admin.name,
-                admin.phone,
+                tenant.adminUserId,
+                normalizedAdminName,
+                normalizedPhone,
                 usedExistingAdmin ? null : adminPassword,
                 usedExistingAdmin,
                 tenant.status.name(),
@@ -317,7 +223,7 @@ public class VendorTenantService {
                 tenantMapper.updateById(tenant);
             }
 
-            User admin = tenant.adminUserId != null ? userMapper.selectById(tenant.adminUserId) : null;
+            AdminDisplay admin = resolveAdminDisplay(tenant.adminUserId);
             long userCount = userMapper.selectCount(
                     new QueryWrapper<User>().eq("tenant_id", tenant.id)
             );
@@ -325,8 +231,8 @@ public class VendorTenantService {
             result.add(new TenantSummary(
                     tenant.id,
                     tenant.name,
-                    admin != null ? admin.name : "-",
-                    tenant.adminPhone != null ? tenant.adminPhone : (admin != null ? admin.phone : "-"),
+                    admin.name(),
+                    tenant.adminPhone != null ? tenant.adminPhone : admin.phone(),
                     (int) userCount,
                     tenant.status.name(),
                     expired,
@@ -413,15 +319,15 @@ public class VendorTenantService {
             tenantMapper.updateById(tenant);
         }
 
-        User admin = tenant.adminUserId != null ? userMapper.selectById(tenant.adminUserId) : null;
+        AdminDisplay admin = resolveAdminDisplay(tenant.adminUserId);
         long userCount = userMapper.selectCount(
                 new QueryWrapper<User>().eq("tenant_id", tenant.id)
         );
         return new TenantSummary(
                 tenant.id,
                 tenant.name,
-                admin != null ? admin.name : "-",
-                tenant.adminPhone != null ? tenant.adminPhone : (admin != null ? admin.phone : "-"),
+                admin.name(),
+                tenant.adminPhone != null ? tenant.adminPhone : admin.phone(),
                 (int) userCount,
                 tenant.status.name(),
                 isExpired(tenant, now),
@@ -452,7 +358,7 @@ public class VendorTenantService {
     @Transactional
     public TenantSummary changeTenantAdmin(String tenantId, String adminUserId) {
         Tenant tenant = mustGetTenant(tenantId);
-        User newAdmin = userMapper.selectById(adminUserId);
+        VendorAdmin newAdmin = vendorAdminMapper.selectById(adminUserId);
         if (newAdmin == null) {
             throw new BizException(ErrorCode.BIZ_422, "管理员用户不存在");
         }
@@ -462,68 +368,31 @@ public class VendorTenantService {
         tenant.updatedAt = LocalDateTime.now();
         tenantMapper.updateById(tenant);
 
-        ensureTenantUserForAdmin(tenantId, newAdmin);
-
-        Department rootDept = departmentMapper.selectOne(
-                new QueryWrapper<Department>()
-                        .eq("tenant_id", tenantId)
-                        .isNull("parent_id")
-                        .last("LIMIT 1")
-        );
-        if (rootDept != null) {
-            rootDept.headUserId = newAdmin.id;
-            rootDept.updatedAt = LocalDateTime.now();
-            departmentMapper.updateById(rootDept);
-        }
-
         return toSummary(tenant);
     }
 
-    private void ensureTenantUserForAdmin(String tenantId, User admin) {
-        TenantUser existing = tenantUserMapper.selectOne(
-                new QueryWrapper<TenantUser>()
-                        .eq("tenant_id", tenantId)
-                        .eq("user_id", admin.id)
-        );
-        LocalDateTime now = LocalDateTime.now();
-        if (existing == null) {
-            TenantUser tenantUser = new TenantUser();
-            tenantUser.id = UUID.randomUUID().toString();
-            tenantUser.tenantId = tenantId;
-            tenantUser.userId = admin.id;
-            tenantUser.name = admin.name;
-            tenantUser.status = TenantUserStatus.ACTIVE;
-            tenantUser.activated = true;
-            tenantUser.firstLoginAt = now;
-            tenantUser.lastLoginAt = now;
-            tenantUser.createdAt = now;
-            tenantUser.updatedAt = now;
-            tenantUserMapper.insert(tenantUser);
-
-            Department rootDept = departmentMapper.selectOne(
-                    new QueryWrapper<Department>()
-                            .eq("tenant_id", tenantId)
-                            .isNull("parent_id")
-                            .last("LIMIT 1")
-            );
-            if (rootDept != null) {
-                OrganizationMembership membership = new OrganizationMembership();
-                membership.id = UUID.randomUUID().toString();
-                membership.tenantUserId = tenantUser.id;
-                membership.departmentId = rootDept.id;
-                membership.roleId = admin.bizRole == null ? BizRole.PROJECT_ADMIN.name() : admin.bizRole.name();
-                membership.primary = true;
-                membership.joinedAt = now;
-                membership.status = MembershipStatus.ACTIVE;
-                membership.createdAt = now;
-                membership.updatedAt = now;
-                organizationMembershipMapper.insert(membership);
-            }
-        } else {
-            existing.name = admin.name;
-            existing.updatedAt = now;
-            tenantUserMapper.updateById(existing);
+    private AdminDisplay resolveAdminDisplay(String adminId) {
+        if (adminId == null || adminId.isBlank()) {
+            return new AdminDisplay("-", "-");
         }
+        VendorAdmin vendorAdmin = vendorAdminMapper.selectById(adminId);
+        if (vendorAdmin != null) {
+            return new AdminDisplay(
+                    vendorAdmin.name != null ? vendorAdmin.name : "-",
+                    vendorAdmin.phone != null ? vendorAdmin.phone : "-"
+            );
+        }
+        User legacyUser = userMapper.selectById(adminId);
+        if (legacyUser != null) {
+            return new AdminDisplay(
+                    legacyUser.name != null ? legacyUser.name : "-",
+                    legacyUser.phone != null ? legacyUser.phone : "-"
+            );
+        }
+        return new AdminDisplay("-", "-");
+    }
+
+    private record AdminDisplay(String name, String phone) {
     }
 
     private boolean isExpired(Tenant tenant, LocalDateTime now) {
@@ -597,12 +466,15 @@ public class VendorTenantService {
     ) {
     }
 
+    public VendorAdmin createAvailableAdmin(String name, String phone, String password) {
+        return vendorAdminService.createAdmin(name, phone, password);
+    }
+
     public record AvailableAdmin(
             String userId,
             String name,
             String phone,
-            String tenantId,
-            String tenantName
+            String status
     ) {
     }
 }

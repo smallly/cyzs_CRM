@@ -199,15 +199,18 @@
                 {{ formatDateTime(row.createdAt) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
-                <el-button
-                  size="small"
-                  :type="row.status === 'ENABLED' ? 'danger' : 'primary'"
-                  @click="toggleAdminStatus(row)"
-                >
-                  {{ row.status === 'ENABLED' ? '停用' : '启用' }}
-                </el-button>
+                <el-space>
+                  <el-button size="small" @click="openAdminEditDialog(row)">编辑</el-button>
+                  <el-button
+                    size="small"
+                    :type="row.status === 'ENABLED' ? 'danger' : 'primary'"
+                    @click="toggleAdminStatus(row)"
+                  >
+                    {{ row.status === 'ENABLED' ? '停用' : '启用' }}
+                  </el-button>
+                </el-space>
               </template>
             </el-table-column>
           </el-table>
@@ -280,6 +283,19 @@
     </template>
   </el-dialog>
 
+  <!-- 编辑管理员弹窗 -->
+  <el-dialog v-model="adminEditDialogVisible" title="编辑管理员" width="480px" :close-on-click-modal="false">
+    <el-form :model="adminEditForm" label-width="80px">
+      <el-form-item label="姓名" required>
+        <el-input v-model="adminEditForm.name" placeholder="请输入姓名" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="adminEditDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="adminEditSubmitting" @click="submitAdminEdit">保存</el-button>
+    </template>
+  </el-dialog>
+
   <!-- 选择管理员弹窗 -->
   <el-dialog
     v-model="adminSelectDialogVisible"
@@ -299,13 +315,19 @@
           <el-icon @click="loadAvailableAdmins" style="cursor: pointer"><Search /></el-icon>
         </template>
       </el-input>
-      <el-button type="primary" @click="openCreateAdminInDialog">新建用户</el-button>
+      <el-button type="primary" @click="openCreateAdminInDialog">新建管理员</el-button>
     </div>
 
     <el-table :data="availableAdmins" v-loading="adminSelectLoading" style="margin-top: 16px">
       <el-table-column prop="name" label="姓名" min-width="120" />
       <el-table-column prop="phone" label="手机号" min-width="140" />
-      <el-table-column prop="tenantName" label="所属租户" min-width="160" />
+      <el-table-column label="状态" min-width="120">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 'ENABLED' ? 'primary' : 'danger'" size="small">
+            {{ row.status === 'ENABLED' ? '已启用' : '已停用' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
           <el-button size="small" type="primary" :loading="changeAdminSubmitting" @click="selectAdmin(row)">选择</el-button>
@@ -313,10 +335,10 @@
       </el-table-column>
     </el-table>
 
-    <!-- 弹窗内新建用户表单 -->
+    <!-- 弹窗内新建管理员表单 -->
     <el-dialog
       v-model="createAdminInDialogVisible"
-      title="新建用户"
+      title="新建管理员"
       width="480px"
       append-to-body
       :close-on-click-modal="false"
@@ -590,6 +612,12 @@ const adminForm = reactive({
   name: '',
   phone: '',
   password: ''
+})
+const adminEditDialogVisible = ref(false)
+const adminEditSubmitting = ref(false)
+const adminEditTarget = ref<any | null>(null)
+const adminEditForm = reactive({
+  name: ''
 })
 
 // SaaS User management (under System Settings)
@@ -922,7 +950,7 @@ async function submitCreateAdminInDialog() {
 
   creatingAdminInDialog.value = true
   try {
-    const created = await authStore.api<any>('/api/vendor/tenants/admins', {
+    const created = await authStore.api<any>('/api/vendor/admins', {
       method: 'POST',
       body: JSON.stringify({
         name: createAdminForm.name.trim(),
@@ -930,13 +958,20 @@ async function submitCreateAdminInDialog() {
         password: createAdminForm.password
       })
     })
-    ElMessage.success('用户已创建')
+    ElMessage.success('管理员已创建')
     createAdminInDialogVisible.value = false
-    // Auto select the newly created admin
-    selectedAdmin.value = created
-    isNewAdmin.value = true
+    const admin = {
+      userId: created.id,
+      name: created.name,
+      phone: created.phone,
+      status: created.status
+    }
+    selectedAdmin.value = admin
+    isNewAdmin.value = false
     form.adminName = created.name
     form.adminPhone = created.phone
+    availableAdmins.value = [admin, ...availableAdmins.value]
+    await loadAdmins()
     adminSelectDialogVisible.value = false
   } catch (error: any) {
     if (handleAuthRequired(error)) return
@@ -1093,6 +1128,35 @@ async function submitAdmin() {
     ElMessage.error(error?.message || '添加失败')
   } finally {
     adminCreating.value = false
+  }
+}
+
+function openAdminEditDialog(row: any) {
+  adminEditTarget.value = row
+  adminEditForm.name = row.name || ''
+  adminEditDialogVisible.value = true
+}
+
+async function submitAdminEdit() {
+  if (!adminEditTarget.value) return
+  if (!adminEditForm.name.trim()) {
+    ElMessage.warning('请输入姓名')
+    return
+  }
+  adminEditSubmitting.value = true
+  try {
+    await authStore.api(`/api/vendor/admins/${adminEditTarget.value.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: adminEditForm.name.trim() })
+    })
+    ElMessage.success('管理员信息已更新')
+    adminEditDialogVisible.value = false
+    await loadAdmins()
+  } catch (error: any) {
+    if (handleAuthRequired(error)) return
+    ElMessage.error(error?.message || '更新失败')
+  } finally {
+    adminEditSubmitting.value = false
   }
 }
 

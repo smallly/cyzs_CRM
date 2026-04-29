@@ -91,6 +91,20 @@ public class VendorAdminService {
         vendorAdminMapper.updateById(admin);
     }
 
+    @Transactional
+    public void updateName(String adminId, String name) {
+        if (name == null || name.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "name is required");
+        }
+        VendorAdmin admin = vendorAdminMapper.selectById(adminId);
+        if (admin == null) {
+            throw new BizException(ErrorCode.BIZ_422, "admin not found");
+        }
+        admin.name = name.trim();
+        admin.updatedAt = LocalDateTime.now();
+        vendorAdminMapper.updateById(admin);
+    }
+
     private void syncPhoneAuthentication(VendorAdmin admin) {
         if (admin == null || admin.id == null || admin.phone == null) {
             return;
