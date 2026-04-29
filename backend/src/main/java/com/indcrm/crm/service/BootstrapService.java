@@ -313,6 +313,42 @@ public class BootstrapService {
             auth.updatedAt = LocalDateTime.now();
             userAuthenticationMapper.updateById(auth);
         }
+
+        // 同步旧租户的管理员指向（防止旧用户被删后 admin_user_id 失效）
+        syncTenantAdminToCurrentUser(admin);
+    }
+
+    private void syncTenantAdminToCurrentUser(User admin) {
+        if (admin == null || admin.id == null) {
+            return;
+        }
+        List<String> staleTenantIds = jdbcTemplate.queryForList(
+                "SELECT id FROM tenants WHERE admin_phone = ? AND (admin_user_id IS NULL OR admin_user_id != ?)",
+                String.class,
+                admin.phone, admin.id
+        );
+        for (String tenantId : staleTenantIds) {
+            jdbcTemplate.update("UPDATE tenants SET admin_user_id = ? WHERE id = ?", admin.id, tenantId);
+            long exists = tenantUserMapper.selectCount(
+                    new QueryWrapper<TenantUser>()
+                            .eq("tenant_id", tenantId)
+                            .eq("user_id", admin.id)
+            );
+            if (exists == 0) {
+                TenantUser tu = new TenantUser();
+                tu.id = UUID.randomUUID().toString();
+                tu.tenantId = tenantId;
+                tu.userId = admin.id;
+                tu.name = admin.name;
+                tu.status = TenantUserStatus.ACTIVE;
+                tu.activated = true;
+                tu.firstLoginAt = admin.createdAt != null ? admin.createdAt : LocalDateTime.now();
+                tu.lastLoginAt = tu.firstLoginAt;
+                tu.createdAt = LocalDateTime.now();
+                tu.updatedAt = tu.createdAt;
+                tenantUserMapper.insert(tu);
+            }
+        }
     }
 
     private void ensureTenantsForExistingUsers() {
