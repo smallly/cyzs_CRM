@@ -111,28 +111,6 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item class="user-center-head" disabled>
-                  <div class="user-center-head-wrap">
-                    <span class="user-avatar large">{{ userAvatarText }}</span>
-                    <div class="user-center-head-meta">
-                      <div class="user-center-name">{{ authStore.userName || '用户' }}</div>
-                      <div class="user-center-org">组织：{{ organizationName }}</div>
-                    </div>
-                  </div>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="authStore.hasMultipleTenants" divided disabled>
-                  <div style="font-size:12px;color:#64748b">切换组织</div>
-                </el-dropdown-item>
-                <el-dropdown-item
-                  v-for="t in authStore.tenants"
-                  :key="t.tenantId"
-                  :command="'tenant:' + t.tenantId"
-                  :class="{ 'tenant-active': t.tenantId === authStore.tenantId }"
-                >
-                  <el-icon><OfficeBuilding /></el-icon>
-                  <span>{{ t.tenantName || t.tenantId }}</span>
-                  <el-tag v-if="t.tenantId === authStore.tenantId" type="success" size="small" style="margin-left:auto">当前</el-tag>
-                </el-dropdown-item>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
                   <span>个人中心</span>
@@ -253,8 +231,6 @@ const userAvatarText = computed(() => {
   return name ? name.charAt(0).toUpperCase() : 'U'
 })
 
-const organizationName = computed(() => authStore.tenantName || authStore.tenantId || '-')
-
 const businessMenuItems = [
   { key: 'projects', label: '项目', route: '/projects', icon: Files },
   { key: 'contracts', label: '合同', route: '/contracts', icon: Document },
@@ -359,11 +335,6 @@ function handleUserCommand(command: string | number | object) {
   }
   if (cmd === 'profile') {
     router.push('/profile')
-    return
-  }
-  if (cmd.startsWith('tenant:')) {
-    const targetTenantId = cmd.slice('tenant:'.length)
-    authStore.switchTenant(targetTenantId)
     return
   }
 }
@@ -618,42 +589,6 @@ function isMenuActive(menuRoute: string): boolean {
   margin-right: 8px;
 }
 
-:deep(.user-center-popper .user-center-head) {
-  height: auto;
-  line-height: normal;
-  cursor: default;
-  padding: 10px 14px;
-}
-
-:deep(.user-center-popper .user-center-head:hover) {
-  background: transparent;
-  color: inherit;
-}
-
-.user-center-head-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user-center-head-meta {
-  min-width: 0;
-}
-
-.user-center-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f2937;
-  line-height: 1.2;
-}
-
-.user-center-org {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.2;
-}
-
 .app-main {
   background: radial-gradient(circle at 0 0, #ecf4ff 0%, #f7f9fc 35%, #f3f5f9 100%);
   padding: 12px;
@@ -666,11 +601,6 @@ function isMenuActive(menuRoute: string): boolean {
 .app-main > * {
   max-width: 100%;
   min-width: 0;
-}
-
-.tenant-active {
-  background: #eff4ff;
-  color: #2f5cf6;
 }
 
 .org-switcher {
@@ -788,5 +718,4 @@ function isMenuActive(menuRoute: string): boolean {
   flex-shrink: 0;
 }
 </style>
-
 
