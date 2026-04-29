@@ -53,21 +53,28 @@
 
               <div class="option-actions">
                 <template v-if="option.editing">
-                  <el-button link type="primary" @click="saveOption(option)">保存</el-button>
-                  <el-button link @click="cancelEdit(option)">取消</el-button>
+                  <button class="text-action primary" type="button" @click="saveOption(option)">保存</button>
+                  <button class="text-action" type="button" @click="cancelEdit(option)">取消</button>
                 </template>
                 <template v-else>
-                  <el-button link type="primary" @click="editOption(option)">编辑</el-button>
-                  <el-button link type="primary" :disabled="index === 0" @click="moveOption(index, -1)">上移</el-button>
-                  <el-button
-                    link
-                    type="primary"
+                  <button class="text-action primary" type="button" @click="editOption(option)">编辑</button>
+                  <button
+                    class="text-action primary"
+                    type="button"
+                    :disabled="index === 0"
+                    @click="moveOption(index, -1)"
+                  >
+                    上移
+                  </button>
+                  <button
+                    class="text-action primary"
+                    type="button"
                     :disabled="index === activeOptions.length - 1"
                     @click="moveOption(index, 1)"
                   >
                     下移
-                  </el-button>
-                  <el-button link type="danger" @click="removeOption(index)">删除</el-button>
+                  </button>
+                  <button class="text-action danger" type="button" @click="removeOption(index)">删除</button>
                 </template>
               </div>
             </div>
@@ -298,6 +305,7 @@ async function saveDicts() {
   height: 40px;
   padding: 0 18px 0 30px;
   border: 0;
+  border-radius: 0;
   border-right: 3px solid transparent;
   background: transparent;
   color: #334155;
@@ -307,12 +315,12 @@ async function saveDicts() {
 }
 
 .category-item:hover {
-  background: #f6f8fb;
+  background: #f7f8fb;
 }
 
 .category-item.active {
   border-right-color: #2f5cf6;
-  background: #f6f8fb;
+  background: #f3f4f6;
   color: #1f2937;
   font-weight: 600;
 }
@@ -361,12 +369,35 @@ async function saveDicts() {
 .option-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   justify-content: flex-start;
 }
 
 .option-input {
   width: 100%;
+}
+
+.text-action {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.text-action.primary {
+  color: #2f5cf6;
+}
+
+.text-action.danger {
+  color: #ef4444;
+}
+
+.text-action:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
 }
 
 @media (max-width: 960px) {
