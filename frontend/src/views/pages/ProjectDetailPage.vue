@@ -126,7 +126,7 @@
       <el-tabs v-model="activeTab">
         <el-tab-pane :label="`联系人${contacts.length ? `(${contacts.length})` : ''}`" name="contact">
           <div class="detail-list-toolbar" v-if="contacts.length" style="justify-content:flex-end">
-            <el-button size="small" @click="$router.push('/contacts')">新建联系人</el-button>
+            <el-button size="small" type="primary" @click="$router.push('/contacts')">新建联系人</el-button>
           </div>
           <el-table :data="contacts" v-if="contacts.length" border stripe size="small">
             <el-table-column label="姓名" width="150">
