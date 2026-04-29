@@ -70,7 +70,7 @@
       <el-form>
         <el-form-item label="新负责人">
           <el-select v-model="newOwnerId">
-            <el-option v-for="u in users" :key="u.id" :label="u.name" :value="u.id" />
+            <el-option v-for="u in ownerOptions" :key="u.id" :label="u.name" :value="u.id" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
@@ -107,6 +107,17 @@ const ownerDialogVisible = ref(false)
 const newStage = ref('')
 const newOwnerId = ref('')
 const currentProject = ref<any>(null)
+const ownerOptions = computed(() => {
+  const options = users.value.map((u) => ({ id: u.id, name: u.name }))
+  const ownerId = currentProject.value?.ownerId
+  if (ownerId && !options.some((u) => u.id === ownerId)) {
+    options.unshift({
+      id: ownerId,
+      name: getUserDisplayName(ownerId, currentProject.value?.ownerName)
+    })
+  }
+  return options
+})
 
 const dealTypeLabelMap: Record<string, string> = {
   RENT: '租赁',

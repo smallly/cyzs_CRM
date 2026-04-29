@@ -747,7 +747,7 @@
                   <span class="field-label">新负责人（单选）</span>
                   <select v-model="ownerTransferForm.ownerId">
                     <option value="">请选择成员</option>
-                    <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+                    <option v-for="u in ownerTransferOptions" :key="u.id" :value="u.id">{{ u.name }}</option>
                   </select>
                 </label>
                 <label class="field">
@@ -1188,6 +1188,18 @@ const selectedProject = computed<ProjectRow | null>(() => {
   if (!selectedProjectId.value) return null;
   if (selectedProjectDetail.value?.id === selectedProjectId.value) return selectedProjectDetail.value;
   return projects.value.find((p) => p.id === selectedProjectId.value) || null;
+});
+const ownerTransferOptions = computed(() => {
+  const options = users.value.map((u) => ({ id: u.id, name: u.name }));
+  const project = projects.value.find((p) => p.id === ownerTransferProjectId.value) || selectedProject.value;
+  const ownerId = project?.ownerId;
+  if (ownerId && !options.some((u) => u.id === ownerId)) {
+    options.unshift({
+      id: ownerId,
+      name: getUserDisplayName(ownerId, project?.ownerName)
+    });
+  }
+  return options;
 });
 const projectStageCurrentIndex = computed<number>(() => {
   if (!selectedProject.value?.stage) return -1;
@@ -2944,4 +2956,3 @@ function disconnectSse() {
   sseConnected.value = false;
 }
 </script>
-

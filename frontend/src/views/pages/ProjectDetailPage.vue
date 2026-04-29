@@ -319,7 +319,7 @@
       <el-form :model="ownerForm" label-width="100px">
         <el-form-item label="新负责人" required>
           <el-select v-model="ownerForm.ownerId">
-            <el-option v-for="u in users" :key="u.id" :label="u.name" :value="u.id" />
+            <el-option v-for="u in ownerOptions" :key="u.id" :label="u.name" :value="u.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="备注">
@@ -641,6 +641,17 @@ const paymentForm = reactive({
 const ownerForm = reactive({
   ownerId: '',
   remark: ''
+})
+const ownerOptions = computed(() => {
+  const options = users.value.map((u) => ({ id: u.id, name: u.name }))
+  const ownerId = project.value?.ownerId
+  if (ownerId && !options.some((u) => u.id === ownerId)) {
+    options.unshift({
+      id: ownerId,
+      name: getUserDisplayName(ownerId, project.value?.ownerName)
+    })
+  }
+  return options
 })
 
 const followupForm = reactive({
