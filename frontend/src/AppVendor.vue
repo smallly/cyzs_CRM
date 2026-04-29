@@ -243,6 +243,21 @@
                 {{ formatDateTime(row.createdAt) }}
               </template>
             </el-table-column>
+            <el-table-column label="操作" width="220" fixed="right">
+              <template #default="{ row }">
+                <el-space>
+                  <el-button size="small" @click="openSaasUserEditDialog(row)">编辑</el-button>
+                  <el-button
+                    size="small"
+                    :type="row.status === 'ENABLED' ? 'danger' : 'success'"
+                    @click="toggleSaasUserStatus(row)"
+                  >
+                    {{ row.status === 'ENABLED' ? '停用' : '启用' }}
+                  </el-button>
+                  <el-button size="small" type="danger" @click="deleteSaasUser(row)">删除</el-button>
+                </el-space>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
       </el-main>
@@ -293,6 +308,19 @@
     <template #footer>
       <el-button @click="adminEditDialogVisible = false">取消</el-button>
       <el-button type="primary" :loading="adminEditSubmitting" @click="submitAdminEdit">保存</el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 编辑用户弹窗 -->
+  <el-dialog v-model="saasUserEditDialogVisible" title="编辑用户" width="480px" :close-on-click-modal="false">
+    <el-form :model="saasUserEditForm" label-width="80px">
+      <el-form-item label="姓名" required>
+        <el-input v-model="saasUserEditForm.name" placeholder="请输入姓名" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="saasUserEditDialogVisible = false">取消</el-button>
+      <el-button type="primary" :loading="saasUserEditSubmitting" @click="submitSaasUserEdit">保存</el-button>
     </template>
   </el-dialog>
 
@@ -623,6 +651,12 @@ const adminEditForm = reactive({
 // SaaS User management (under System Settings)
 const saasUserLoading = ref(false)
 const saasUsers = ref<any[]>([])
+const saasUserEditDialogVisible = ref(false)
+const saasUserEditSubmitting = ref(false)
+const saasUserEditTarget = ref<any | null>(null)
+const saasUserEditForm = reactive({
+  name: ''
+})
 
 // Admin selector in open tenant dialog
 const adminSelectDialogVisible = ref(false)

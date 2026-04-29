@@ -105,6 +105,18 @@ public class VendorAdminService {
         vendorAdminMapper.updateById(admin);
     }
 
+    @Transactional
+    public void deleteAdmin(String adminId) {
+        VendorAdmin admin = vendorAdminMapper.selectById(adminId);
+        if (admin == null) {
+            throw new BizException(ErrorCode.BIZ_422, "admin not found");
+        }
+        vendorAdminMapper.deleteById(adminId);
+        vendorAdminAuthenticationMapper.delete(
+                new QueryWrapper<VendorAdminAuthentication>().eq("admin_id", adminId)
+        );
+    }
+
     private void syncPhoneAuthentication(VendorAdmin admin) {
         if (admin == null || admin.id == null || admin.phone == null) {
             return;

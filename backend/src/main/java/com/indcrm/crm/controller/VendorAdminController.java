@@ -63,6 +63,13 @@ public class VendorAdminController {
         return ApiResponse.ok(null);
     }
 
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable("id") String id) {
+        requireVendorAdmin();
+        vendorAdminService.deleteAdmin(id);
+        return ApiResponse.ok(null);
+    }
+
     public record CreateReq(@NotBlank String name, @NotBlank String phone, @NotBlank String password) {}
     public record StatusReq(UserStatus status) {}
     public record UpdateReq(@NotBlank String name) {}
