@@ -76,16 +76,16 @@ public class UserService {
         ensureSystemMenuAllowed(actor);
 
         if (name == null || name.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "name is required");
+            throw new BizException(ErrorCode.BIZ_422, "姓名不能为空");
         }
         if (phone == null || phone.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "phone is required");
+            throw new BizException(ErrorCode.BIZ_422, "手机号不能为空");
         }
         if (password == null || password.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "password is required");
+            throw new BizException(ErrorCode.BIZ_422, "密码不能为空");
         }
         if (bizRole == null) {
-            throw new BizException(ErrorCode.BIZ_422, "role is required");
+            throw new BizException(ErrorCode.BIZ_422, "角色不能为空");
         }
 
         Department dept = requireEnabledDepartment(actor, deptId);
@@ -94,7 +94,7 @@ public class UserService {
                 new QueryWrapper<User>().eq("tenant_id", actor.tenantId).eq("phone", phone.trim())
         );
         if (exists > 0) {
-            throw new BizException(ErrorCode.BIZ_409, "phone already exists");
+            throw new BizException(ErrorCode.BIZ_409, "手机号已存在");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -165,7 +165,7 @@ public class UserService {
             throw new BizException(ErrorCode.BIZ_422, "name is required");
         }
         if (phone == null || phone.isBlank()) {
-            throw new BizException(ErrorCode.BIZ_422, "phone is required");
+            throw new BizException(ErrorCode.BIZ_422, "手机号不能为空");
         }
         String normalizedPhone = phone.trim();
         long conflict = userMapper.selectCount(
@@ -175,7 +175,7 @@ public class UserService {
                         .ne("id", user.id)
         );
         if (conflict > 0) {
-            throw new BizException(ErrorCode.BIZ_409, "phone already exists");
+            throw new BizException(ErrorCode.BIZ_409, "手机号已存在");
         }
         user.name = name.trim();
         user.phone = normalizedPhone;

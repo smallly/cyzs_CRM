@@ -116,7 +116,7 @@ public class ContactService {
     public Contact get(User actor, String id) {
         Contact c = mustGet(actor.tenantId, id);
         if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
-            throw new BizException(ErrorCode.AUTH_403, "No permission to view contact");
+            throw new BizException(ErrorCode.AUTH_403, "无权查看该联系人");
         }
         return c;
     }
@@ -139,7 +139,7 @@ public class ContactService {
     ) {
         Contact c = mustGet(actor.tenantId, id);
         if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
-            throw new BizException(ErrorCode.AUTH_403, "No permission to edit contact");
+            throw new BizException(ErrorCode.AUTH_403, "无权编辑该联系人");
         }
         validatePhoneUniq(actor.tenantId, id, phone1, phone2);
         List<String> normalizedProjectIds = normalizeProjectIds(projectIds);
@@ -166,7 +166,7 @@ public class ContactService {
     public void delete(User actor, String id) {
         Contact c = mustGet(actor.tenantId, id);
         if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
-            throw new BizException(ErrorCode.AUTH_403, "No permission to delete contact");
+            throw new BizException(ErrorCode.AUTH_403, "无权删除该联系人");
         }
         List<Project> linkedProjects = projectMapper.selectList(
                 Wrappers.<Project>query()
@@ -175,7 +175,7 @@ public class ContactService {
                         .eq("contact_id", id)
         );
         if (!linkedProjects.isEmpty()) {
-            throw new BizException(ErrorCode.BIZ_422, "Contact is linked by project and cannot be deleted");
+            throw new BizException(ErrorCode.BIZ_422, "联系人已关联项目，不能删除");
         }
         c.deleted = true;
         c.deletedAt = LocalDateTime.now();
@@ -186,7 +186,7 @@ public class ContactService {
     private Contact mustGet(String tenantId, String id) {
         Contact c = contactMapper.selectById(id);
         if (c == null || c.deleted || !tenantId.equals(c.tenantId)) {
-            throw new BizException(ErrorCode.BIZ_422, "Contact not found");
+            throw new BizException(ErrorCode.BIZ_422, "联系人不存在");
         }
         c.projectIds = findProjectIdsByContact(tenantId, id);
         return c;
@@ -218,10 +218,10 @@ public class ContactService {
         for (String projectId : projectIds) {
             Project p = projectMapper.selectById(projectId);
             if (p == null || p.deleted || !actor.tenantId.equals(p.tenantId)) {
-                throw new BizException(ErrorCode.BIZ_422, "Linked project does not exist");
+                throw new BizException(ErrorCode.BIZ_422, "关联项目不存在");
             }
             if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
-                throw new BizException(ErrorCode.AUTH_403, "No permission to link project");
+                throw new BizException(ErrorCode.AUTH_403, "无权关联该项目");
             }
         }
     }
@@ -250,7 +250,7 @@ public class ContactService {
 
     private void validatePhoneUniq(String tenantId, String selfId, String phone1, String phone2) {
         if (phone1 != null && !phone1.isBlank() && phone1.equals(phone2)) {
-            throw new BizException(ErrorCode.BIZ_422, "phone1 cannot equal phone2");
+            throw new BizException(ErrorCode.BIZ_422, "手机号1不能与手机号2相同");
         }
         List<Contact> all = contactMapper.selectList(
                 Wrappers.<Contact>query()
@@ -262,10 +262,10 @@ public class ContactService {
                 continue;
             }
             if (notBlank(phone1) && (phone1.equals(c.phone1) || phone1.equals(c.phone2))) {
-                throw new BizException(ErrorCode.BIZ_409, "phone already exists in tenant");
+                throw new BizException(ErrorCode.BIZ_409, "手机号已存在");
             }
             if (notBlank(phone2) && (phone2.equals(c.phone1) || phone2.equals(c.phone2))) {
-                throw new BizException(ErrorCode.BIZ_409, "phone already exists in tenant");
+                throw new BizException(ErrorCode.BIZ_409, "手机号已存在");
             }
         }
     }

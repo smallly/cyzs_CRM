@@ -264,7 +264,7 @@ public class TenantUserService {
                         .ne(excludeTenantUserId != null, "id", excludeTenantUserId)
         );
         if (count > 0) {
-            throw new BizException(ErrorCode.BIZ_409, "pending phone already exists in tenant");
+            throw new BizException(ErrorCode.BIZ_409, "待确认手机号已存在");
         }
     }
 }

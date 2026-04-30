@@ -47,7 +47,7 @@ export function createApiClient(getToken: AuthTokenProvider, onAuthError?: AuthE
         throw new AuthRequiredError(message);
       }
       if (payload && typeof payload.message === "string") {
-        throw new Error(payload.message);
+        throw new Error(translateApiMessage(payload.message));
       }
       throw new Error(text || ("HTTP " + res.status));
     }
@@ -59,11 +59,39 @@ export function createApiClient(getToken: AuthTokenProvider, onAuthError?: AuthE
           onAuthError?.(message);
           throw new AuthRequiredError(message);
         }
-        throw new Error(payload.message || "request failed");
+        throw new Error(translateApiMessage(payload.message || "request failed"));
       }
       return payload.data as T;
     }
 
     return payload as T;
   };
+}
+
+function translateApiMessage(message: string): string {
+  if (!message) return "请求失败";
+  if (message.startsWith("Linked contact does not exist")) return "关联联系人不存在";
+  if (message.startsWith("Linked project does not exist")) return "关联项目不存在";
+  const map: Record<string, string> = {
+    "phone already exists in tenant": "手机号已存在",
+    "phone already exists": "手机号已存在",
+    "pending phone already exists in tenant": "待确认手机号已存在",
+    "phone already bound": "手机号已绑定",
+    "phone1 cannot equal phone2": "手机号1不能与手机号2相同",
+    "name is required": "姓名不能为空",
+    "phone is required": "手机号不能为空",
+    "password is required": "密码不能为空",
+    "invalid phone or password": "手机号或密码错误",
+    "account is disabled": "账号已禁用",
+    "tenant is disabled": "组织已停用",
+    "tenant is expired": "组织已过期",
+    "No permission": "无权操作",
+    "No permission to view contact": "无权查看该联系人",
+    "No permission to edit contact": "无权编辑该联系人",
+    "No permission to delete contact": "无权删除该联系人",
+    "Contact not found": "联系人不存在",
+    "Contact is linked by project and cannot be deleted": "联系人已关联项目，不能删除",
+    "request failed": "请求失败"
+  };
+  return map[message] || message;
 }

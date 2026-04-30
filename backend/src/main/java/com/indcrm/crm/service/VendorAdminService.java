@@ -59,7 +59,7 @@ public class VendorAdminService {
                 new QueryWrapper<VendorAdmin>().eq("phone", normalizedPhone)
         );
         if (exists > 0) {
-            throw new BizException(ErrorCode.BIZ_409, "phone already exists");
+            throw new BizException(ErrorCode.BIZ_409, "手机号已存在");
         }
 
         LocalDateTime now = LocalDateTime.now();
