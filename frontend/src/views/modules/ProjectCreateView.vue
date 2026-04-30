@@ -60,7 +60,7 @@
                 <el-icon @click="filterContacts" style="cursor: pointer"><Search /></el-icon>
               </template>
             </el-input>
-            <el-button type="primary" @click="router.push('/contacts/create')">新建联系人</el-button>
+            <el-button type="primary" @click="openCreateContactDialog">新建联系人</el-button>
           </div>
 
           <el-table
@@ -81,6 +81,94 @@
             <el-space>
               <el-button @click="contactDialogVisible = false">取消</el-button>
               <el-button type="primary" @click="confirmContactSelect">确定</el-button>
+            </el-space>
+          </template>
+        </el-dialog>
+
+        <el-dialog
+          v-model="createContactDialogVisible"
+          title="新建联系人"
+          width="860px"
+          :close-on-click-modal="false"
+          destroy-on-close
+        >
+          <el-form
+            ref="createContactFormRef"
+            :model="createContactFormData"
+            :rules="createContactFormRules"
+            label-width="100px"
+            class="create-contact-form"
+          >
+            <el-row :gutter="12">
+              <el-col :xs="24" :md="12">
+                <el-form-item label="姓名" prop="name">
+                  <el-input v-model="createContactFormData.name" placeholder="请输入姓名" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="企业名称">
+                  <el-input v-model="createContactFormData.enterpriseName" placeholder="请输入企业名称" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="职位">
+                  <el-input v-model="createContactFormData.title" placeholder="请输入职位" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="手机号1" prop="phone1">
+                  <el-input v-model="createContactFormData.phone1" placeholder="请输入手机号1" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="手机号2">
+                  <el-input v-model="createContactFormData.phone2" placeholder="请输入手机号2（可选）" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="微信号">
+                  <el-input v-model="createContactFormData.wechat" placeholder="请输入微信号" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="邮箱">
+                  <el-input v-model="createContactFormData.email" placeholder="请输入邮箱" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="办公电话">
+                  <el-input v-model="createContactFormData.officePhone" placeholder="请输入办公电话" />
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="性别">
+                  <el-select v-model="createContactFormData.gender" placeholder="请选择性别">
+                    <el-option label="男" value="MALE" />
+                    <el-option label="女" value="FEMALE" />
+                    <el-option label="未知" value="UNKNOWN" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :xs="24" :md="12">
+                <el-form-item label="是否决策人">
+                  <el-select v-model="createContactFormData.decisionMaker">
+                    <el-option label="是" :value="true" />
+                    <el-option label="否" :value="false" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="24">
+                <el-form-item label="备注">
+                  <el-input v-model="createContactFormData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </el-form>
+
+          <template #footer>
+            <el-space>
+              <el-button @click="createContactDialogVisible = false">取消</el-button>
+              <el-button type="primary" :loading="createContactSubmitting" @click="submitCreateContact">保存联系人</el-button>
             </el-space>
           </template>
         </el-dialog>
@@ -181,6 +269,7 @@ const authStore = useAuthStore()
 const formRef = ref()
 const contactTableRef = ref()
 const submitting = ref(false)
+const createContactSubmitting = ref(false)
 const contacts = ref<any[]>([])
 const users = ref<any[]>([])
 const levelOptions = ref<string[]>([])
@@ -188,8 +277,10 @@ const sourceOptions = ref<string[]>([])
 
 // Contact selector dialog
 const contactDialogVisible = ref(false)
+const createContactDialogVisible = ref(false)
 const contactSearchKeyword = ref('')
 const selectedContactIds = ref<string[]>([])
+const createContactFormRef = ref()
 
 const selectedContactLabel = computed(() => {
   const selected = contacts.value.filter((c) => formData.contactIds.includes(c.id))
@@ -236,6 +327,26 @@ const formRules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
   contactId: [{ required: true, message: '请选择联系人', trigger: 'change' }],
   ownerId: [{ required: true, message: '请选择项目负责人', trigger: 'change' }]
+}
+
+const createContactFormData = reactive({
+  name: '',
+  enterpriseName: '',
+  title: '',
+  phone1: '',
+  phone2: '',
+  wechat: '',
+  email: '',
+  officePhone: '',
+  gender: '',
+  decisionMaker: false,
+  projectIds: [] as string[],
+  remark: ''
+})
+
+const createContactFormRules = {
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  phone1: [{ required: true, message: '请输入手机号1', trigger: 'blur' }]
 }
 
 onMounted(async () => {
@@ -325,7 +436,7 @@ async function handleSubmit() {
     ElMessage.success('项目已创建')
     router.push(`/projects/${created.id}`)
   } catch (error: any) {
-    ElMessage.error(error.message || '创建失败')
+    ElMessage.error(toZhMessage(error?.message, '创建失败'))
   } finally {
     submitting.value = false
   }
@@ -363,6 +474,11 @@ function openContactDialog() {
   void nextTick(syncContactTableSelection)
 }
 
+function openCreateContactDialog() {
+  resetCreateContactForm()
+  createContactDialogVisible.value = true
+}
+
 function handleContactSelectionChange(selection: any[]) {
   selectedContactIds.value = selection.map((row) => row.id)
 }
@@ -392,6 +508,55 @@ function syncContactTableSelection() {
 
 function handleCancel() {
   handleBack()
+}
+
+function resetCreateContactForm() {
+  Object.assign(createContactFormData, {
+    name: '',
+    enterpriseName: '',
+    title: '',
+    phone1: '',
+    phone2: '',
+    wechat: '',
+    email: '',
+    officePhone: '',
+    gender: '',
+    decisionMaker: false,
+    projectIds: [],
+    remark: ''
+  })
+}
+
+async function submitCreateContact() {
+  try {
+    await createContactFormRef.value?.validate()
+    createContactSubmitting.value = true
+    const created = await authStore.api<{ id: string }>('/api/contacts', {
+      method: 'POST',
+      body: JSON.stringify(createContactFormData)
+    })
+    createContactDialogVisible.value = false
+    await loadContacts()
+    if (!selectedContactIds.value.includes(created.id)) {
+      selectedContactIds.value = [...selectedContactIds.value, created.id]
+    }
+    void nextTick(syncContactTableSelection)
+    ElMessage.success('联系人已创建并加入勾选')
+  } catch (error: any) {
+    ElMessage.error(toZhMessage(error?.message, '联系人创建失败'))
+  } finally {
+    createContactSubmitting.value = false
+  }
+}
+
+function toZhMessage(message?: string, fallback = '操作失败') {
+  const raw = (message || '').trim()
+  if (!raw) return fallback
+  const lower = raw.toLowerCase()
+  if (lower.includes('phone already exists')) return '手机号已存在，请更换后重试'
+  if (lower.includes('already exists in tenant')) return '当前租户下已存在相同数据'
+  if (lower.includes('duplicate')) return '数据重复，请检查后重试'
+  return raw
 }
 </script>
 
@@ -449,6 +614,10 @@ function handleCancel() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.create-contact-form :deep(.el-form-item) {
+  margin-bottom: 12px;
 }
 
 </style>
