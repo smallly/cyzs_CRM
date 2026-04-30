@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,6 +58,7 @@ public class ProjectService {
             User actor,
             String name,
             String contactId,
+            List<String> contactIds,
             String ownerId,
             ProjectDealType dealType,
             String level,
@@ -88,6 +90,23 @@ public class ProjectService {
         if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
         }
+        LinkedHashSet<String> contactIdSet = new LinkedHashSet<>();
+        contactIdSet.add(normalizedContactId);
+        if (contactIds != null) {
+            for (String id : contactIds) {
+                String normalized = normalizeNullable(id);
+                if (normalized != null) {
+                    contactIdSet.add(normalized);
+                }
+            }
+        }
+        List<String> normalizedContactIds = new ArrayList<>(contactIdSet);
+        for (String cid : normalizedContactIds) {
+            Contact c = contactMapper.selectById(cid);
+            if (c == null || c.deleted || !actor.tenantId.equals(c.tenantId)) {
+                throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist: " + cid);
+            }
+        }
         if (dealType == null) {
             dealType = ProjectDealType.RENT;
         }
@@ -106,6 +125,7 @@ public class ProjectService {
         p.code = codeService.next(actor.tenantId);
         p.name = normalizedName;
         p.contactId = normalizedContactId;
+        p.contactIds = normalizedContactIds;
         p.dealType = dealType;
         p.ownerId = normalizedOwnerId;
         String normalizedLevel = normalizeNullable(level);

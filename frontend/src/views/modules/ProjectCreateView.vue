@@ -20,25 +20,63 @@
         <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="联系人" prop="contactId">
             <div class="contact-selector">
-              <el-select
-                v-model="formData.contactId"
-                filterable
+              <el-input
+                :model-value="selectedContactLabel"
+                readonly
                 placeholder="请选择联系人"
                 class="contact-input"
-              >
-                <el-option
-                  v-for="c in contacts"
-                  :key="c.id"
-                  :label="`${c.name || '-'} (${c.phone1 || '-'})`"
-                  :value="c.id"
-                />
-              </el-select>
-              <el-button class="contact-add-btn" @click="router.push('/contacts/create')">
+                @click="openContactDialog"
+              />
+              <el-button class="contact-add-btn" @click="openContactDialog">
                 <el-icon><Plus /></el-icon>
               </el-button>
             </div>
           </el-form-item>
         </el-col>
+
+        <!-- 选择联系人弹窗 -->
+        <el-dialog
+          v-model="contactDialogVisible"
+          title="选择联系人"
+          width="720px"
+          :close-on-click-modal="false"
+        >
+          <div class="contact-dialog-header">
+            <el-input
+              v-model="contactSearchKeyword"
+              placeholder="搜索姓名或手机号"
+              clearable
+              style="width: 280px"
+              @keyup.enter="filterContacts"
+            >
+              <template #suffix>
+                <el-icon @click="filterContacts" style="cursor: pointer"><Search /></el-icon>
+              </template>
+            </el-input>
+            <el-button type="primary" @click="router.push('/contacts/create')">新建联系人</el-button>
+          </div>
+
+          <el-table
+            ref="contactTableRef"
+            :data="filteredContacts"
+            row-key="id"
+            style="margin-top: 16px"
+            @selection-change="handleContactSelectionChange"
+          >
+            <el-table-column type="selection" width="55" reserve-selection />
+            <el-table-column prop="name" label="姓名" width="120" />
+            <el-table-column prop="phone1" label="手机号" width="140" />
+            <el-table-column prop="enterpriseName" label="企业" />
+            <el-table-column prop="title" label="职位" width="120" />
+          </el-table>
+
+          <template #footer>
+            <el-space>
+              <el-button @click="contactDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="confirmContactSelect">确定</el-button>
+            </el-space>
+          </template>
+        </el-dialog>
 
         <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="项目负责人" prop="ownerId">
@@ -118,10 +156,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, computed } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus } from '@element-plus/icons-vue'
+import { ArrowLeft, Plus, Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
@@ -134,17 +172,39 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const formRef = ref()
+const contactTableRef = ref()
 const submitting = ref(false)
 const contacts = ref<any[]>([])
 const users = ref<any[]>([])
 const levelOptions = ref<string[]>([])
 const sourceOptions = ref<string[]>([])
 
+// Contact selector dialog
+const contactDialogVisible = ref(false)
+const contactSearchKeyword = ref('')
+const selectedContactIds = ref<string[]>([])
+
+const selectedContactLabel = computed(() => {
+  const selected = contacts.value.filter((c) => formData.contactIds.includes(c.id))
+  return selected.map((c) => `${c.name || '-'} (${c.phone1 || '-'})`).join('，')
+})
+
+const filteredContacts = computed(() => {
+  const kw = contactSearchKeyword.value.trim()
+  if (!kw) return contacts.value
+  return contacts.value.filter((c) => {
+    const name = (c.name || '').toLowerCase()
+    const phone = (c.phone1 || '').toLowerCase()
+    return name.includes(kw.toLowerCase()) || phone.includes(kw.toLowerCase())
+  })
+})
+
 
 
 const formData = reactive({
   name: '',
   contactId: '',
+  contactIds: [] as string[],
   ownerId: '',
   dealType: 'RENT',
   level: '',
@@ -229,6 +289,7 @@ async function handleSubmit() {
     const payload: Record<string, any> = {
       name: formData.name,
       contactId: formData.contactId,
+      contactIds: formData.contactIds,
       ownerId: formData.ownerId,
       dealType: formData.dealType,
       intendedRegion: formData.intendedRegion || undefined,
@@ -258,6 +319,7 @@ function resetForm() {
   Object.assign(formData, {
     name: '',
     contactId: '',
+    contactIds: [],
     ownerId: '',
     dealType: 'RENT',
     level: '',
@@ -276,6 +338,40 @@ function handleBack() {
     return
   }
   router.push('/projects')
+}
+
+function openContactDialog() {
+  contactDialogVisible.value = true
+  contactSearchKeyword.value = ''
+  selectedContactIds.value = [...formData.contactIds]
+  void nextTick(syncContactTableSelection)
+}
+
+function handleContactSelectionChange(selection: any[]) {
+  selectedContactIds.value = selection.map((row) => row.id)
+}
+
+function confirmContactSelect() {
+  formData.contactIds = [...selectedContactIds.value]
+  if (formData.contactIds.length > 0) {
+    formData.contactId = formData.contactIds[0]
+  } else {
+    formData.contactId = ''
+  }
+  contactDialogVisible.value = false
+}
+
+function filterContacts() {
+  // filteredContacts is computed, no-op needed
+}
+
+function syncContactTableSelection() {
+  const table = contactTableRef.value
+  if (!table) return
+  table.clearSelection()
+  for (const contact of filteredContacts.value) {
+    table.toggleRowSelection(contact, selectedContactIds.value.includes(contact.id))
+  }
 }
 
 function handleCancel() {
@@ -331,5 +427,10 @@ function handleCancel() {
   padding: 8px 12px;
 }
 
+.contact-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
 </style>

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/projects")
@@ -32,6 +33,7 @@ public class ProjectController {
                 sessionService.requireUser(),
                 req.name(),
                 req.contactId(),
+                req.contactIds(),
                 req.ownerId(),
                 req.dealType(),
                 req.level(),
@@ -109,6 +111,7 @@ public class ProjectController {
     public record CreateReq(
             @NotBlank String name,
             @NotBlank String contactId,
+            List<String> contactIds,
             @NotBlank String ownerId,
             ProjectDealType dealType,
             String level,
