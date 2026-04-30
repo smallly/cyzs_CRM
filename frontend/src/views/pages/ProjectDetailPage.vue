@@ -746,11 +746,11 @@ async function loadAll() {
       loadProject(),
       loadUsers(),
       loadDicts(),
-      loadContacts(),
-      loadFollowups(),
-      loadContracts(),
-      loadPayments()
+      loadFollowups()
     ])
+    await loadContacts()
+    await loadContracts()
+    await loadPayments()
   } catch (error: any) {
     ElMessage.error(error.message || '加载失败')
   } finally {
@@ -863,8 +863,8 @@ function getStageFieldValue(stageCode: string): string {
     PROSPECTING: project.value.firstContactAt,
     VISITING: project.value.firstVisitDate,
     NEGOTIATING: project.value.firstNegotiationDate,
-    SIGNING: contracts.value[0]?.signDate,
-    COLLECTING: payments.value[0]?.paidDate,
+    SIGNING: getEarliestDate(contracts.value, 'signDate'),
+    COLLECTING: getEarliestDate(payments.value, 'paidDate'),
     MOVED_IN: project.value.movedInDate
   }
   return formatDate(map[stageCode])
@@ -876,13 +876,27 @@ function getStageFieldRawValue(stageCode: string): string {
     PROSPECTING: project.value.firstContactAt,
     VISITING: project.value.firstVisitDate,
     NEGOTIATING: project.value.firstNegotiationDate,
-    SIGNING: contracts.value[0]?.signDate,
-    COLLECTING: payments.value[0]?.paidDate,
+    SIGNING: getEarliestDate(contracts.value, 'signDate'),
+    COLLECTING: getEarliestDate(payments.value, 'paidDate'),
     MOVED_IN: project.value.movedInDate
   }
   const raw = map[stageCode]
   if (!raw) return ''
   return toDateValue(String(raw))
+}
+
+function getEarliestDate(items: any[], field: string): string {
+  let earliest = ''
+  for (const item of items) {
+    const value = item?.[field]
+    if (!value) continue
+    const dateText = toDateValue(String(value))
+    if (!dateText) continue
+    if (!earliest || dateText < earliest) {
+      earliest = dateText
+    }
+  }
+  return earliest
 }
 
 const stageFieldDialogTitle = computed(() => {
@@ -896,6 +910,9 @@ function isStageCompleted(stageCode: string): boolean {
 }
 
 function canEditStageField(stageCode: string): boolean {
+  if (stageCode === 'SIGNING' || stageCode === 'COLLECTING') {
+    return false
+  }
   return isStageCompleted(stageCode)
 }
 
@@ -942,6 +959,10 @@ function buildProjectStagePayloadForDateEdit(
 }
 
 async function submitStageFieldEdit() {
+  if (stageFieldForm.stageCode === 'SIGNING' || stageFieldForm.stageCode === 'COLLECTING') {
+    ElMessage.warning('签约/回款日期请在对应合同或回款记录中修改')
+    return
+  }
   if (!stageFieldForm.stageCode || !stageFieldForm.date) {
     ElMessage.warning('请选择日期')
     return
