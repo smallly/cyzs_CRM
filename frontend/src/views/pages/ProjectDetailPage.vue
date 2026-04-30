@@ -353,12 +353,16 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="项目级别">
-              <el-input v-model="projectEditForm.level" />
+              <el-select v-model="projectEditForm.level" placeholder="请选择项目级别">
+                <el-option v-for="item in levelOptions" :key="item" :label="item" :value="item" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="项目来源">
-              <el-input v-model="projectEditForm.source" />
+              <el-select v-model="projectEditForm.source" placeholder="请选择项目来源">
+                <el-option v-for="item in sourceOptions" :key="item" :label="item" :value="item" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -366,14 +370,13 @@
               <el-input v-model="projectEditForm.intendedRegion" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
-            <el-form-item label="面积最小">
-              <el-input-number v-model="projectEditForm.intendedAreaMin" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="面积最大">
-              <el-input-number v-model="projectEditForm.intendedAreaMax" :min="0" />
+          <el-col :span="12">
+            <el-form-item label="意向面积">
+              <div class="area-range-inputs">
+                <el-input v-model="projectEditForm.intendedAreaMinInput" placeholder="最小面积" />
+                <span class="area-range-separator">-</span>
+                <el-input v-model="projectEditForm.intendedAreaMaxInput" placeholder="最大面积" />
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -562,6 +565,11 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
+interface DictRes {
+  projectLevels: string[]
+  projectSources: string[]
+}
+
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -573,6 +581,8 @@ const contacts = ref<any[]>([])
 const followups = ref<any[]>([])
 const contracts = ref<any[]>([])
 const payments = ref<any[]>([])
+const levelOptions = ref<string[]>([])
+const sourceOptions = ref<string[]>([])
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -690,8 +700,8 @@ const projectEditForm = reactive({
   level: '',
   source: '',
   intendedRegion: '',
-  intendedAreaMin: undefined as number | undefined,
-  intendedAreaMax: undefined as number | undefined,
+  intendedAreaMinInput: '',
+  intendedAreaMaxInput: '',
   intendedPrice: '',
   remark: ''
 })
@@ -714,6 +724,7 @@ async function loadAll() {
     await Promise.all([
       loadProject(),
       loadUsers(),
+      loadDicts(),
       loadContacts(),
       loadFollowups(),
       loadContracts(),
@@ -733,6 +744,17 @@ async function loadProject() {
 async function loadUsers() {
   const res = await authStore.api<PageResult<any> | any[]>('/api/users')
   users.value = normalizePageResult<any>(res).records
+}
+
+async function loadDicts() {
+  try {
+    const res = await authStore.api<DictRes>('/api/system/dicts')
+    levelOptions.value = Array.isArray(res.projectLevels) ? res.projectLevels : []
+    sourceOptions.value = Array.isArray(res.projectSources) ? res.projectSources : []
+  } catch {
+    levelOptions.value = []
+    sourceOptions.value = []
+  }
 }
 
 async function loadContacts() {
@@ -1091,8 +1113,8 @@ function openProjectEdit() {
     level: project.value.level || '',
     source: project.value.source || '',
     intendedRegion: project.value.intendedRegion || '',
-    intendedAreaMin: project.value.intendedAreaMin,
-    intendedAreaMax: project.value.intendedAreaMax,
+    intendedAreaMinInput: project.value.intendedAreaMin == null ? '' : String(project.value.intendedAreaMin),
+    intendedAreaMaxInput: project.value.intendedAreaMax == null ? '' : String(project.value.intendedAreaMax),
     intendedPrice: project.value.intendedPrice || '',
     remark: project.value.remark || ''
   })
@@ -1104,11 +1126,28 @@ async function submitProjectEdit() {
     ElMessage.warning('项目名称不能为空')
     return
   }
+  const intendedAreaMin = parseIntegerAreaInput(projectEditForm.intendedAreaMinInput, '最小面积')
+  const intendedAreaMax = parseIntegerAreaInput(projectEditForm.intendedAreaMaxInput, '最大面积')
+  if (intendedAreaMin != null && intendedAreaMax != null && intendedAreaMin > intendedAreaMax) {
+    ElMessage.warning('意向面积区间不合法：最小值不能大于最大值')
+    return
+  }
+  const payload = {
+    name: projectEditForm.name,
+    dealType: projectEditForm.dealType || undefined,
+    level: projectEditForm.level || undefined,
+    source: projectEditForm.source || undefined,
+    intendedRegion: projectEditForm.intendedRegion || undefined,
+    intendedAreaMin,
+    intendedAreaMax,
+    intendedPrice: projectEditForm.intendedPrice || undefined,
+    remark: projectEditForm.remark || undefined
+  }
   submitting.value = true
   try {
     await authStore.api(`/api/projects/${projectId.value}`, {
       method: 'PUT',
-      body: JSON.stringify(projectEditForm)
+      body: JSON.stringify(payload)
     })
     ElMessage.success('项目已更新')
     await loadProject()
@@ -1118,6 +1157,15 @@ async function submitProjectEdit() {
   } finally {
     submitting.value = false
   }
+}
+
+function parseIntegerAreaInput(input: string, fieldLabel: string): number | undefined {
+  const normalized = (input || '').trim()
+  if (!normalized) return undefined
+  if (!/^\d+$/.test(normalized)) {
+    throw new Error(`${fieldLabel}格式不正确，请输入整数`)
+  }
+  return Number(normalized)
 }
 
 function openOwnerTransferDialog() {
@@ -1370,6 +1418,18 @@ async function submitNewPayment() {
 .project-hero-actions {
   display: flex;
   gap: 8px;
+}
+
+.area-range-inputs {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.area-range-separator {
+  color: #909399;
+  flex: 0 0 auto;
 }
 
 /* 阶段进度条 */
