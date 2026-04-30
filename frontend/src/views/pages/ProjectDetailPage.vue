@@ -4,7 +4,7 @@
     <el-card class="project-hero-card">
       <div class="project-hero-top">
         <div class="project-hero-left">
-          <el-button class="project-back-btn" :icon="ArrowLeft" @click="router.push('/projects')" />
+          <el-button class="project-back-btn" link :icon="ArrowLeft" @click="router.push('/projects')" />
           <div class="project-avatar">{{ getProjectAvatarText(project?.name) }}</div>
           <div class="project-hero-main">
             <div class="project-title-row">
@@ -1331,7 +1331,8 @@ async function submitNewPayment() {
 }
 
 .project-back-btn {
-  padding: 8px 10px;
+  padding: 0;
+  font-size: 18px;
 }
 
 .project-avatar {
