@@ -4,6 +4,7 @@
     <el-card class="project-hero-card">
       <div class="project-hero-top">
         <div class="project-hero-left">
+          <el-button class="project-back-btn" :icon="ArrowLeft" @click="router.push('/projects')" />
           <div class="project-avatar">{{ getProjectAvatarText(project?.name) }}</div>
           <div class="project-hero-main">
             <div class="project-title-row">
@@ -21,7 +22,6 @@
           </div>
         </div>
         <div class="project-hero-actions">
-          <el-button @click="router.push('/projects')">返回项目列表</el-button>
           <el-button @click="openStageUpdateDialog">更新阶段</el-button>
           <el-button @click="openProjectEdit">编辑</el-button>
           <el-button @click="openOwnerTransferDialog">更换负责人</el-button>
@@ -558,6 +558,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
@@ -1327,6 +1328,10 @@ async function submitNewPayment() {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.project-back-btn {
+  padding: 8px 10px;
 }
 
 .project-avatar {
