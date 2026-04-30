@@ -63,7 +63,7 @@ public class FollowupService {
             if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
             }
-            if (!isContactLinkedToProject(project, normalizedContactId)) {
+            if (!isContactLinkedToProject(project, contact)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not belong to project");
             }
         }
@@ -160,7 +160,7 @@ public class FollowupService {
             if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
             }
-            if (!isContactLinkedToProject(project, normalizedContactId)) {
+            if (!isContactLinkedToProject(project, contact)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not belong to project");
             }
         }
@@ -234,10 +234,14 @@ public class FollowupService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private boolean isContactLinkedToProject(Project project, String contactId) {
+    private boolean isContactLinkedToProject(Project project, Contact contact) {
+        String contactId = contact.id;
         if (Objects.equals(project.contactId, contactId)) {
             return true;
         }
-        return project.contactIds != null && project.contactIds.contains(contactId);
+        if (project.contactIds != null && project.contactIds.contains(contactId)) {
+            return true;
+        }
+        return contact.projectIds != null && contact.projectIds.contains(project.id);
     }
 }

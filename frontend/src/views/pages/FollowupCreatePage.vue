@@ -113,8 +113,12 @@ const formRules = {
 const availableContacts = computed(() => {
   if (!formData.projectId) return contacts.value
   const project = projects.value.find((p) => p.id === formData.projectId)
-  if (!project?.contactId) return []
-  return contacts.value.filter((c) => c.id === project.contactId)
+  if (!project) return []
+  return contacts.value.filter((c) =>
+    project.contactId === c.id ||
+    project.contactIds?.includes(c.id) ||
+    c.projectIds?.includes(project.id)
+  )
 })
 
 onMounted(async () => {
@@ -139,12 +143,12 @@ async function loadContacts() {
 
 function handleProjectChange() {
   const project = projects.value.find((p) => p.id === formData.projectId)
-  if (!project?.contactId) {
+  if (!project) {
     formData.contactId = ''
     return
   }
   if (!availableContacts.value.some((c) => c.id === formData.contactId)) {
-    formData.contactId = project.contactId
+    formData.contactId = project.contactId || availableContacts.value[0]?.id || ''
   }
 }
 

@@ -198,8 +198,11 @@ public class ContactService {
                 Wrappers.<Project>query()
                         .eq("tenant_id", tenantId)
                         .eq("deleted", false)
-                        .eq("contact_id", contactId)
-        ).stream().map(p -> p.id).collect(Collectors.toList());
+        ).stream()
+                .filter(p -> contactId.equals(p.contactId)
+                        || (p.contactIds != null && p.contactIds.contains(contactId)))
+                .map(p -> p.id)
+                .collect(Collectors.toList());
     }
 
     private List<String> normalizeProjectIds(List<String> projectIds) {

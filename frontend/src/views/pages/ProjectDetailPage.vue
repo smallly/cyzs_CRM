@@ -780,7 +780,11 @@ async function loadDicts() {
 
 async function loadContacts() {
   const allContacts = await authStore.api<any[]>('/api/contacts')
-  contacts.value = allContacts.filter(c => project.value?.contactIds?.includes(c.id) || project.value?.contactId === c.id)
+  contacts.value = allContacts.filter(c =>
+    project.value?.contactIds?.includes(c.id) ||
+    project.value?.contactId === c.id ||
+    c.projectIds?.includes(projectId.value)
+  )
 }
 
 async function loadFollowups() {
