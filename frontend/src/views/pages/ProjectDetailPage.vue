@@ -1662,28 +1662,9 @@ async function submitNewPayment() {
   width: 100%;
 }
 
-.followup-upload :deep(.el-upload-list) {
-  max-width: 520px;
-}
-
-.followup-upload :deep(.el-upload-list__item-name) {
-  display: inline-block;
-  max-width: 480px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.contract-upload :deep(.el-upload-list) {
-  max-width: 520px;
-}
-
-.contract-upload :deep(.el-upload-list__item-name) {
-  display: inline-block;
-  max-width: 480px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.contract-upload {
+  display: block;
+  width: 100%;
 }
 
 /* Element Plus upload list is not always a descendant of the trigger button wrapper.
