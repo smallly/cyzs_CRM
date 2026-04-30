@@ -313,7 +313,7 @@ const formData = reactive({
   contactId: '',
   contactIds: [] as string[],
   ownerId: '',
-  dealType: 'RENT',
+  dealType: '',
   level: '',
   source: '',
   intendedRegion: '',
@@ -375,12 +375,6 @@ async function loadDicts() {
     // ignore, will validate again before submit
   }
 
-  if (!formData.level && levelOptions.value.length) {
-    formData.level = levelOptions.value[0]
-  }
-  if (!formData.source && sourceOptions.value.length) {
-    formData.source = sourceOptions.value[0]
-  }
 }
 
 async function handleSubmit() {
@@ -448,7 +442,7 @@ function resetForm() {
     contactId: '',
     contactIds: [],
     ownerId: '',
-    dealType: 'RENT',
+    dealType: '',
     level: '',
     source: '',
     intendedRegion: '',
