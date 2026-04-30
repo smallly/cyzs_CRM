@@ -266,7 +266,16 @@
             <el-date-picker v-model="contractForm.signDate" type="date" value-format="YYYY-MM-DD" />
           </el-form-item>
           <el-form-item label="合同附件" required>
-            <el-input v-model="contractForm.attachment" placeholder="请输入附件名称或URL" />
+            <el-upload
+              class="contract-upload"
+              :auto-upload="false"
+              :limit="1"
+              :on-change="handleStageContractFileChange"
+              :on-remove="handleStageContractFileRemove"
+              :file-list="stageContractFileList"
+            >
+              <el-button>选择文件</el-button>
+            </el-upload>
           </el-form-item>
         </template>
 
@@ -502,7 +511,16 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="合同附件" required>
-              <el-input v-model="newContractForm.attachment" placeholder="请输入附件名称或URL" />
+              <el-upload
+                class="contract-upload"
+                :auto-upload="false"
+                :limit="1"
+                :on-change="handleNewContractFileChange"
+                :on-remove="handleNewContractFileRemove"
+                :file-list="newContractFileList"
+              >
+                <el-button>选择文件</el-button>
+              </el-upload>
             </el-form-item>
           </el-col>
         </el-row>
@@ -599,6 +617,8 @@ const projectEditDialogVisible = ref(false)
 const editingFollowupId = ref('')
 const stageFieldSubmitting = ref(false)
 const followupFileList = ref<any[]>([])
+const stageContractFileList = ref<any[]>([])
+const newContractFileList = ref<any[]>([])
 
 const stageOptions = ['PROSPECTING', 'VISITING', 'NEGOTIATING', 'SIGNING', 'COLLECTING', 'MOVED_IN']
 const stageLabelMap: Record<string, string> = {
@@ -1015,6 +1035,7 @@ function openStageUpdateDialog() {
   contractForm.amount = 0
   contractForm.signDate = ''
   contractForm.attachment = ''
+  stageContractFileList.value = []
   paymentForm.contractId = ''
   paymentForm.paidDate = ''
   paymentForm.amount = 0
@@ -1029,6 +1050,8 @@ function onStageChange() {
     contractForm.title = ''
     contractForm.amount = 0
     contractForm.signDate = ''
+    contractForm.attachment = ''
+    stageContractFileList.value = []
   }
   if (stageForm.stage !== 'COLLECTING') {
     paymentForm.contractId = ''
@@ -1283,6 +1306,24 @@ function handleFollowupFileRemove() {
   followupFileList.value = []
 }
 
+function handleStageContractFileChange(file: any) {
+  contractForm.attachment = file.name
+}
+
+function handleStageContractFileRemove() {
+  contractForm.attachment = ''
+  stageContractFileList.value = []
+}
+
+function handleNewContractFileChange(file: any) {
+  newContractForm.attachment = file.name
+}
+
+function handleNewContractFileRemove() {
+  newContractForm.attachment = ''
+  newContractFileList.value = []
+}
+
 function toDateValue(value?: string | null): string {
   if (!value) {
     return new Date().toISOString().split('T')[0]
@@ -1310,6 +1351,7 @@ function openContractDialog() {
   newContractForm.leaseEndDate = ''
   newContractForm.leaseTermMonths = undefined
   newContractForm.attachment = ''
+  newContractFileList.value = []
   contractDialogVisible.value = true
 }
 
@@ -1620,6 +1662,18 @@ async function submitNewPayment() {
 }
 
 .followup-upload :deep(.el-upload-list__item-name) {
+  display: inline-block;
+  max-width: 480px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contract-upload :deep(.el-upload-list) {
+  max-width: 520px;
+}
+
+.contract-upload :deep(.el-upload-list__item-name) {
   display: inline-block;
   max-width: 480px;
   overflow: hidden;
