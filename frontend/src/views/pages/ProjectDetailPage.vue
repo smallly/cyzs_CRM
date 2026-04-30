@@ -1685,4 +1685,23 @@ async function submitNewPayment() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Element Plus upload list is not always a descendant of the trigger button wrapper.
+   Use page-level deep selectors to enforce a wider visible row with ellipsis. */
+:deep(.el-upload-list--text) {
+  width: 520px;
+  max-width: 100%;
+}
+
+:deep(.el-upload-list--text .el-upload-list__item) {
+  width: 100%;
+}
+
+:deep(.el-upload-list--text .el-upload-list__item-name) {
+  display: block;
+  max-width: calc(100% - 28px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>
