@@ -54,4 +54,15 @@ public class JsonListTypeHandler extends BaseTypeHandler<List<String>> {
             return new ArrayList<>();
         }
     }
+
+    public static String toJson(List<String> list) {
+        if (list == null || list.isEmpty()) {
+            return null;
+        }
+        try {
+            return MAPPER.writeValueAsString(list);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

@@ -4,7 +4,7 @@
     <el-card class="project-hero-card">
       <div class="project-hero-top">
         <div class="project-hero-left">
-          <el-button class="project-back-btn" link :icon="ArrowLeft" @click="router.push('/projects')" />
+          <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="router.push('/projects')" />
           <div class="project-avatar">{{ getProjectAvatarText(project?.name) }}</div>
           <div class="project-hero-main">
             <div class="project-title-row">
@@ -415,8 +415,8 @@
       </template>
     </el-dialog>
 
-    <!-- 新增跟进Drawer -->
-    <el-drawer v-model="followupDrawerVisible" :title="editingFollowupId ? '编辑跟进' : '新增跟进'" size="50%">
+    <!-- 新增跟进Dialog -->
+    <el-dialog v-model="followupDrawerVisible" :title="editingFollowupId ? '编辑跟进' : '新增跟进'" width="680px">
       <el-form :model="followupForm" label-width="100px">
         <el-form-item label="关联项目">
           <el-input :value="project?.name" disabled />
@@ -453,7 +453,7 @@
         <el-button @click="followupDrawerVisible = false">取消</el-button>
         <el-button type="primary" @click="submitFollowup" :loading="submitting">{{ editingFollowupId ? '更新' : '保存' }}</el-button>
       </template>
-    </el-drawer>
+    </el-dialog>
 
     <!-- 新增合同Dialog -->
     <el-dialog v-model="contractDialogVisible" title="新增合同" width="680">
@@ -712,7 +712,7 @@ const projectStageCurrentIndex = computed(() => {
   return idx >= 0 ? idx : 0
 })
 
-const updatableStageOptions = computed(() => stageOptions.slice(projectStageCurrentIndex.value))
+const updatableStageOptions = computed(() => stageOptions.slice(projectStageCurrentIndex.value + 1))
 
 onMounted(async () => {
   await loadAll()
@@ -1000,7 +1000,11 @@ function formatDateTime(value?: string | null): string {
 }
 
 function openStageUpdateDialog() {
-  stageForm.stage = project.value?.stage || 'PROSPECTING'
+  if (!updatableStageOptions.value.length) {
+    ElMessage.info('当前项目已是最后阶段，无可更新阶段')
+    return
+  }
+  stageForm.stage = updatableStageOptions.value[0]
   stageForm.firstContactAt = project.value?.firstContactAt || ''
   stageForm.firstVisitDate = project.value?.firstVisitDate || ''
   stageForm.firstNegotiationDate = project.value?.firstNegotiationDate || ''
@@ -1376,11 +1380,6 @@ async function submitNewPayment() {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.project-back-btn {
-  padding: 0;
-  font-size: 18px;
 }
 
 .project-avatar {

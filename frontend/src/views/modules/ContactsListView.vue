@@ -54,7 +54,7 @@
       </template>
     </CrudTable>
 
-    <FormDrawer
+    <FormDialog
       v-model:visible="drawerVisible"
       :title="editingContactId ? '编辑联系人' : '新增联系人'"
       :fields="formFields"
@@ -63,7 +63,7 @@
       :submitting="submitting"
       @submit="handleSubmit"
       @cancel="closeDrawer"
-      size="60%"
+      width="860px"
     />
   </div>
 </template>
@@ -74,11 +74,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
-import FormDrawer from '../../components/common/FormDrawer.vue'
+import FormDialog from '../../components/common/FormDialog.vue'
 import SearchPanel from '../../components/common/SearchPanel.vue'
 import type { SearchField } from '../../components/common/SearchPanel.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
-import type { FormField } from '../../components/common/FormDrawer.vue'
+import type { FormField } from '../../components/common/FormDialog.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 
 const authStore = useAuthStore()

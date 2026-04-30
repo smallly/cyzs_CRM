@@ -189,11 +189,6 @@ function handleCancel() {
   gap: 4px;
 }
 
-.back-icon-btn {
-  font-size: 16px;
-  padding: 0;
-}
-
 .create-form :deep(.el-form-item) {
   margin-bottom: 12px;
 }

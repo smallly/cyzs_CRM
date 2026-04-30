@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <div class="header-left">
-            <el-button link :icon="ArrowLeft" @click="router.push('/contacts')" />
+            <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="router.push('/contacts')" />
             <div>
               <div class="header-title">{{ contact.name || '-' }}</div>
               <div class="header-subtitle">{{ contact.enterpriseName || '未填写企业名称' }}</div>

@@ -3,6 +3,7 @@ package com.indcrm.crm.service;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
+import com.indcrm.crm.config.JsonListTypeHandler;
 import com.indcrm.crm.domain.Contact;
 import com.indcrm.crm.domain.Project;
 import com.indcrm.crm.domain.User;
@@ -234,16 +235,48 @@ public class ContactService {
                         .eq("deleted", false)
         );
         for (Project p : all) {
-            if (selected.contains(p.id)) {
-                if (!contactId.equals(p.contactId)) {
-                    projectMapper.update(null, Wrappers.<Project>update()
-                            .eq("id", p.id)
-                            .set("contact_id", contactId));
+            boolean wasLinked = contactId.equals(p.contactId) ||
+                    (p.contactIds != null && p.contactIds.contains(contactId));
+            boolean shouldBeLinked = selected.contains(p.id);
+
+            if (shouldBeLinked && !wasLinked) {
+                // 项目需要关联此联系人，但目前未关联
+                if (p.contactId == null) {
+                    // 如果项目的 contactId 为空，设置它
+                    p.contactId = contactId;
+                } else {
+                    // 否则添加到 contactIds 列表
+                    List<String> newContactIds = p.contactIds != null ?
+                            new ArrayList<>(p.contactIds) : new ArrayList<>();
+                    if (!newContactIds.contains(contactId)) {
+                        newContactIds.add(contactId);
+                        p.contactIds = newContactIds;
+                    }
                 }
-            } else if (contactId.equals(p.contactId)) {
-                projectMapper.update(null, Wrappers.<Project>update()
-                        .eq("id", p.id)
-                        .set("contact_id", null));
+                projectMapper.updateById(p);
+            } else if (!shouldBeLinked && wasLinked) {
+                // 项目不需要关联此联系人，但目前关联了
+                if (contactId.equals(p.contactId)) {
+                    // 如果是主联系人，移除它
+                    if (p.contactIds != null && !p.contactIds.isEmpty()) {
+                        // 如果有其他联系人，将第一个设为主联系人
+                        String newMainContact = p.contactIds.get(0);
+                        List<String> newContactIds = new ArrayList<>(p.contactIds);
+                        newContactIds.remove(newMainContact);
+                        p.contactId = newMainContact;
+                        p.contactIds = newContactIds.isEmpty() ? null : newContactIds;
+                    } else {
+                        // 如果没有其他联系人，清空
+                        p.contactId = null;
+                        p.contactIds = null;
+                    }
+                } else if (p.contactIds != null && p.contactIds.contains(contactId)) {
+                    // 如果在 contactIds 列表中，移除它
+                    List<String> newContactIds = new ArrayList<>(p.contactIds);
+                    newContactIds.remove(contactId);
+                    p.contactIds = newContactIds.isEmpty() ? null : newContactIds;
+                }
+                projectMapper.updateById(p);
             }
         }
     }

@@ -1642,3 +1642,52 @@ button.list-action-btn.secondary:active {
     grid-template-columns: 1fr;
   }
 }
+
+/* 统一的返回按钮样式 */
+.back-icon-btn {
+  padding: 0;
+  font-size: 18px;
+  color: inherit;
+}
+
+.back-icon-btn:hover,
+.back-icon-btn:focus,
+.back-icon-btn:focus-visible,
+.back-icon-btn:active {
+  color: inherit !important;
+  background: transparent !important;
+}
+
+/* Select多选模式下选中的标签样式 - 去掉背景色和边框，只保留文字和关闭图标 */
+.el-select__tags .el-tag.el-tag--info,
+.el-select__tags .el-tag.el-tag--light,
+.el-select__tags .el-tag {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  color: #334155 !important;
+  padding: 0 4px 0 0 !important;
+  margin: 0 2px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.el-select__tags .el-tag .el-tag__close,
+.el-select__tags .el-tag .el-icon-close {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #94a3b8 !important;
+  margin-left: 2px !important;
+  font-size: 12px !important;
+}
+
+.el-select__tags .el-tag .el-tag__close:hover,
+.el-select__tags .el-tag .el-icon-close:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #ef4444 !important;
+}

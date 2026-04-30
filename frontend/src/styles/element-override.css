@@ -301,6 +301,54 @@ a:hover {
   color: #64748b;
 }
 
+/* Select多选模式下选中的标签样式 - 去掉背景色和边框，强制覆盖 */
+.el-select-dropdown__tags,
+.el-select__tags,
+.el-form-item__content .el-select__tags,
+.el-dialog__body .el-select__tags {
+  flex-wrap: wrap;
+}
+
+.el-select__tags .el-tag.el-tag--info,
+.el-select__tags .el-tag,
+.el-form-item .el-select__tags .el-tag,
+.el-dialog .el-dialog__body .el-select__tags .el-tag,
+.el-form-item__content .el-select__tags .el-tag.el-tag--info,
+body .el-select__tags .el-tag {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-width: 0 !important;
+  border-color: transparent !important;
+  color: #334155 !important;
+  padding: 0 4px 0 0 !important;
+  margin: 0 2px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.el-select__tags .el-tag .el-icon-close,
+.el-select__tags .el-tag .el-tag__close,
+.el-form-item .el-select__tags .el-tag .el-tag__close,
+body .el-select__tags .el-tag .el-tag__close {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #94a3b8 !important;
+  margin-left: 2px !important;
+  font-size: 12px !important;
+}
+
+.el-select__tags .el-tag .el-icon-close:hover,
+.el-select__tags .el-tag .el-tag__close:hover,
+.el-form-item .el-select__tags .el-tag .el-tag__close:hover,
+body .el-select__tags .el-tag .el-tag__close:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #ef4444 !important;
+}
+
 /* 表单样式 */
 .el-form-item__label {
   font-weight: 500;
