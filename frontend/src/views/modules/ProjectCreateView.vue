@@ -20,13 +20,20 @@
         <el-col :xs="24" :sm="24" :md="12">
           <el-form-item label="联系人" prop="contactId">
             <div class="contact-selector">
-              <el-input
-                :model-value="selectedContactLabel"
-                readonly
-                placeholder="请选择联系人"
-                class="contact-input"
-                @click="openContactDialog"
-              />
+              <el-tooltip
+                :content="selectedContactLabel"
+                :disabled="!selectedContactLabel"
+                placement="top-start"
+                effect="dark"
+              >
+                <el-input
+                  :model-value="selectedContactDisplayLabel"
+                  readonly
+                  placeholder="请选择联系人"
+                  class="contact-input"
+                  @click="openContactDialog"
+                />
+              </el-tooltip>
               <el-button class="contact-add-btn" @click="openContactDialog">
                 <el-icon><Plus /></el-icon>
               </el-button>
@@ -187,6 +194,15 @@ const selectedContactIds = ref<string[]>([])
 const selectedContactLabel = computed(() => {
   const selected = contacts.value.filter((c) => formData.contactIds.includes(c.id))
   return selected.map((c) => `${c.name || '-'} (${c.phone1 || '-'})`).join('，')
+})
+
+const MAX_CONTACT_LABEL_LENGTH = 90
+const selectedContactDisplayLabel = computed(() => {
+  const full = selectedContactLabel.value
+  if (!full) return ''
+  if (full.length <= MAX_CONTACT_LABEL_LENGTH) return full
+  const count = formData.contactIds.length
+  return `${full.slice(0, MAX_CONTACT_LABEL_LENGTH)}...（共${count}位）`
 })
 
 const filteredContacts = computed(() => {
@@ -416,11 +432,13 @@ function handleCancel() {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
 .contact-input {
   flex: 1;
-  width: 100%;
+  min-width: 0;
+  max-width: calc(100% - 52px);
 }
 
 .contact-add-btn {
