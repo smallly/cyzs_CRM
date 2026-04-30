@@ -1657,6 +1657,11 @@ async function submitNewPayment() {
   color: #64748b;
 }
 
+.followup-upload {
+  display: block;
+  width: 100%;
+}
+
 .followup-upload :deep(.el-upload-list) {
   max-width: 520px;
 }
