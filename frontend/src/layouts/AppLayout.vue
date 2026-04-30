@@ -81,14 +81,7 @@
     <el-container>
       <el-header class="app-header">
         <div class="header-left">
-          <el-button v-if="isProjectDetailPage" @click="handleLeadingAction">
-            <el-icon><ArrowLeftBold /></el-icon>
-          </el-button>
-          <el-button
-            v-else
-            :icon="leadingIcon"
-            @click="handleLeadingAction"
-          />
+          <el-button :icon="leadingIcon" @click="handleLeadingAction" />
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item>{{ routeTitle }}</el-breadcrumb-item>
@@ -162,7 +155,6 @@ import { useAuthStore } from '../stores/auth'
 import {
   Expand,
   Fold,
-  ArrowLeftBold,
   User,
   Files,
   ChatLineRound,
@@ -216,8 +208,7 @@ onMounted(() => {
 const isCollapsed = ref(false)
 
 const currentRoute = computed(() => route.path)
-const isProjectDetailPage = computed(() => route.name === 'ProjectDetail')
-const leadingIcon = computed(() => (isProjectDetailPage.value ? ArrowLeftBold : (isCollapsed.value ? Expand : Fold)))
+const leadingIcon = computed(() => (isCollapsed.value ? Expand : Fold))
 
 const routeTitle = computed(() => {
   const title = route.meta?.title as string | undefined
@@ -247,10 +238,6 @@ const systemMenuItems = [
 ]
 
 function handleLeadingAction() {
-  if (isProjectDetailPage.value) {
-    router.push('/projects')
-    return
-  }
   isCollapsed.value = !isCollapsed.value
 }
 
@@ -718,4 +705,3 @@ function isMenuActive(menuRoute: string): boolean {
   flex-shrink: 0;
 }
 </style>
-

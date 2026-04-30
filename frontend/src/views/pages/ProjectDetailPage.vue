@@ -21,6 +21,7 @@
           </div>
         </div>
         <div class="project-hero-actions">
+          <el-button @click="router.push('/projects')">返回项目列表</el-button>
           <el-button @click="openStageUpdateDialog">更新阶段</el-button>
           <el-button @click="openProjectEdit">编辑</el-button>
           <el-button @click="openOwnerTransferDialog">更换负责人</el-button>
