@@ -439,6 +439,7 @@
         </el-form-item>
         <el-form-item label="附件">
           <el-upload
+            class="followup-upload"
             :auto-upload="false"
             :limit="1"
             :on-change="handleFollowupFileChange"
@@ -1612,5 +1613,17 @@ async function submitNewPayment() {
   gap: 16px;
   font-size: 12px;
   color: #64748b;
+}
+
+.followup-upload :deep(.el-upload-list) {
+  max-width: 520px;
+}
+
+.followup-upload :deep(.el-upload-list__item-name) {
+  display: inline-block;
+  max-width: 480px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

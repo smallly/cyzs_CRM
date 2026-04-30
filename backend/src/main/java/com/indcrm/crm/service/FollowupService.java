@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -62,7 +63,7 @@ public class FollowupService {
             if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
             }
-            if (!normalizedContactId.equals(project.contactId)) {
+            if (!isContactLinkedToProject(project, normalizedContactId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not belong to project");
             }
         }
@@ -159,7 +160,7 @@ public class FollowupService {
             if (contact == null || contact.deleted || !actor.tenantId.equals(contact.tenantId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not exist");
             }
-            if (!normalizedContactId.equals(project.contactId)) {
+            if (!isContactLinkedToProject(project, normalizedContactId)) {
                 throw new BizException(ErrorCode.BIZ_422, "Linked contact does not belong to project");
             }
         }
@@ -231,5 +232,12 @@ public class FollowupService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean isContactLinkedToProject(Project project, String contactId) {
+        if (Objects.equals(project.contactId, contactId)) {
+            return true;
+        }
+        return project.contactIds != null && project.contactIds.contains(contactId);
     }
 }
