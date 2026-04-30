@@ -214,14 +214,8 @@
         </el-col>
 
         <el-col :xs="24" :sm="24" :md="12">
-          <el-form-item label="面积最小(m²)">
-            <el-input v-model.number="formData.intendedAreaMin" type="number" min="0" placeholder="请输入最小面积" />
-          </el-form-item>
-        </el-col>
-
-        <el-col :xs="24" :sm="24" :md="12">
-          <el-form-item label="面积最大(m²)">
-            <el-input v-model.number="formData.intendedAreaMax" type="number" min="0" placeholder="请输入最大面积" />
+          <el-form-item label="意向面积">
+            <el-input v-model="formData.intendedAreaRange" placeholder="请输入面积，如 300 或 300-500" />
           </el-form-item>
         </el-col>
 
@@ -317,6 +311,7 @@ const formData = reactive({
   level: '',
   source: '',
   intendedRegion: '',
+  intendedAreaRange: '',
   intendedAreaMin: undefined as number | undefined,
   intendedAreaMax: undefined as number | undefined,
   intendedPrice: '',
@@ -398,14 +393,7 @@ async function handleSubmit() {
       return
     }
 
-    if (
-      formData.intendedAreaMin != null &&
-      formData.intendedAreaMax != null &&
-      formData.intendedAreaMin > formData.intendedAreaMax
-    ) {
-      ElMessage.warning('面积区间不合法：最小值不能大于最大值')
-      return
-    }
+    const { min: intendedAreaMin, max: intendedAreaMax } = parseIntendedAreaRange(formData.intendedAreaRange)
 
     const payload: Record<string, any> = {
       name: formData.name,
@@ -414,8 +402,8 @@ async function handleSubmit() {
       ownerId: formData.ownerId,
       dealType: formData.dealType,
       intendedRegion: formData.intendedRegion || undefined,
-      intendedAreaMin: formData.intendedAreaMin,
-      intendedAreaMax: formData.intendedAreaMax,
+      intendedAreaMin,
+      intendedAreaMax,
       intendedPrice: formData.intendedPrice || undefined,
       remark: formData.remark || undefined
     }
@@ -446,6 +434,7 @@ function resetForm() {
     level: '',
     source: '',
     intendedRegion: '',
+    intendedAreaRange: '',
     intendedAreaMin: undefined,
     intendedAreaMax: undefined,
     intendedPrice: '',
@@ -551,6 +540,32 @@ function toZhMessage(message?: string, fallback = '操作失败') {
   if (lower.includes('already exists in tenant')) return '当前租户下已存在相同数据'
   if (lower.includes('duplicate')) return '数据重复，请检查后重试'
   return raw
+}
+
+function parseIntendedAreaRange(input: string): { min?: number; max?: number } {
+  const normalized = (input || '')
+    .trim()
+    .replace(/[～~—－]/g, '-')
+    .replace(/\s+/g, '')
+  if (!normalized) return {}
+
+  const integerPattern = /^\d+$/
+  if (integerPattern.test(normalized)) {
+    const value = Number(normalized)
+    return { min: value, max: value }
+  }
+
+  const parts = normalized.split('-')
+  if (parts.length === 2 && integerPattern.test(parts[0]) && integerPattern.test(parts[1])) {
+    const min = Number(parts[0])
+    const max = Number(parts[1])
+    if (min > max) {
+      throw new Error('意向面积区间不合法：最小值不能大于最大值')
+    }
+    return { min, max }
+  }
+
+  throw new Error('意向面积格式不正确，请输入“数值”或“最小值-最大值”')
 }
 </script>
 
