@@ -1676,8 +1676,16 @@ async function submitNewPayment() {
 :deep(.el-upload-list--text .el-upload-list__item) {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   text-align: left;
   width: 100%;
+}
+
+:deep(.el-upload-list--text .el-upload-list__item .el-upload-list__item-name) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 :deep(.el-upload-list--text .el-upload-list__item-name) {
