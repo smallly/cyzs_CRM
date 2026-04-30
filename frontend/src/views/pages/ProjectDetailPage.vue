@@ -129,7 +129,7 @@
           <div class="detail-list-toolbar" v-if="contacts.length" style="justify-content:flex-end">
             <el-button size="small" type="primary" @click="$router.push('/contacts')">新建联系人</el-button>
           </div>
-          <el-table :data="contacts" v-if="contacts.length" border stripe size="small">
+          <el-table :data="contacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
             <el-table-column label="姓名" width="150">
               <template #default="{ row }">
                 <el-button link @click="goContact(row.id)">
@@ -139,7 +139,7 @@
             </el-table-column>
             <el-table-column prop="phone1" label="手机号1" width="130" />
             <el-table-column prop="phone2" label="手机号2" width="130" />
-            <el-table-column prop="id" label="联系人ID" width="180" />
+            <el-table-column prop="id" label="联系人ID" min-width="260" show-overflow-tooltip />
           </el-table>
           <el-empty v-else description="当前项目未关联联系人" />
         </el-tab-pane>
@@ -184,9 +184,9 @@
           <div class="detail-list-toolbar" style="justify-content:flex-end">
             <el-button size="small" @click="openContractDialog">新增合同</el-button>
           </div>
-          <el-table :data="contracts" v-if="contracts.length" border stripe size="small">
+          <el-table :data="contracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="contractNo" label="合同编号" width="150" />
-            <el-table-column prop="title" label="合同标题" width="200" />
+            <el-table-column prop="title" label="合同标题" min-width="220" show-overflow-tooltip />
             <el-table-column prop="signDate" label="签约日期" width="120" />
             <el-table-column prop="amount" label="合同金额(元)" width="120" />
             <el-table-column label="创建人" width="120">
@@ -207,9 +207,9 @@
           <div class="detail-list-toolbar" style="justify-content:flex-end">
             <el-button size="small" @click="openPaymentDialog">登记回款</el-button>
           </div>
-          <el-table :data="payments" v-if="payments.length" border stripe size="small">
+          <el-table :data="payments" v-if="payments.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="code" label="回款编号" width="150" />
-            <el-table-column label="关联合同" width="200">
+            <el-table-column label="关联合同" min-width="220" show-overflow-tooltip>
               <template #default="{ row }">
                 {{ getContractDisplayName(row.contractId) }}
               </template>
