@@ -45,38 +45,26 @@
 
       <template #actions="{ row }">
         <el-space>
-          <el-button size="small" @click="changeStage(row)">改阶段</el-button>
-          <el-button size="small" @click="changeOwner(row)">转负责人</el-button>
+          <el-button size="small" @click="changeOwner(row)">更换负责人</el-button>
           <el-button size="small" type="danger" @click="deleteProject(row.id)">删除</el-button>
         </el-space>
       </template>
     </CrudTable>
 
-    <el-dialog v-model="stageDialogVisible" title="修改项目阶段" width="400">
-      <el-form>
-        <el-form-item label="项目阶段">
-          <el-select v-model="newStage">
-            <el-option v-for="s in stageOptions" :key="s" :label="stageLabelMap[s]" :value="s" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="stageDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitStage">确定</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="ownerDialogVisible" title="转移负责人" width="400">
-      <el-form>
-        <el-form-item label="新负责人">
-          <el-select v-model="newOwnerId">
+    <el-dialog v-model="ownerDialogVisible" title="更换负责人" width="400">
+      <el-form :model="ownerForm" label-width="100px">
+        <el-form-item label="新负责人" required>
+          <el-select v-model="ownerForm.ownerId">
             <el-option v-for="u in ownerOptions" :key="u.id" :label="u.name" :value="u.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="ownerForm.remark" placeholder="可填写更换原因" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="ownerDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitOwner">确定</el-button>
+        <el-button type="primary" @click="submitOwner">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -102,11 +90,12 @@ const total = ref(0)
 const users = ref<any[]>([])
 const contacts = ref<any[]>([])
 
-const stageDialogVisible = ref(false)
 const ownerDialogVisible = ref(false)
-const newStage = ref('')
-const newOwnerId = ref('')
 const currentProject = ref<any>(null)
+const ownerForm = ref({
+  ownerId: '',
+  remark: ''
+})
 const ownerOptions = computed(() => {
   const options = users.value.map((u) => ({ id: u.id, name: u.name }))
   const ownerId = currentProject.value?.ownerId
@@ -135,8 +124,6 @@ const stageLabelMap: Record<string, string> = {
   COLLECTING: '回款',
   MOVED_IN: '入驻'
 }
-
-const stageOptions = ['PROSPECTING', 'VISITING', 'NEGOTIATING', 'SIGNING', 'COLLECTING', 'MOVED_IN']
 
 const columns: TableColumn[] = [
   { prop: 'name', label: '项目名称', width: 150, slot: 'name', fixed: 'left' },
@@ -211,30 +198,10 @@ function formatDateTime(value?: string | null): string {
   }
 }
 
-function changeStage(project: any) {
-  currentProject.value = project
-  newStage.value = project.stage
-  stageDialogVisible.value = true
-}
-
-async function submitStage() {
-  if (!currentProject.value) return
-  try {
-    await authStore.api(`/api/projects/${currentProject.value.id}/stage`, {
-      method: 'PUT',
-      body: JSON.stringify({ stage: newStage.value })
-    })
-    ElMessage.success('阶段已修改')
-    await loadProjects()
-    stageDialogVisible.value = false
-  } catch (error: any) {
-    ElMessage.error(error.message || '修改失败')
-  }
-}
-
 function changeOwner(project: any) {
   currentProject.value = project
-  newOwnerId.value = project.ownerId
+  ownerForm.value.ownerId = project.ownerId || ''
+  ownerForm.value.remark = ''
   ownerDialogVisible.value = true
 }
 
@@ -243,7 +210,7 @@ async function submitOwner() {
   try {
     await authStore.api(`/api/projects/${currentProject.value.id}/owner`, {
       method: 'PUT',
-      body: JSON.stringify({ ownerId: newOwnerId.value })
+      body: JSON.stringify(ownerForm.value)
     })
     ElMessage.success('负责人已转移')
     await loadProjects()
