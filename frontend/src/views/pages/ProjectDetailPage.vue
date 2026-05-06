@@ -1945,7 +1945,7 @@ async function submitNewPayment() {
   border: 0 !important;
   background: none !important;
   box-shadow: none !important;
-  color: #3b82f6;
+  color: #2f5cf6 !important;
   padding: 2px 4px;
   border-radius: 0;
   line-height: 1;
@@ -1954,16 +1954,23 @@ async function submitNewPayment() {
   align-items: center;
   gap: 4px;
   font-size: 15px;
+  white-space: nowrap;
 }
 
 .icon-action-btn:hover {
-  color: #1d4ed8;
+  color: #1d4ed8 !important;
   background: none !important;
+}
+
+.icon-action-btn span,
+.icon-action-btn svg {
+  color: inherit !important;
 }
 
 .icon-action-btn svg {
   width: 18px;
   height: 18px;
+  flex: 0 0 auto;
 }
 
 .followup-upload {
