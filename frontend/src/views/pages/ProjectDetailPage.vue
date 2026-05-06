@@ -126,8 +126,8 @@
     <el-card>
       <el-tabs v-model="activeTab">
         <el-tab-pane :label="`联系人${contacts.length ? `(${contacts.length})` : ''}`" name="contact">
-          <div class="detail-section-title">联系人</div>
-          <div class="detail-list-toolbar" v-if="contacts.length" style="justify-content:flex-end">
+          <div class="detail-list-toolbar">
+            <div class="detail-section-title">联系人</div>
             <el-button size="small" type="primary" @click="$router.push('/contacts')">新建联系人</el-button>
           </div>
           <el-table :data="contacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
@@ -146,8 +146,8 @@
         </el-tab-pane>
 
         <el-tab-pane :label="`跟进记录${followups.length ? `(${followups.length})` : ''}`" name="followups">
-          <div class="detail-section-title">跟进记录</div>
-          <div class="detail-list-toolbar" style="justify-content:flex-end">
+          <div class="detail-list-toolbar">
+            <div class="detail-section-title">跟进记录</div>
             <el-button size="small" @click="openFollowupDrawer">新增跟进</el-button>
           </div>
           <div class="followup-feed" v-if="followups.length">
@@ -183,8 +183,8 @@
         </el-tab-pane>
 
         <el-tab-pane :label="`合同${contracts.length ? `(${contracts.length})` : ''}`" name="contracts">
-          <div class="detail-section-title">合同</div>
-          <div class="detail-list-toolbar" style="justify-content:flex-end">
+          <div class="detail-list-toolbar">
+            <div class="detail-section-title">合同</div>
             <el-button size="small" @click="openContractDialog">新增合同</el-button>
           </div>
           <el-table :data="contracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
@@ -207,8 +207,8 @@
         </el-tab-pane>
 
         <el-tab-pane :label="`回款${payments.length ? `(${payments.length})` : ''}`" name="payments">
-          <div class="detail-section-title">回款</div>
-          <div class="detail-list-toolbar" style="justify-content:flex-end">
+          <div class="detail-list-toolbar">
+            <div class="detail-section-title">回款</div>
             <el-button size="small" @click="openPaymentDialog">登记回款</el-button>
           </div>
           <el-table :data="payments" v-if="payments.length" border stripe size="small" style="width: 100%">
@@ -1649,7 +1649,7 @@ async function submitNewPayment() {
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
-  margin: 8px 0 12px;
+  margin: 0;
 }
 
 /* 跟进记录卡片 */
