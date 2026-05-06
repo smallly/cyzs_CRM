@@ -148,7 +148,7 @@
         <el-tab-pane :label="`跟进记录${followups.length ? `(${followups.length})` : ''}`" name="followups">
           <div class="detail-list-toolbar">
             <div class="detail-section-title">跟进记录</div>
-            <el-button size="small" @click="openFollowupDrawer">新增跟进</el-button>
+            <el-button size="small" type="primary" @click="openFollowupDrawer">新建跟进记录</el-button>
           </div>
           <div class="followup-feed" v-if="followups.length">
             <el-card v-for="f in followups" :key="f.id" class="followup-card" shadow="never">
@@ -185,7 +185,7 @@
         <el-tab-pane :label="`合同${contracts.length ? `(${contracts.length})` : ''}`" name="contracts">
           <div class="detail-list-toolbar">
             <div class="detail-section-title">合同</div>
-            <el-button size="small" @click="openContractDialog">新增合同</el-button>
+            <el-button size="small" type="primary" @click="openContractDialog">新建割头</el-button>
           </div>
           <el-table :data="contracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="contractNo" label="合同编号" width="150" />
@@ -209,7 +209,7 @@
         <el-tab-pane :label="`回款${payments.length ? `(${payments.length})` : ''}`" name="payments">
           <div class="detail-list-toolbar">
             <div class="detail-section-title">回款</div>
-            <el-button size="small" @click="openPaymentDialog">登记回款</el-button>
+            <el-button size="small" type="primary" @click="openPaymentDialog">新建回款</el-button>
           </div>
           <el-table :data="payments" v-if="payments.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="code" label="回款编号" width="150" />
