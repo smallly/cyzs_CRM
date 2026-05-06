@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div>
     <!-- 项目Hero区域 + 阶段进度条 -->
     <el-card class="project-hero-card">
@@ -128,7 +128,7 @@
         <el-tab-pane :label="`联系人${contacts.length ? `(${contacts.length})` : ''}`" name="contact">
           <div class="detail-list-toolbar">
             <div class="detail-section-title">联系人</div>
-            <el-button size="small" type="primary" @click="$router.push('/contacts')">新建联系人</el-button>
+            <el-button size="small" type="primary" @click="openCreateContactDialog">新建联系人</el-button>
           </div>
           <el-table :data="contacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
             <el-table-column label="姓名" width="150">
@@ -428,6 +428,80 @@
       </template>
     </el-dialog>
 
+    <!-- 新建联系人Dialog -->
+    <el-dialog v-model="createContactDialogVisible" title="新建联系人" width="860px" destroy-on-close>
+      <el-form ref="createContactFormRef" :model="createContactFormData" :rules="createContactFormRules" label-width="100px">
+        <el-row :gutter="12">
+          <el-col :xs="24" :md="12">
+            <el-form-item label="姓名" prop="name">
+              <el-input v-model="createContactFormData.name" placeholder="请输入姓名" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="企业名称">
+              <el-input v-model="createContactFormData.enterpriseName" placeholder="请输入企业名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="职位">
+              <el-input v-model="createContactFormData.title" placeholder="请输入职位" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="手机号1" prop="phone1">
+              <el-input v-model="createContactFormData.phone1" placeholder="请输入手机号1" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="手机号2">
+              <el-input v-model="createContactFormData.phone2" placeholder="请输入手机号2（可选）" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="微信号">
+              <el-input v-model="createContactFormData.wechat" placeholder="请输入微信号" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="邮箱">
+              <el-input v-model="createContactFormData.email" placeholder="请输入邮箱" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="办公电话">
+              <el-input v-model="createContactFormData.officePhone" placeholder="请输入办公电话" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="性别">
+              <el-select v-model="createContactFormData.gender" placeholder="请选择性别">
+                <el-option label="男" value="MALE" />
+                <el-option label="女" value="FEMALE" />
+                <el-option label="未知" value="UNKNOWN" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :md="12">
+            <el-form-item label="是否决策人">
+              <el-select v-model="createContactFormData.decisionMaker">
+                <el-option label="是" :value="true" />
+                <el-option label="否" :value="false" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="备注">
+              <el-input v-model="createContactFormData.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="createContactDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="createContactSubmitting" @click="submitCreateContact">保存联系人</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 新增跟进Dialog -->
     <el-dialog v-model="followupDrawerVisible" :title="editingFollowupId ? '编辑跟进' : '新增跟进'" width="680px">
       <el-form :model="followupForm" label-width="100px">
@@ -618,6 +692,9 @@ const followupDrawerVisible = ref(false)
 const contractDialogVisible = ref(false)
 const paymentDialogVisible = ref(false)
 const projectEditDialogVisible = ref(false)
+const createContactDialogVisible = ref(false)
+const createContactSubmitting = ref(false)
+const createContactFormRef = ref()
 const editingFollowupId = ref('')
 const stageFieldSubmitting = ref(false)
 const followupFileList = ref<any[]>([])
@@ -690,6 +767,25 @@ const ownerOptions = computed(() => {
   }
   return options
 })
+
+const createContactFormData = reactive({
+  name: '',
+  enterpriseName: '',
+  title: '',
+  phone1: '',
+  phone2: '',
+  wechat: '',
+  email: '',
+  officePhone: '',
+  gender: '',
+  decisionMaker: false,
+  remark: ''
+})
+
+const createContactFormRules = {
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  phone1: [{ required: true, message: '请输入手机号1', trigger: 'blur' }]
+}
 
 const followupForm = reactive({
   followupAt: new Date().toISOString().split('T')[0],
@@ -1245,6 +1341,44 @@ async function submitOwnerTransfer() {
     ElMessage.error(error.message || '转移失败')
   } finally {
     submitting.value = false
+  }
+}
+
+function openCreateContactDialog() {
+  Object.assign(createContactFormData, {
+    name: '',
+    enterpriseName: '',
+    title: '',
+    phone1: '',
+    phone2: '',
+    wechat: '',
+    email: '',
+    officePhone: '',
+    gender: '',
+    decisionMaker: false,
+    remark: ''
+  })
+  createContactDialogVisible.value = true
+}
+
+async function submitCreateContact() {
+  try {
+    await createContactFormRef.value?.validate()
+    createContactSubmitting.value = true
+    await authStore.api('/api/contacts', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...createContactFormData,
+        projectIds: [projectId.value]
+      })
+    })
+    ElMessage.success('联系人已创建')
+    createContactDialogVisible.value = false
+    await loadContacts()
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建失败')
+  } finally {
+    createContactSubmitting.value = false
   }
 }
 
