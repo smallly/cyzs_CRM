@@ -185,7 +185,7 @@
         <el-tab-pane :label="`合同${contracts.length ? `(${contracts.length})` : ''}`" name="contracts">
           <div class="detail-list-toolbar">
             <div class="detail-section-title">合同</div>
-            <el-button size="small" type="primary" @click="openContractDialog">新建割头</el-button>
+            <el-button size="small" type="primary" @click="openContractDialog">新建合同</el-button>
           </div>
           <el-table :data="contracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="contractNo" label="合同编号" width="150" />
