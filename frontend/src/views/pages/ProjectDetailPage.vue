@@ -153,10 +153,12 @@
           <div class="followup-feed" v-if="followups.length">
             <el-card v-for="f in followups" :key="f.id" class="followup-card" shadow="never">
               <div class="followup-card-head">
-                <el-avatar :size="44">{{ getUserAvatarText(f.creatorId || f.ownerId) }}</el-avatar>
+                <el-avatar :size="44" class="followup-avatar">{{ getUserAvatarText(f.creatorId || f.ownerId) }}</el-avatar>
                 <div class="followup-head-main">
-                  <div class="followup-user">{{ getUserDisplayName(f.creatorId || f.ownerId) }}</div>
-                  <div class="followup-time">{{ formatDateTime(f.createdAt || f.followupAt) }}</div>
+                  <div class="followup-meta-line">
+                    <span class="followup-user">{{ getUserDisplayName(f.creatorId || f.ownerId) }}</span>
+                    <span class="followup-time">{{ formatDateTime(f.createdAt || f.followupAt) }}</span>
+                  </div>
                 </div>
                 <div class="followup-head-actions">
                   <button class="icon-action-btn" title="编辑" aria-label="编辑" @click="editFollowup(f)">
@@ -175,15 +177,26 @@
                 <div class="followup-body">{{ f.content || '-' }}</div>
                 <div v-if="f.attachment" class="followup-attachments">
                   <div v-for="(fileName, idx) in getAttachmentList(f.attachment)" :key="`${f.id}-${idx}`" class="attachment-tile">
-                    <span class="attachment-icon">📎</span>
+                    <template v-if="isImageAttachment(fileName) && canPreviewImage(fileName)">
+                      <img class="attachment-image" :src="fileName" :alt="fileName" />
+                    </template>
+                    <template v-else>
+                      <span class="attachment-file-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
+                          <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                      </span>
+                    </template>
                     <span class="attachment-text" :title="fileName">{{ fileName }}</span>
                   </div>
                 </div>
               </div>
               <div class="followup-foot">
-                <span><strong>项目阶段：</strong>{{ getStageLabel(project?.stage) }}</span>
-                <span><strong>跟进日期：</strong>{{ formatDate(f.followupAt) }}</span>
-                <span><strong>联系人：</strong>{{ getContactDisplayName(f.contactId) }}</span>
+                <span>跟进时间：{{ formatDate(f.followupAt) }}</span>
+                <span>跟进方式：{{ f.method || '-' }}</span>
+                <span>拜访对象：{{ getContactDisplayName(f.contactId) }}</span>
               </div>
             </el-card>
           </div>
@@ -939,6 +952,14 @@ function getAttachmentList(raw?: string): string[] {
     .split(/[;,，]/)
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+function isImageAttachment(fileName: string): boolean {
+  return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName)
+}
+
+function canPreviewImage(fileName: string): boolean {
+  return /^https?:\/\//i.test(fileName) || /^data:image\//i.test(fileName)
 }
 
 function getContractDisplayName(contractId?: string): string {
@@ -1814,6 +1835,11 @@ async function submitNewPayment() {
   background: #f8fafc;
 }
 
+.followup-avatar {
+  background: linear-gradient(135deg, #2f5cf6, #5b8dff);
+  color: #fff;
+}
+
 .followup-card-head {
   display: flex;
   align-items: flex-start;
@@ -1823,6 +1849,12 @@ async function submitNewPayment() {
 
 .followup-head-main {
   flex: 1;
+}
+
+.followup-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .followup-user {
@@ -1851,7 +1883,7 @@ async function submitNewPayment() {
 }
 
 .followup-content-wrap {
-  background: #f1f5f9;
+  background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 14px 16px;
@@ -1878,9 +1910,22 @@ async function submitNewPayment() {
   padding: 8px;
 }
 
-.attachment-icon {
-  font-size: 20px;
-  line-height: 1;
+.attachment-file-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+}
+
+.attachment-file-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-image {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .attachment-text {
@@ -1896,7 +1941,7 @@ async function submitNewPayment() {
   border: 0;
   background: transparent;
   color: #64748b;
-  padding: 4px;
+  padding: 2px;
   border-radius: 4px;
   line-height: 1;
   cursor: pointer;
@@ -1904,12 +1949,12 @@ async function submitNewPayment() {
 
 .icon-action-btn:hover {
   color: #2563eb;
-  background: rgba(37, 99, 235, 0.08);
+  background: transparent;
 }
 
 .icon-action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 .followup-upload {
