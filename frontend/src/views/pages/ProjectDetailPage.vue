@@ -1940,11 +1940,14 @@ async function submitNewPayment() {
 }
 
 .icon-action-btn {
-  border: 0;
-  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
   color: #3b82f6;
   padding: 2px 4px;
-  border-radius: 4px;
+  border-radius: 0;
   line-height: 1;
   cursor: pointer;
   display: inline-flex;
@@ -1955,7 +1958,7 @@ async function submitNewPayment() {
 
 .icon-action-btn:hover {
   color: #1d4ed8;
-  background: rgba(59, 130, 246, 0.06);
+  background: none !important;
 }
 
 .icon-action-btn svg {
