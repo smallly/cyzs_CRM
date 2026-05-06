@@ -1573,6 +1573,9 @@ async function submitNewPayment() {
 <style scoped>
 .project-hero-card {
   margin-bottom: 12px;
+  position: sticky;
+  top: 12px;
+  z-index: 30;
 }
 
 .project-hero-top {
