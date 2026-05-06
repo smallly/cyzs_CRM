@@ -165,11 +165,13 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M4 20h4l10-10-4-4L4 16v4zm13-13 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    <span>编辑</span>
                   </button>
                   <button class="icon-action-btn" title="删除" aria-label="删除" @click="deleteFollowup(f)">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M4 7h16M9 7V5h6v2m-7 0 1 12h6l1-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
+                    <span>删除</span>
                   </button>
                 </div>
               </div>
@@ -1940,16 +1942,20 @@ async function submitNewPayment() {
 .icon-action-btn {
   border: 0;
   background: transparent;
-  color: #64748b;
-  padding: 2px;
+  color: #3b82f6;
+  padding: 2px 4px;
   border-radius: 4px;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
 }
 
 .icon-action-btn:hover {
-  color: #2563eb;
-  background: transparent;
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.06);
 }
 
 .icon-action-btn svg {
