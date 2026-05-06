@@ -172,6 +172,10 @@
                 </div>
               </div>
               <div class="followup-body">{{ f.content || '-' }}</div>
+              <div v-if="f.attachment" class="followup-attachment">
+                <span class="attachment-label">附件：</span>
+                <span class="attachment-name">{{ f.attachment }}</span>
+              </div>
               <div class="followup-foot">
                 <span>跟进时间：{{ formatDate(f.followupAt) }}</span>
                 <span>跟进方式：{{ f.method || '-' }}</span>
@@ -1440,6 +1444,7 @@ async function editFollowup(f: any) {
   followupForm.contactId = f.contactId || ''
   followupForm.content = f.content || ''
   followupForm.attachment = f.attachment || ''
+  followupFileList.value = f.attachment ? [{ name: f.attachment, status: 'success' }] : []
   followupDrawerVisible.value = true
 }
 
@@ -1828,6 +1833,40 @@ async function submitNewPayment() {
   gap: 16px;
   font-size: 12px;
   color: #64748b;
+}
+
+.followup-attachment {
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.attachment-label {
+  color: #64748b;
+}
+
+.attachment-name {
+  color: #2563eb;
+}
+
+.icon-action-btn {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-action-btn:hover {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.icon-action-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .followup-upload {
