@@ -153,7 +153,7 @@
           <div class="followup-feed" v-if="followups.length">
             <el-card v-for="f in followups" :key="f.id" class="followup-card" shadow="never">
               <div class="followup-card-head">
-                <el-avatar :size="40">{{ getUserAvatarText(f.creatorId || f.ownerId) }}</el-avatar>
+                <el-avatar :size="44">{{ getUserAvatarText(f.creatorId || f.ownerId) }}</el-avatar>
                 <div class="followup-head-main">
                   <div class="followup-user">{{ getUserDisplayName(f.creatorId || f.ownerId) }}</div>
                   <div class="followup-time">{{ formatDateTime(f.createdAt || f.followupAt) }}</div>
@@ -171,15 +171,19 @@
                   </button>
                 </div>
               </div>
-              <div class="followup-body">{{ f.content || '-' }}</div>
-              <div v-if="f.attachment" class="followup-attachment">
-                <span class="attachment-label">附件：</span>
-                <span class="attachment-name">{{ f.attachment }}</span>
+              <div class="followup-content-wrap">
+                <div class="followup-body">{{ f.content || '-' }}</div>
+                <div v-if="f.attachment" class="followup-attachments">
+                  <div v-for="(fileName, idx) in getAttachmentList(f.attachment)" :key="`${f.id}-${idx}`" class="attachment-tile">
+                    <span class="attachment-icon">📎</span>
+                    <span class="attachment-text" :title="fileName">{{ fileName }}</span>
+                  </div>
+                </div>
               </div>
               <div class="followup-foot">
-                <span>跟进时间：{{ formatDate(f.followupAt) }}</span>
-                <span>跟进方式：{{ f.method || '-' }}</span>
-                <span>拜访对象：{{ getContactDisplayName(f.contactId) }}</span>
+                <span><strong>项目阶段：</strong>{{ getStageLabel(project?.stage) }}</span>
+                <span><strong>跟进日期：</strong>{{ formatDate(f.followupAt) }}</span>
+                <span><strong>联系人：</strong>{{ getContactDisplayName(f.contactId) }}</span>
               </div>
             </el-card>
           </div>
@@ -927,6 +931,14 @@ function getContactDisplayName(contactId?: string): string {
   if (!contactId) return '-'
   const contact = contacts.value.find(c => c.id === contactId)
   return contact?.name || contactId
+}
+
+function getAttachmentList(raw?: string): string[] {
+  if (!raw) return []
+  return raw
+    .split(/[;,，]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 function getContractDisplayName(contractId?: string): string {
@@ -1798,13 +1810,15 @@ async function submitNewPayment() {
 .followup-card {
   margin-bottom: 12px;
   border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
 }
 
 .followup-card-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .followup-head-main {
@@ -1823,30 +1837,59 @@ async function submitNewPayment() {
 }
 
 .followup-body {
-  margin-bottom: 12px;
   color: #334155;
-  line-height: 1.6;
+  line-height: 1.8;
+  margin-bottom: 12px;
 }
 
 .followup-foot {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 20px;
   font-size: 12px;
   color: #64748b;
 }
 
-.followup-attachment {
-  margin-bottom: 10px;
-  font-size: 13px;
+.followup-content-wrap {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.followup-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.attachment-tile {
+  width: 92px;
+  height: 92px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.attachment-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.attachment-text {
+  max-width: 100%;
+  font-size: 12px;
   color: #475569;
-}
-
-.attachment-label {
-  color: #64748b;
-}
-
-.attachment-name {
-  color: #2563eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon-action-btn {
