@@ -4,7 +4,6 @@
       <template #header>
         <div class="card-header">
           <span>数据字典配置</span>
-          <el-button type="primary" :loading="saving" @click="saveDicts">保存</el-button>
         </div>
       </template>
 
@@ -178,7 +177,7 @@ function editOption(option: DictOption) {
   option.editing = true
 }
 
-function saveOption(option: DictOption) {
+async function saveOption(option: DictOption) {
   const next = option.draft.trim()
   if (!next) {
     ElMessage.warning('请输入选项名称')
@@ -193,6 +192,7 @@ function saveOption(option: DictOption) {
   option.draft = next
   option.editing = false
   option.isNew = false
+  await persistDicts()
 }
 
 function cancelEdit(option: DictOption) {
@@ -205,11 +205,12 @@ function cancelEdit(option: DictOption) {
   option.editing = false
 }
 
-function moveOption(index: number, offset: -1 | 1) {
+async function moveOption(index: number, offset: -1 | 1) {
   const targetIndex = index + offset
   if (targetIndex < 0 || targetIndex >= activeOptions.value.length) return
   const [item] = activeOptions.value.splice(index, 1)
   activeOptions.value.splice(targetIndex, 0, item)
+  await persistDicts()
 }
 
 async function removeOption(index: number) {
@@ -222,12 +223,13 @@ async function removeOption(index: number) {
       cancelButtonText: '取消'
     })
     activeOptions.value.splice(index, 1)
+    await persistDicts()
   } catch (error) {
     if (error === 'cancel' || error === 'close') return
   }
 }
 
-async function saveDicts() {
+async function persistDicts() {
   const editing = categories.some((category) => dicts[category.key].some((option) => option.editing))
   if (editing) {
     ElMessage.warning('请先保存或取消正在编辑的选项')
@@ -250,7 +252,7 @@ async function saveDicts() {
         projectSources
       })
     })
-    ElMessage.success('字典已保存')
+    ElMessage.success('已保存')
   } catch (error: any) {
     ElMessage.error(error.message || '保存失败')
   } finally {
