@@ -1853,6 +1853,14 @@ async function submitNewPayment() {
   flex: 1;
 }
 
+.followup-head-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 16px;
+  padding-top: 2px;
+}
+
 .followup-meta-line {
   display: flex;
   align-items: center;
@@ -1952,8 +1960,16 @@ async function submitNewPayment() {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 6px;
+  min-width: 52px;
   font-size: 15px;
+  white-space: nowrap;
+}
+
+.icon-action-btn span {
+  display: inline-block;
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 
