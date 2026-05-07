@@ -36,7 +36,7 @@
         </el-descriptions>
 
         <div class="section-title">关联项目</div>
-        <el-table v-if="linkedProjects.length" :data="linkedProjects" border>
+        <el-table v-if="linkedProjects.length" :data="linkedProjects" border stripe size="small" class="linked-projects-table">
           <el-table-column prop="code" label="项目编号" width="140" />
           <el-table-column prop="name" label="项目名称" min-width="220" />
           <el-table-column prop="stage" label="阶段" width="140" />
@@ -205,5 +205,9 @@ function formatDateTime(value?: string | null): string {
 
 .compact-empty :deep(.el-empty__description) {
   margin-top: 8px;
+}
+
+.linked-projects-table :deep(.el-table__cell) {
+  font-size: 13px;
 }
 </style>
