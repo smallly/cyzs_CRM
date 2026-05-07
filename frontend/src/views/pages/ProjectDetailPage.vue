@@ -140,6 +140,16 @@
             </el-table-column>
             <el-table-column prop="phone1" label="手机号1" width="130" />
             <el-table-column prop="phone2" label="手机号2" width="130" />
+            <el-table-column prop="enterpriseName" label="企业名称" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="title" label="职位" width="120" />
+            <el-table-column label="是否决策人" width="110">
+              <template #default="{ row }">
+                {{ row.decisionMaker ? '是' : '否' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="gender" label="性别" width="90" />
+            <el-table-column prop="officePhone" label="办公电话" width="140" />
+            <el-table-column prop="wechat" label="微信号" width="150" />
             <el-table-column prop="id" label="联系人ID" min-width="260" show-overflow-tooltip />
           </el-table>
           <el-empty v-else description="当前项目未关联联系人" />
