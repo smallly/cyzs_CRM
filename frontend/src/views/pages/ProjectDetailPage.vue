@@ -649,7 +649,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="租赁期限(月)">
-              <el-input-number v-model="newContractForm.leaseTermMonths" :min="0" style="width: 100%" />
+              <el-input-number v-model="newContractForm.leaseTermMonths" :min="0" :controls="false" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
