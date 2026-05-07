@@ -150,7 +150,6 @@
             <el-table-column prop="gender" label="性别" width="90" />
             <el-table-column prop="officePhone" label="办公电话" width="140" />
             <el-table-column prop="wechat" label="微信号" width="150" />
-            <el-table-column prop="id" label="联系人ID" min-width="260" show-overflow-tooltip />
           </el-table>
           <el-empty v-else description="当前项目未关联联系人" />
         </el-tab-pane>
