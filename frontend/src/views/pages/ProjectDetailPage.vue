@@ -1844,7 +1844,7 @@ async function submitNewPayment() {
 
 .followup-card-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 10px;
 }
@@ -1897,6 +1897,7 @@ async function submitNewPayment() {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 14px 16px;
+  margin-left: 56px;
   margin-bottom: 12px;
 }
 
