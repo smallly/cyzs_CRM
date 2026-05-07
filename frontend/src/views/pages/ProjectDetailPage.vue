@@ -131,7 +131,7 @@
             <el-button size="small" type="primary" @click="openCreateContactDialog">新建联系人</el-button>
           </div>
           <el-table :data="contacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
-            <el-table-column label="姓名" width="150">
+            <el-table-column label="姓名" width="110" fixed="left">
               <template #default="{ row }">
                 <el-button link @click="goContact(row.id)">
                   {{ row.name || '-' }}
