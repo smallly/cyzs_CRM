@@ -130,36 +130,38 @@
             <div class="detail-section-title">联系人</div>
             <el-button size="small" type="primary" @click="openCreateContactDialog">新建联系人</el-button>
           </div>
-          <el-table :data="pagedContacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
-            <el-table-column label="姓名" width="110" fixed="left">
-              <template #default="{ row }">
-                <el-button link @click="goContact(row.id)">
-                  {{ row.name || '-' }}
-                </el-button>
-              </template>
-            </el-table-column>
-            <el-table-column prop="phone1" label="手机号1" width="130" />
-            <el-table-column prop="phone2" label="手机号2" width="130" />
-            <el-table-column prop="enterpriseName" label="企业名称" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="title" label="职位" width="120" />
-            <el-table-column label="是否决策人" width="110">
-              <template #default="{ row }">
-                {{ row.decisionMaker ? '是' : '否' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="gender" label="性别" width="90" />
-            <el-table-column prop="officePhone" label="办公电话" width="140" />
-            <el-table-column prop="wechat" label="微信号" width="150" />
-          </el-table>
-          <div v-if="contacts.length > listPageSize" class="detail-list-pagination">
-            <el-pagination
-              v-model:current-page="contactsPage"
-              :page-size="listPageSize"
-              :total="contacts.length"
-              background
-              layout="total, prev, pager, next"
-            />
-          </div>
+          <template v-if="contacts.length">
+            <el-table :data="pagedContacts" border stripe size="small" style="width: 100%">
+              <el-table-column label="姓名" width="110" fixed="left">
+                <template #default="{ row }">
+                  <el-button link @click="goContact(row.id)">
+                    {{ row.name || '-' }}
+                  </el-button>
+                </template>
+              </el-table-column>
+              <el-table-column prop="phone1" label="手机号1" width="130" />
+              <el-table-column prop="phone2" label="手机号2" width="130" />
+              <el-table-column prop="enterpriseName" label="企业名称" min-width="180" show-overflow-tooltip />
+              <el-table-column prop="title" label="职位" width="120" />
+              <el-table-column label="是否决策人" width="110">
+                <template #default="{ row }">
+                  {{ row.decisionMaker ? '是' : '否' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="gender" label="性别" width="90" />
+              <el-table-column prop="officePhone" label="办公电话" width="140" />
+              <el-table-column prop="wechat" label="微信号" width="150" />
+            </el-table>
+            <div v-if="contacts.length > listPageSize" class="detail-list-pagination">
+              <el-pagination
+                v-model:current-page="contactsPage"
+                :page-size="listPageSize"
+                :total="contacts.length"
+                background
+                layout="total, prev, pager, next"
+              />
+            </div>
+          </template>
           <el-empty v-else description="当前项目未关联联系人" />
         </el-tab-pane>
 
@@ -168,7 +170,8 @@
             <div class="detail-section-title">跟进记录</div>
             <el-button size="small" type="primary" @click="openFollowupDrawer">新建跟进记录</el-button>
           </div>
-          <div class="followup-feed" v-if="followups.length">
+          <template v-if="followups.length">
+            <div class="followup-feed">
             <el-card v-for="f in pagedFollowups" :key="f.id" class="followup-card" shadow="never">
               <div class="followup-card-head">
                 <el-avatar :size="44" class="followup-avatar">{{ getUserAvatarText(f.creatorId || f.ownerId) }}</el-avatar>
@@ -252,16 +255,17 @@
                 <span>拜访对象：{{ getContactDisplayName(f.contactId) }}</span>
               </div>
             </el-card>
-          </div>
-          <div v-if="followups.length > listPageSize" class="detail-list-pagination">
-            <el-pagination
-              v-model:current-page="followupsPage"
-              :page-size="listPageSize"
-              :total="followups.length"
-              background
-              layout="total, prev, pager, next"
-            />
-          </div>
+            </div>
+            <div v-if="followups.length > listPageSize" class="detail-list-pagination">
+              <el-pagination
+                v-model:current-page="followupsPage"
+                :page-size="listPageSize"
+                :total="followups.length"
+                background
+                layout="total, prev, pager, next"
+              />
+            </div>
+          </template>
           <el-empty v-else description="暂无跟进记录" />
         </el-tab-pane>
 
@@ -270,31 +274,33 @@
             <div class="detail-section-title">合同</div>
             <el-button size="small" type="primary" @click="openContractDialog">新建合同</el-button>
           </div>
-          <el-table :data="pagedContracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
-            <el-table-column prop="contractNo" label="合同编号" width="150" />
-            <el-table-column prop="title" label="合同标题" min-width="220" show-overflow-tooltip />
-            <el-table-column prop="signDate" label="签约日期" width="120" />
-            <el-table-column prop="amount" label="合同金额(元)" width="120" />
-            <el-table-column label="创建人" width="120">
-              <template #default="{ row }">
-                {{ getUserDisplayName(row.creatorId || row.ownerId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="createdAt" label="创建时间" width="180">
-              <template #default="{ row }">
-                {{ formatDateTime(row.createdAt) }}
-              </template>
-            </el-table-column>
-          </el-table>
-          <div v-if="contracts.length > listPageSize" class="detail-list-pagination">
-            <el-pagination
-              v-model:current-page="contractsPage"
-              :page-size="listPageSize"
-              :total="contracts.length"
-              background
-              layout="total, prev, pager, next"
-            />
-          </div>
+          <template v-if="contracts.length">
+            <el-table :data="pagedContracts" border stripe size="small" style="width: 100%">
+              <el-table-column prop="contractNo" label="合同编号" width="150" />
+              <el-table-column prop="title" label="合同标题" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="signDate" label="签约日期" width="120" />
+              <el-table-column prop="amount" label="合同金额(元)" width="120" />
+              <el-table-column label="创建人" width="120">
+                <template #default="{ row }">
+                  {{ getUserDisplayName(row.creatorId || row.ownerId) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="创建时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.createdAt) }}
+                </template>
+              </el-table-column>
+            </el-table>
+            <div v-if="contracts.length > listPageSize" class="detail-list-pagination">
+              <el-pagination
+                v-model:current-page="contractsPage"
+                :page-size="listPageSize"
+                :total="contracts.length"
+                background
+                layout="total, prev, pager, next"
+              />
+            </div>
+          </template>
           <el-empty v-else description="暂无合同" />
         </el-tab-pane>
 
@@ -303,42 +309,44 @@
             <div class="detail-section-title">回款</div>
             <el-button size="small" type="primary" @click="openPaymentDialog">新建回款</el-button>
           </div>
-          <el-table :data="pagedPayments" v-if="payments.length" border stripe size="small" style="width: 100%">
-            <el-table-column prop="code" label="回款编号" width="150" />
-            <el-table-column label="关联合同" min-width="220" show-overflow-tooltip>
-              <template #default="{ row }">
-                {{ getContractDisplayName(row.contractId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="paidDate" label="回款日期" width="120" />
-            <el-table-column prop="amount" label="回款金额(元)" width="120" />
-            <el-table-column label="开票状态" width="120">
-              <template #default="{ row }">
-                <el-tag :type="getInvoiceStatusType(row.invoiceStatus)" size="small">
-                  {{ invoiceStatusLabelMap[row.invoiceStatus] || row.invoiceStatus }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="创建人" width="120">
-              <template #default="{ row }">
-                {{ getUserDisplayName(row.creatorId || row.ownerId) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="createdAt" label="创建时间" width="180">
-              <template #default="{ row }">
-                {{ formatDateTime(row.createdAt) }}
-              </template>
-            </el-table-column>
-          </el-table>
-          <div v-if="payments.length > listPageSize" class="detail-list-pagination">
-            <el-pagination
-              v-model:current-page="paymentsPage"
-              :page-size="listPageSize"
-              :total="payments.length"
-              background
-              layout="total, prev, pager, next"
-            />
-          </div>
+          <template v-if="payments.length">
+            <el-table :data="pagedPayments" border stripe size="small" style="width: 100%">
+              <el-table-column prop="code" label="回款编号" width="150" />
+              <el-table-column label="关联合同" min-width="220" show-overflow-tooltip>
+                <template #default="{ row }">
+                  {{ getContractDisplayName(row.contractId) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="paidDate" label="回款日期" width="120" />
+              <el-table-column prop="amount" label="回款金额(元)" width="120" />
+              <el-table-column label="开票状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="getInvoiceStatusType(row.invoiceStatus)" size="small">
+                    {{ invoiceStatusLabelMap[row.invoiceStatus] || row.invoiceStatus }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="创建人" width="120">
+                <template #default="{ row }">
+                  {{ getUserDisplayName(row.creatorId || row.ownerId) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="createdAt" label="创建时间" width="180">
+                <template #default="{ row }">
+                  {{ formatDateTime(row.createdAt) }}
+                </template>
+              </el-table-column>
+            </el-table>
+            <div v-if="payments.length > listPageSize" class="detail-list-pagination">
+              <el-pagination
+                v-model:current-page="paymentsPage"
+                :page-size="listPageSize"
+                :total="payments.length"
+                background
+                layout="total, prev, pager, next"
+              />
+            </div>
+          </template>
           <el-empty v-else description="暂无回款" />
         </el-tab-pane>
       </el-tabs>
