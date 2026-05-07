@@ -130,7 +130,7 @@
             <div class="detail-section-title">联系人</div>
             <el-button size="small" type="primary" @click="openCreateContactDialog">新建联系人</el-button>
           </div>
-          <el-table :data="contacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
+          <el-table :data="pagedContacts" v-if="contacts.length" border stripe size="small" style="width: 100%">
             <el-table-column label="姓名" width="110" fixed="left">
               <template #default="{ row }">
                 <el-button link @click="goContact(row.id)">
@@ -151,6 +151,15 @@
             <el-table-column prop="officePhone" label="办公电话" width="140" />
             <el-table-column prop="wechat" label="微信号" width="150" />
           </el-table>
+          <div v-if="contacts.length > listPageSize" class="detail-list-pagination">
+            <el-pagination
+              v-model:current-page="contactsPage"
+              :page-size="listPageSize"
+              :total="contacts.length"
+              background
+              layout="total, prev, pager, next"
+            />
+          </div>
           <el-empty v-else description="当前项目未关联联系人" />
         </el-tab-pane>
 
@@ -160,7 +169,7 @@
             <el-button size="small" type="primary" @click="openFollowupDrawer">新建跟进记录</el-button>
           </div>
           <div class="followup-feed" v-if="followups.length">
-            <el-card v-for="f in followups" :key="f.id" class="followup-card" shadow="never">
+            <el-card v-for="f in pagedFollowups" :key="f.id" class="followup-card" shadow="never">
               <div class="followup-card-head">
                 <el-avatar :size="44" class="followup-avatar">{{ getUserAvatarText(f.creatorId || f.ownerId) }}</el-avatar>
                 <div class="followup-head-main">
@@ -244,6 +253,15 @@
               </div>
             </el-card>
           </div>
+          <div v-if="followups.length > listPageSize" class="detail-list-pagination">
+            <el-pagination
+              v-model:current-page="followupsPage"
+              :page-size="listPageSize"
+              :total="followups.length"
+              background
+              layout="total, prev, pager, next"
+            />
+          </div>
           <el-empty v-else description="暂无跟进记录" />
         </el-tab-pane>
 
@@ -252,7 +270,7 @@
             <div class="detail-section-title">合同</div>
             <el-button size="small" type="primary" @click="openContractDialog">新建合同</el-button>
           </div>
-          <el-table :data="contracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
+          <el-table :data="pagedContracts" v-if="contracts.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="contractNo" label="合同编号" width="150" />
             <el-table-column prop="title" label="合同标题" min-width="220" show-overflow-tooltip />
             <el-table-column prop="signDate" label="签约日期" width="120" />
@@ -268,6 +286,15 @@
               </template>
             </el-table-column>
           </el-table>
+          <div v-if="contracts.length > listPageSize" class="detail-list-pagination">
+            <el-pagination
+              v-model:current-page="contractsPage"
+              :page-size="listPageSize"
+              :total="contracts.length"
+              background
+              layout="total, prev, pager, next"
+            />
+          </div>
           <el-empty v-else description="暂无合同" />
         </el-tab-pane>
 
@@ -276,7 +303,7 @@
             <div class="detail-section-title">回款</div>
             <el-button size="small" type="primary" @click="openPaymentDialog">新建回款</el-button>
           </div>
-          <el-table :data="payments" v-if="payments.length" border stripe size="small" style="width: 100%">
+          <el-table :data="pagedPayments" v-if="payments.length" border stripe size="small" style="width: 100%">
             <el-table-column prop="code" label="回款编号" width="150" />
             <el-table-column label="关联合同" min-width="220" show-overflow-tooltip>
               <template #default="{ row }">
@@ -303,6 +330,15 @@
               </template>
             </el-table-column>
           </el-table>
+          <div v-if="payments.length > listPageSize" class="detail-list-pagination">
+            <el-pagination
+              v-model:current-page="paymentsPage"
+              :page-size="listPageSize"
+              :total="payments.length"
+              background
+              layout="total, prev, pager, next"
+            />
+          </div>
           <el-empty v-else description="暂无回款" />
         </el-tab-pane>
       </el-tabs>
@@ -720,7 +756,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -765,6 +801,16 @@ const stageFieldSubmitting = ref(false)
 const followupFileList = ref<any[]>([])
 const stageContractFileList = ref<any[]>([])
 const newContractFileList = ref<any[]>([])
+const listPageSize = 5
+const contactsPage = ref(1)
+const followupsPage = ref(1)
+const contractsPage = ref(1)
+const paymentsPage = ref(1)
+
+const pagedContacts = computed(() => sliceByPage(contacts.value, contactsPage.value, listPageSize))
+const pagedFollowups = computed(() => sliceByPage(followups.value, followupsPage.value, listPageSize))
+const pagedContracts = computed(() => sliceByPage(contracts.value, contractsPage.value, listPageSize))
+const pagedPayments = computed(() => sliceByPage(payments.value, paymentsPage.value, listPageSize))
 
 const stageOptions = ['PROSPECTING', 'VISITING', 'NEGOTIATING', 'SIGNING', 'COLLECTING', 'MOVED_IN']
 const stageLabelMap: Record<string, string> = {
@@ -900,6 +946,22 @@ const projectStageCurrentIndex = computed(() => {
 
 const updatableStageOptions = computed(() => stageOptions.slice(projectStageCurrentIndex.value + 1))
 
+watch(() => contacts.value.length, (total) => {
+  contactsPage.value = clampPage(contactsPage.value, total, listPageSize)
+})
+
+watch(() => followups.value.length, (total) => {
+  followupsPage.value = clampPage(followupsPage.value, total, listPageSize)
+})
+
+watch(() => contracts.value.length, (total) => {
+  contractsPage.value = clampPage(contractsPage.value, total, listPageSize)
+})
+
+watch(() => payments.value.length, (total) => {
+  paymentsPage.value = clampPage(paymentsPage.value, total, listPageSize)
+})
+
 onMounted(async () => {
   await loadAll()
 })
@@ -965,6 +1027,16 @@ async function loadContracts() {
 async function loadPayments() {
   const allPayments = await authStore.api<any[]>('/api/payments')
   payments.value = allPayments.filter(p => contracts.value.some(c => c.id === p.contractId))
+}
+
+function sliceByPage<T>(items: T[], currentPage: number, pageSize: number): T[] {
+  const start = Math.max(0, (currentPage - 1) * pageSize)
+  return items.slice(start, start + pageSize)
+}
+
+function clampPage(currentPage: number, total: number, pageSize: number): number {
+  const maxPage = Math.max(1, Math.ceil(total / pageSize))
+  return Math.min(Math.max(currentPage, 1), maxPage)
 }
 
 function getProjectAvatarText(name?: string): string {
@@ -2146,6 +2218,12 @@ async function submitNewPayment() {
 .contract-upload {
   display: block;
   width: 100%;
+}
+
+.detail-list-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 0;
 }
 
 /* Element Plus upload list is not always a descendant of the trigger button wrapper.
