@@ -157,8 +157,22 @@ function toDateTimeValue(date: string): string {
 }
 
 function handleFileChange(file: any) {
+  const rawFile = file?.raw as File | undefined
+  if (!file?.name) {
+    fileName.value = ''
+    formData.attachment = ''
+    return
+  }
   fileName.value = file.name
-  formData.attachment = file.name
+  formData.attachment = JSON.stringify({ name: file.name })
+  const reader = new FileReader()
+  reader.onload = () => {
+    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+    formData.attachment = JSON.stringify({ name: file.name, data: dataUrl })
+  }
+  if (rawFile) {
+    reader.readAsDataURL(rawFile)
+  }
 }
 
 async function handleSubmit() {

@@ -1602,7 +1602,21 @@ async function deleteFollowup(f: any) {
 }
 
 function handleFollowupFileChange(file: any) {
-  followupForm.attachment = file.name
+  const rawFile = file?.raw as File | undefined
+  if (!file?.name) {
+    followupForm.attachment = ''
+    followupFileList.value = []
+    return
+  }
+  followupForm.attachment = JSON.stringify({ name: file.name })
+  const reader = new FileReader()
+  reader.onload = () => {
+    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+    followupForm.attachment = JSON.stringify({ name: file.name, data: dataUrl })
+  }
+  if (rawFile) {
+    reader.readAsDataURL(rawFile)
+  }
 }
 
 function handleFollowupFileRemove() {
@@ -1611,7 +1625,21 @@ function handleFollowupFileRemove() {
 }
 
 function handleStageContractFileChange(file: any) {
-  contractForm.attachment = file.name
+  const rawFile = file?.raw as File | undefined
+  if (!file?.name) {
+    contractForm.attachment = ''
+    stageContractFileList.value = []
+    return
+  }
+  contractForm.attachment = JSON.stringify({ name: file.name })
+  const reader = new FileReader()
+  reader.onload = () => {
+    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+    contractForm.attachment = JSON.stringify({ name: file.name, data: dataUrl })
+  }
+  if (rawFile) {
+    reader.readAsDataURL(rawFile)
+  }
 }
 
 function handleStageContractFileRemove() {
@@ -1620,7 +1648,21 @@ function handleStageContractFileRemove() {
 }
 
 function handleNewContractFileChange(file: any) {
-  newContractForm.attachment = file.name
+  const rawFile = file?.raw as File | undefined
+  if (!file?.name) {
+    newContractForm.attachment = ''
+    newContractFileList.value = []
+    return
+  }
+  newContractForm.attachment = JSON.stringify({ name: file.name })
+  const reader = new FileReader()
+  reader.onload = () => {
+    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+    newContractForm.attachment = JSON.stringify({ name: file.name, data: dataUrl })
+  }
+  if (rawFile) {
+    reader.readAsDataURL(rawFile)
+  }
 }
 
 function handleNewContractFileRemove() {
