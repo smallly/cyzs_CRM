@@ -124,7 +124,7 @@
 
     <!-- Tabs详情卡片 -->
     <el-card>
-      <el-tabs v-model="activeTab">
+      <el-tabs v-model="activeTab" class="project-detail-tabs">
         <el-tab-pane :label="`联系人${contacts.length ? `(${contacts.length})` : ''}`" name="contact">
           <div class="detail-list-toolbar">
             <div class="detail-section-title">联系人</div>
@@ -1840,6 +1840,14 @@ async function submitNewPayment() {
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+}
+
+.project-detail-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.project-detail-tabs :deep(.el-tabs__header) {
+  margin-bottom: 0;
 }
 
 /* 跟进记录卡片 */
