@@ -1896,7 +1896,7 @@ async function submitNewPayment() {
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 14px 8px;
   margin-left: 56px;
   margin-bottom: 12px;
 }
