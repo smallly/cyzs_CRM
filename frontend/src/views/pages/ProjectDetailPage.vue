@@ -1846,10 +1846,6 @@ async function submitNewPayment() {
   display: none;
 }
 
-.project-detail-tabs :deep(.el-tabs__header) {
-  margin-bottom: 0;
-}
-
 /* 跟进记录卡片 */
 .followup-card {
   margin-bottom: 12px;
