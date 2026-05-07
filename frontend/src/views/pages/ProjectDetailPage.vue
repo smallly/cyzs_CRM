@@ -4,7 +4,7 @@
     <el-card class="project-hero-card">
       <div class="project-hero-top">
         <div class="project-hero-left">
-          <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="router.push('/projects')" />
+          <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
           <div class="project-avatar">{{ getProjectAvatarText(project?.name) }}</div>
           <div class="project-hero-main">
             <div class="project-title-row">
@@ -1214,6 +1214,10 @@ function openStageUpdateDialog() {
   paymentForm.amount = 0
   paymentForm.invoiceStatus = 'UNISSUED'
   stageDialogVisible.value = true
+}
+
+function handleBack() {
+  router.back()
 }
 
 function onStageChange() {
