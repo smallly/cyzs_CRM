@@ -1897,8 +1897,7 @@ async function submitNewPayment() {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 14px 0;
-  margin-left: 56px;
-  margin-bottom: 12px;
+  margin: 0 20px 12px;
 }
 
 .followup-attachments {
