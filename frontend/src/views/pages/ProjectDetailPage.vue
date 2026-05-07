@@ -187,11 +187,34 @@
               <div class="followup-content-wrap">
                 <div class="followup-body">{{ f.content || '-' }}</div>
                 <div v-if="f.attachment" class="followup-attachments">
-                  <div v-for="(fileName, idx) in getAttachmentList(f.attachment)" :key="`${f.id}-${idx}`" class="attachment-tile">
-                    <template v-if="isImageAttachment(fileName) && canPreviewImage(fileName)">
-                      <img class="attachment-image" :src="fileName" :alt="fileName" />
-                    </template>
-                    <template v-else>
+                  <template v-for="(file, idx) in getFollowupAttachmentEntries(f.attachment)" :key="`${f.id}-${idx}`">
+                    <a
+                      v-if="file.href && file.previewable"
+                      class="attachment-tile attachment-link"
+                      :href="file.href"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <template v-if="isImageAttachment(file.name) && canPreviewImage(file.name, file.href)">
+                        <img class="attachment-image" :src="file.previewSrc || file.href" :alt="file.name" />
+                      </template>
+                      <template v-else>
+                        <span class="attachment-file-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24">
+                            <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
+                            <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+                          </svg>
+                        </span>
+                      </template>
+                      <span class="attachment-text" :title="file.name">{{ file.name }}</span>
+                    </a>
+                    <a
+                      v-else-if="file.href"
+                      class="attachment-tile attachment-link"
+                      :href="file.href"
+                      :download="file.downloadName"
+                    >
                       <span class="attachment-file-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
@@ -199,9 +222,19 @@
                           <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
                         </svg>
                       </span>
-                    </template>
-                    <span class="attachment-text" :title="fileName">{{ fileName }}</span>
-                  </div>
+                      <span class="attachment-text" :title="file.name">{{ file.name }}</span>
+                    </a>
+                    <div v-else class="attachment-tile">
+                      <span class="attachment-file-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
+                          <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                      </span>
+                      <span class="attachment-text" :title="file.name">{{ file.name }}</span>
+                    </div>
+                  </template>
                 </div>
               </div>
               <div class="followup-foot">
@@ -957,20 +990,75 @@ function getContactDisplayName(contactId?: string): string {
   return contact?.name || contactId
 }
 
-function getAttachmentList(raw?: string): string[] {
-  if (!raw) return []
-  return raw
-    .split(/[;,，]/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+type FollowupAttachmentEntry = {
+  name: string
+  href: string
+  previewSrc: string
+  previewable: boolean
+  downloadName: string
+}
+
+function parseStoredAttachment(raw?: string | null): { name: string; data?: string } | null {
+  if (!raw) return null
+  const text = String(raw).trim()
+  if (!text) return null
+  try {
+    const parsed = JSON.parse(text) as { name?: string; data?: string }
+    if (parsed && parsed.name) return { name: parsed.name, data: parsed.data }
+  } catch {
+    // ignore parse errors and fall back to plain text
+  }
+  return { name: text }
+}
+
+function normalizeAttachmentHref(value?: string): string {
+  if (!value) return ''
+  const text = value.trim()
+  if (!text) return ''
+  if (/^(https?:\/\/|data:|\/|\.\/|\.\.\/)/i.test(text)) return text
+  return ''
+}
+
+function getFollowupAttachmentEntries(raw?: string | null): FollowupAttachmentEntry[] {
+  const parsed = parseStoredAttachment(raw)
+  if (!parsed) return []
+
+  const splitEntries: Array<{ name: string; data?: string }> = parsed.data
+    ? [parsed]
+    : parsed.name
+        .split(/[;,，]/)
+        .map((item) => ({ name: item.trim() }))
+        .filter((item): item is { name: string } => Boolean(item.name))
+
+  return splitEntries.map((entry) => {
+    const name = entry.name.trim()
+    const href = normalizeAttachmentHref(entry.data || name)
+    const previewSrc = entry.data || href
+    return {
+      name,
+      href,
+      previewSrc,
+      previewable: isPreviewableAttachment(name, href, previewSrc),
+      downloadName: name.split(/[\\/]/).pop() || name
+    }
+  })
 }
 
 function isImageAttachment(fileName: string): boolean {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName)
 }
 
-function canPreviewImage(fileName: string): boolean {
-  return /^https?:\/\//i.test(fileName) || /^data:image\//i.test(fileName)
+function canPreviewImage(fileName: string, href?: string): boolean {
+  const source = (href || fileName || '').trim()
+  return /^(https?:\/\/|data:image\/|\/|\.\/|\.\.\/)/i.test(source)
+}
+
+function isPreviewableAttachment(name: string, href: string, previewSrc: string): boolean {
+  const source = (previewSrc || href || name || '').trim().toLowerCase()
+  if (!source) return false
+  if (/^data:image\//.test(source) || /^data:application\/pdf/.test(source)) return true
+  if (/\.(png|jpe?g|gif|webp|bmp|svg|pdf)(\?.*)?$/.test(source)) return true
+  return false
 }
 
 function getContractDisplayName(contractId?: string): string {
@@ -1931,6 +2019,12 @@ async function submitNewPayment() {
   align-items: center;
   gap: 8px;
   padding: 8px;
+}
+
+.attachment-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .attachment-file-icon {
