@@ -638,3 +638,30 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   color: #475569 !important;
   outline: none;
 }
+
+.el-date-editor .el-input__wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.el-date-editor .el-input__prefix {
+  order: 2;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.el-date-editor .el-input__prefix-inner {
+  margin-left: 8px;
+  margin-right: 0;
+}
+
+.el-date-editor .el-input__inner {
+  order: 1;
+}
+
+.el-range-editor .el-range__icon {
+  order: 3;
+  float: none;
+  margin-left: auto;
+  margin-right: 0;
+}
