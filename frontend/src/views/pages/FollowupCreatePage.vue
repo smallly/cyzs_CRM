@@ -92,6 +92,7 @@ const authStore = useAuthStore()
 const formRef = ref()
 const submitting = ref(false)
 const fileName = ref('')
+const attachmentFile = ref<File | null>(null)
 const projects = ref<any[]>([])
 const contacts = ref<any[]>([])
 
@@ -160,24 +161,41 @@ function handleFileChange(file: any) {
   const rawFile = file?.raw as File | undefined
   if (!file?.name) {
     fileName.value = ''
+    attachmentFile.value = null
     formData.attachment = ''
     return
   }
   fileName.value = file.name
+  attachmentFile.value = rawFile || null
   formData.attachment = JSON.stringify({ name: file.name })
-  const reader = new FileReader()
-  reader.onload = () => {
-    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
-    formData.attachment = JSON.stringify({ name: file.name, data: dataUrl })
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+    reader.onerror = () => reject(new Error('文件读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function ensureAttachmentReady() {
+  if (!attachmentFile.value) return
+  const current = (formData.attachment || '').trim()
+  try {
+    const parsed = current ? (JSON.parse(current) as { name?: string; data?: string }) : null
+    if (parsed?.data) return
+  } catch {
+    // fall through and re-encode below
   }
-  if (rawFile) {
-    reader.readAsDataURL(rawFile)
-  }
+  const dataUrl = await readFileAsDataUrl(attachmentFile.value)
+  formData.attachment = JSON.stringify({ name: fileName.value || attachmentFile.value.name, data: dataUrl })
 }
 
 async function handleSubmit() {
   try {
     await formRef.value?.validate()
+    await ensureAttachmentReady()
     submitting.value = true
 
     await authStore.api('/api/followups', {

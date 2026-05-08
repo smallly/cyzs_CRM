@@ -809,6 +809,9 @@ const stageFieldSubmitting = ref(false)
 const followupFileList = ref<any[]>([])
 const stageContractFileList = ref<any[]>([])
 const newContractFileList = ref<any[]>([])
+const followupAttachmentFile = ref<File | null>(null)
+const stageContractAttachmentFile = ref<File | null>(null)
+const newContractAttachmentFile = ref<File | null>(null)
 const listPageSize = 5
 const contactsPage = ref(1)
 const followupsPage = ref(1)
@@ -1377,6 +1380,7 @@ function openStageUpdateDialog() {
   contractForm.signDate = ''
   contractForm.attachment = ''
   stageContractFileList.value = []
+  stageContractAttachmentFile.value = null
   paymentForm.contractId = ''
   paymentForm.paidDate = ''
   paymentForm.amount = 0
@@ -1397,6 +1401,7 @@ function onStageChange() {
     contractForm.signDate = ''
     contractForm.attachment = ''
     stageContractFileList.value = []
+    stageContractAttachmentFile.value = null
   }
   if (stageForm.stage !== 'COLLECTING') {
     paymentForm.contractId = ''
@@ -1429,6 +1434,7 @@ async function submitStageUpdate() {
         ElMessage.warning('请完整填写签约表单（含合同附件）')
         return
       }
+      contractForm.attachment = await ensureAttachmentPayload(contractForm.attachment, stageContractAttachmentFile.value)
       await authStore.api('/api/contracts', {
         method: 'POST',
         body: JSON.stringify({
@@ -1607,15 +1613,17 @@ function openFollowupDrawer() {
   followupForm.followupAt = new Date().toISOString().split('T')[0]
   followupForm.method = ''
   followupForm.contactId = ''
-  followupForm.content = ''
-  followupForm.attachment = ''
-  followupFileList.value = []
-  followupDrawerVisible.value = true
-}
+    followupForm.content = ''
+    followupForm.attachment = ''
+    followupFileList.value = []
+    followupAttachmentFile.value = null
+    followupDrawerVisible.value = true
+  }
 
 async function submitFollowup() {
   submitting.value = true
   try {
+    followupForm.attachment = await ensureAttachmentPayload(followupForm.attachment, followupAttachmentFile.value)
     if (editingFollowupId.value) {
       await authStore.api(`/api/followups/${editingFollowupId.value}`, {
         method: 'PUT',
@@ -1661,6 +1669,7 @@ async function editFollowup(f: any) {
   followupForm.content = f.content || ''
   followupForm.attachment = f.attachment || ''
   followupFileList.value = f.attachment ? [{ name: f.attachment, status: 'success' }] : []
+  followupAttachmentFile.value = null
   followupDrawerVisible.value = true
 }
 
@@ -1685,22 +1694,17 @@ function handleFollowupFileChange(file: any) {
   const rawFile = file?.raw as File | undefined
   if (!file?.name) {
     followupForm.attachment = ''
+    followupAttachmentFile.value = null
     followupFileList.value = []
     return
   }
+  followupAttachmentFile.value = rawFile || null
   followupForm.attachment = JSON.stringify({ name: file.name })
-  const reader = new FileReader()
-  reader.onload = () => {
-    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
-    followupForm.attachment = JSON.stringify({ name: file.name, data: dataUrl })
-  }
-  if (rawFile) {
-    reader.readAsDataURL(rawFile)
-  }
 }
 
 function handleFollowupFileRemove() {
   followupForm.attachment = ''
+  followupAttachmentFile.value = null
   followupFileList.value = []
 }
 
@@ -1708,22 +1712,17 @@ function handleStageContractFileChange(file: any) {
   const rawFile = file?.raw as File | undefined
   if (!file?.name) {
     contractForm.attachment = ''
+    stageContractAttachmentFile.value = null
     stageContractFileList.value = []
     return
   }
+  stageContractAttachmentFile.value = rawFile || null
   contractForm.attachment = JSON.stringify({ name: file.name })
-  const reader = new FileReader()
-  reader.onload = () => {
-    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
-    contractForm.attachment = JSON.stringify({ name: file.name, data: dataUrl })
-  }
-  if (rawFile) {
-    reader.readAsDataURL(rawFile)
-  }
 }
 
 function handleStageContractFileRemove() {
   contractForm.attachment = ''
+  stageContractAttachmentFile.value = null
   stageContractFileList.value = []
 }
 
@@ -1731,23 +1730,42 @@ function handleNewContractFileChange(file: any) {
   const rawFile = file?.raw as File | undefined
   if (!file?.name) {
     newContractForm.attachment = ''
+    newContractAttachmentFile.value = null
     newContractFileList.value = []
     return
   }
+  newContractAttachmentFile.value = rawFile || null
   newContractForm.attachment = JSON.stringify({ name: file.name })
-  const reader = new FileReader()
-  reader.onload = () => {
-    const dataUrl = typeof reader.result === 'string' ? reader.result : ''
-    newContractForm.attachment = JSON.stringify({ name: file.name, data: dataUrl })
-  }
-  if (rawFile) {
-    reader.readAsDataURL(rawFile)
-  }
 }
 
 function handleNewContractFileRemove() {
   newContractForm.attachment = ''
   newContractFileList.value = []
+  newContractAttachmentFile.value = null
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
+    reader.onerror = () => reject(new Error('文件读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function ensureAttachmentPayload(currentValue: string, file: File | null): Promise<string> {
+  if (!file) return currentValue
+  const current = (currentValue || '').trim()
+  if (current) {
+    try {
+      const parsed = JSON.parse(current) as { data?: string }
+      if (parsed?.data) return current
+    } catch {
+      // re-encode below
+    }
+  }
+  const dataUrl = await readFileAsDataUrl(file)
+  return JSON.stringify({ name: file.name, data: dataUrl })
 }
 
 function toDateValue(value?: string | null): string {
@@ -1778,6 +1796,7 @@ function openContractDialog() {
   newContractForm.leaseTermMonths = undefined
   newContractForm.attachment = ''
   newContractFileList.value = []
+  newContractAttachmentFile.value = null
   contractDialogVisible.value = true
 }
 
@@ -1788,6 +1807,7 @@ async function submitNewContract() {
   }
   submitting.value = true
   try {
+    newContractForm.attachment = await ensureAttachmentPayload(newContractForm.attachment, newContractAttachmentFile.value)
     await authStore.api('/api/contracts', {
       method: 'POST',
       body: JSON.stringify(newContractForm)
