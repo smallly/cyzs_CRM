@@ -1119,6 +1119,10 @@ function parseStoredAttachment(raw?: string | null): { name: string; data?: stri
   return { name: text }
 }
 
+function getStoredAttachmentName(raw?: string | null): string {
+  return parseStoredAttachment(raw)?.name || ''
+}
+
 function normalizeAttachmentHref(value?: string): string {
   if (!value) return ''
   const text = value.trim()
@@ -1707,7 +1711,8 @@ async function editFollowup(f: any) {
   followupForm.contactId = f.contactId || ''
   followupForm.content = f.content || ''
   followupForm.attachment = f.attachment || ''
-  followupFileList.value = f.attachment ? [{ name: f.attachment, status: 'success' }] : []
+  const attachmentName = getStoredAttachmentName(f.attachment)
+  followupFileList.value = attachmentName ? [{ name: attachmentName, status: 'success' }] : []
   followupAttachmentFile.value = null
   followupDrawerVisible.value = true
 }
