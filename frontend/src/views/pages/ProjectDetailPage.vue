@@ -332,11 +332,30 @@
               </el-table-column>
               <el-table-column prop="paidDate" label="回款日期" width="120" />
               <el-table-column prop="amount" label="回款金额(元)" width="120" />
+              <el-table-column prop="payerName" label="付款方名称" min-width="150" show-overflow-tooltip>
+                <template #default="{ row }">
+                  {{ row.payerName || '-' }}
+                </template>
+              </el-table-column>
               <el-table-column label="开票状态" width="120">
                 <template #default="{ row }">
                   <el-tag :type="getInvoiceStatusType(row.invoiceStatus)" size="small">
                     {{ invoiceStatusLabelMap[row.invoiceStatus] || row.invoiceStatus }}
                   </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="回款凭证" min-width="160" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <el-link
+                    v-if="getPaymentVoucherHref(row)"
+                    type="primary"
+                    :href="getPaymentVoucherHref(row)"
+                    target="_blank"
+                    :underline="false"
+                  >
+                    {{ getPaymentVoucherName(row) }}
+                  </el-link>
+                  <span v-else>{{ hasPaymentVoucher(row) ? getPaymentVoucherName(row) : '-' }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="创建人" width="120">
@@ -1132,6 +1151,15 @@ function getStoredAttachmentName(raw?: string | null): string {
   return parseStoredAttachment(raw)?.name || ''
 }
 
+function getStoredAttachmentHref(raw?: string | null): string {
+  const parsed = parseStoredAttachment(raw)
+  return normalizeAttachmentHref(parsed?.data || parsed?.name)
+}
+
+function hasStoredAttachment(raw?: string | null): boolean {
+  return Boolean(getStoredAttachmentName(raw))
+}
+
 function normalizeAttachmentHref(value?: string): string {
   if (!value) return ''
   const text = value.trim()
@@ -1200,6 +1228,18 @@ function getContractDisplayName(contractId?: string): string {
   if (!contractId) return '-'
   const contract = contracts.value.find(c => c.id === contractId)
   return contract?.contractNo || contractId
+}
+
+function getPaymentVoucherName(payment: any): string {
+  return getStoredAttachmentName(payment?.voucher)
+}
+
+function getPaymentVoucherHref(payment: any): string {
+  return getStoredAttachmentHref(payment?.voucher)
+}
+
+function hasPaymentVoucher(payment: any): boolean {
+  return hasStoredAttachment(payment?.voucher)
 }
 
 function getStageLabel(stage?: string): string {
