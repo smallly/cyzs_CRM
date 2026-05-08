@@ -809,12 +809,9 @@
           :src="attachmentPreviewSrc"
           :alt="attachmentPreviewName || '附件预览'"
         />
-        <iframe
-          v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc"
-          class="attachment-preview-frame"
-          :src="attachmentPreviewSrc"
-          :title="attachmentPreviewName || 'PDF预览'"
-        />
+        <div v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc" class="attachment-preview-pdf">
+          <VuePdfEmbed :source="attachmentPreviewSrc" />
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -825,6 +822,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
+import VuePdfEmbed from 'vue-pdf-embed'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
@@ -882,6 +880,7 @@ const attachmentPreviewVisible = ref(false)
 const attachmentPreviewSrc = ref('')
 const attachmentPreviewName = ref('')
 const attachmentPreviewKind = ref<'image' | 'pdf'>('image')
+const attachmentPreviewObjectUrl = ref('')
 const listPageSize = 5
 const contactsPage = ref(1)
 const followupsPage = ref(1)
@@ -1248,16 +1247,39 @@ function isPreviewableAttachment(name: string, href: string, previewSrc: string)
   return false
 }
 
-function openAttachmentPreview(file: FollowupAttachmentEntry) {
+function revokeAttachmentPreviewObjectUrl() {
+  if (attachmentPreviewObjectUrl.value) {
+    URL.revokeObjectURL(attachmentPreviewObjectUrl.value)
+    attachmentPreviewObjectUrl.value = ''
+  }
+}
+
+async function resolveAttachmentPreviewSrc(file: FollowupAttachmentEntry): Promise<string> {
+  const src = file.previewSrc || file.href
+  if (!src) return ''
+  if (isPdfAttachment(file.name, file.href, file.previewSrc) && src.startsWith('data:')) {
+    const blob = await fetch(src).then((response) => response.blob())
+    const objectUrl = URL.createObjectURL(blob)
+    attachmentPreviewObjectUrl.value = objectUrl
+    return objectUrl
+  }
+  return src
+}
+
+async function openAttachmentPreview(file: FollowupAttachmentEntry) {
   const src = file.previewSrc || file.href
   if (!src) return
+  revokeAttachmentPreviewObjectUrl()
+  const previewSrc = await resolveAttachmentPreviewSrc(file)
   attachmentPreviewSrc.value = src
   attachmentPreviewName.value = file.name
   attachmentPreviewKind.value = isPdfAttachment(file.name, file.href, file.previewSrc) ? 'pdf' : 'image'
+  attachmentPreviewSrc.value = previewSrc || src
   attachmentPreviewVisible.value = true
 }
 
 function closeAttachmentPreview() {
+  revokeAttachmentPreviewObjectUrl()
   attachmentPreviewVisible.value = false
   attachmentPreviewSrc.value = ''
   attachmentPreviewName.value = ''
@@ -2388,6 +2410,13 @@ button.attachment-image-tile:hover {
   display: block;
 }
 
+.attachment-preview-pdf {
+  width: 100%;
+  max-height: 70vh;
+  overflow: auto;
+  background: #fff;
+}
+
 .attachment-preview-frame {
   width: 100%;
   height: 70vh;
@@ -2493,3 +2522,4 @@ button.attachment-image-tile:hover {
   white-space: nowrap;
 }
 </style>
+

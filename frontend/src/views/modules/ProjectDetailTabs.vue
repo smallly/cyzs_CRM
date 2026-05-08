@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="card project-detail-tabs-card">
     <div class="project-detail-nav">
       <div class="project-detail-tabs">
@@ -133,12 +133,7 @@
           :src="attachmentPreviewSrc"
           :alt="attachmentPreviewName || '附件预览'"
         />
-        <iframe
-          v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc"
-          class="followup-attachment-preview-frame"
-          :src="attachmentPreviewSrc"
-          :title="attachmentPreviewName || 'PDF预览'"
-        />
+        <div v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc" class="followup-attachment-preview-pdf"><VuePdfEmbed :source="attachmentPreviewSrc" /></div>
       </div>
     </el-dialog>
 
@@ -242,6 +237,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import VuePdfEmbed from 'vue-pdf-embed'
 type ProjectDetailTab = "contact" | "followups" | "contracts" | "payments";
 
 const props = defineProps<{
@@ -288,6 +284,7 @@ const attachmentPreviewVisible = ref(false)
 const attachmentPreviewSrc = ref("")
 const attachmentPreviewName = ref("")
 const attachmentPreviewKind = ref<'image' | 'pdf'>('image')
+const attachmentPreviewObjectUrl = ref('')
 
 function setTab(tab: ProjectDetailTab) {
   emit("update:activeTab", tab);
@@ -298,8 +295,28 @@ function isPdfAttachment(fileName: string, href?: string, previewSrc?: string): 
   return /^data:application\/pdf/.test(source) || /\.pdf(\?.*)?$/.test(source);
 }
 
-function openFollowupAttachmentPreview(row: any) {
+function revokeAttachmentPreviewObjectUrl() {
+  if (attachmentPreviewObjectUrl.value) {
+    URL.revokeObjectURL(attachmentPreviewObjectUrl.value);
+    attachmentPreviewObjectUrl.value = '';
+  }
+}
+
+async function resolveAttachmentPreviewSrc(row: any): Promise<string> {
   const src = getFollowupAttachmentPreviewSrc(row) || getFollowupAttachmentHref(row);
+  if (!src) return '';
+  if (isPdfAttachment(getFollowupAttachmentName(row), getFollowupAttachmentHref(row), getFollowupAttachmentPreviewSrc(row)) && src.startsWith('data:')) {
+    const blob = await fetch(src).then((response) => response.blob());
+    const objectUrl = URL.createObjectURL(blob);
+    attachmentPreviewObjectUrl.value = objectUrl;
+    return objectUrl;
+  }
+  return src;
+}
+
+async function openFollowupAttachmentPreview(row: any) {
+  revokeAttachmentPreviewObjectUrl();
+  const src = await resolveAttachmentPreviewSrc(row);
   if (!src) return;
   attachmentPreviewSrc.value = src;
   attachmentPreviewName.value = getFollowupAttachmentName(row);
@@ -308,6 +325,7 @@ function openFollowupAttachmentPreview(row: any) {
 }
 
 function closeAttachmentPreview() {
+  revokeAttachmentPreviewObjectUrl();
   attachmentPreviewVisible.value = false;
   attachmentPreviewSrc.value = "";
   attachmentPreviewName.value = "";
@@ -349,3 +367,4 @@ const {
   hasPaymentVoucher
 } = props;
 </script>
+
