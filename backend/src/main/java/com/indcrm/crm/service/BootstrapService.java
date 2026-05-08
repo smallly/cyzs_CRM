@@ -156,16 +156,56 @@ public class BootstrapService {
     }
 
     private void migrateSchema() {
+        ensureColumnExists(
+                "projects",
+                "intended_price",
+                "ALTER TABLE projects ADD COLUMN intended_price VARCHAR(200) DEFAULT NULL COMMENT '????'"
+        );
+        ensureColumnType(
+                "followups",
+                "attachment",
+                "longtext",
+                "ALTER TABLE followups MODIFY COLUMN attachment LONGTEXT DEFAULT NULL COMMENT '????'"
+        );
+        ensureColumnType(
+                "contracts",
+                "attachment",
+                "longtext",
+                "ALTER TABLE contracts MODIFY COLUMN attachment LONGTEXT DEFAULT NULL COMMENT '????'"
+        );
+        ensureColumnType(
+                "payments",
+                "voucher",
+                "longtext",
+                "ALTER TABLE payments MODIFY COLUMN voucher LONGTEXT DEFAULT NULL COMMENT '????'"
+        );
+    }
+
+    private void ensureColumnExists(String tableName, String columnName, String alterSql) {
         Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'projects' AND column_name = 'intended_price'",
-            Integer.class
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?",
+                Integer.class,
+                tableName,
+                columnName
         );
         if (count != null && count > 0) {
             return;
         }
-        jdbcTemplate.execute(
-            "ALTER TABLE projects ADD COLUMN intended_price VARCHAR(200) DEFAULT NULL COMMENT '意向价格'"
+        jdbcTemplate.execute(alterSql);
+    }
+
+    private void ensureColumnType(String tableName, String columnName, String expectedDataType, String alterSql) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? AND LOWER(DATA_TYPE) <> ?",
+                Integer.class,
+                tableName,
+                columnName,
+                expectedDataType
         );
+        if (count == null || count == 0) {
+            return;
+        }
+        jdbcTemplate.execute(alterSql);
     }
 
     private void ensureVendorAdminExists() {
