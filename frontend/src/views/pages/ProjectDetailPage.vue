@@ -131,7 +131,7 @@
             <el-button size="small" type="primary" @click="openCreateContactDialog">新建联系人</el-button>
           </div>
           <template v-if="contacts.length">
-            <el-table :data="pagedContacts" border stripe size="small" style="width: 100%">
+            <el-table :data="pagedContacts" border stripe size="small" class="detail-data-table" style="width: 100%">
               <el-table-column label="姓名" width="110" fixed="left">
                 <template #default="{ row }">
                   <el-button link @click="goContact(row.id)">
@@ -279,7 +279,7 @@
             <el-button size="small" type="primary" @click="openContractDialog">新建合同</el-button>
           </div>
           <template v-if="contracts.length">
-            <el-table :data="pagedContracts" border stripe size="small" style="width: 100%">
+            <el-table :data="pagedContracts" border stripe size="small" class="detail-data-table" style="width: 100%">
               <el-table-column label="合同标题" min-width="220" fixed="left" show-overflow-tooltip>
                 <template #default="{ row }">
                   <el-button link @click="goContract(row.id)">
@@ -323,7 +323,7 @@
             <el-button size="small" type="primary" @click="openPaymentDialog">新建回款</el-button>
           </div>
           <template v-if="payments.length">
-            <el-table :data="pagedPayments" border stripe size="small" style="width: 100%">
+            <el-table :data="pagedPayments" border stripe size="small" class="detail-data-table" style="width: 100%">
               <el-table-column label="回款编号" width="150">
                 <template #default="{ row }">
                   <el-button link @click="goContract(row.contractId)">
@@ -2174,6 +2174,18 @@ async function submitNewPayment() {
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+}
+
+.detail-data-table {
+  --detail-table-scrollbar-gap: 12px;
+}
+
+.detail-data-table :deep(.el-table__body-wrapper) {
+  padding-bottom: var(--detail-table-scrollbar-gap);
+}
+
+.detail-data-table :deep(.el-scrollbar__bar.is-horizontal) {
+  bottom: 3px;
 }
 
 /* 跟进记录卡片 */
