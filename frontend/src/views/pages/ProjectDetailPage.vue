@@ -1,5 +1,5 @@
 ﻿<template>
-  <div>
+  <div class="project-detail-page">
     <!-- 项目Hero区域 + 阶段进度条 -->
     <el-card class="project-hero-card">
       <div class="project-hero-top">
@@ -56,6 +56,8 @@
         </div>
       </div>
     </el-card>
+
+    <div class="project-detail-scroll">
 
     <!-- 基本信息卡片 -->
     <el-card class="project-base-card">
@@ -355,6 +357,7 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+    </div>
 
     <!-- 更新阶段Dialog -->
     <el-dialog v-model="stageDialogVisible" title="更新阶段" width="600">
@@ -1893,11 +1896,31 @@ async function submitNewPayment() {
 </script>
 
 <style scoped>
+.project-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.project-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .project-hero-card {
-  margin-bottom: 12px;
-  position: sticky;
-  top: 12px;
-  z-index: 30;
+  margin-bottom: 0;
+  position: static;
+  top: auto;
+  z-index: 1;
 }
 
 .project-hero-top {
@@ -2070,7 +2093,7 @@ async function submitNewPayment() {
 
 /* 基本信息 */
 .project-base-card {
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .info-row {
