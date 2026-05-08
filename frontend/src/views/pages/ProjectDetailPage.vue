@@ -2210,16 +2210,18 @@ async function submitNewPayment() {
 
 button.attachment-image-tile {
   appearance: none;
+  -webkit-appearance: none;
   padding: 8px;
-  background: #fff;
-  color: inherit;
-  border-color: #e2e8f0;
+  background: #fff !important;
+  color: inherit !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
   cursor: zoom-in;
 }
 
 button.attachment-image-tile:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
 }
 
 .attachment-file-icon {

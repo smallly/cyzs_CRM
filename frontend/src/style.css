@@ -1288,16 +1288,18 @@ button.list-action-btn.secondary:active {
 
 button.followup-attachment-tile.image {
   appearance: none;
+  -webkit-appearance: none;
   padding: 0;
-  background: #fff;
-  color: inherit;
-  border: 1px solid #e2e8f0;
+  background: #fff !important;
+  color: inherit !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
   cursor: zoom-in;
 }
 
 button.followup-attachment-tile.image:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
 }
 
 .followup-attachment-tile.file {
