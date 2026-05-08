@@ -81,15 +81,14 @@
           </div>
           <div class="followup-body">{{ f.content || "-" }}</div>
           <div v-if="hasFollowupAttachment(f)" class="followup-attachments">
-            <a
+            <button
               v-if="isFollowupAttachmentImage(f) && getFollowupAttachmentPreviewSrc(f)"
+              type="button"
               class="followup-attachment-tile image"
-              :href="getFollowupAttachmentHref(f) || getFollowupAttachmentPreviewSrc(f)"
-              target="_blank"
-              rel="noopener noreferrer"
+              @click="openFollowupAttachmentPreview(f)"
             >
               <img :src="getFollowupAttachmentPreviewSrc(f)" :alt="getFollowupAttachmentName(f)" />
-            </a>
+            </button>
             <a
               v-else-if="getFollowupAttachmentHref(f)"
               class="followup-attachment-tile file"
@@ -116,6 +115,24 @@
       </div>
       <p v-else class="muted">暂无跟进记录。</p>
     </div>
+
+    <el-dialog
+      v-model="attachmentPreviewVisible"
+      :title="attachmentPreviewName || '????'"
+      width="860px"
+      top="6vh"
+      destroy-on-close
+      @closed="closeAttachmentPreview"
+    >
+      <div class="followup-attachment-preview-dialog">
+        <img
+          v-if="attachmentPreviewSrc"
+          class="followup-attachment-preview-image"
+          :src="attachmentPreviewSrc"
+          :alt="attachmentPreviewName || '????'"
+        />
+      </div>
+    </el-dialog>
 
     <div class="detail-panel" v-if="activeTab === 'contracts'">
       <div class="detail-list-toolbar">
@@ -216,6 +233,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 type ProjectDetailTab = "contact" | "followups" | "contracts" | "payments";
 
 const props = defineProps<{
@@ -258,8 +276,26 @@ const emit = defineEmits<{
   (event: "update:activeTab", value: ProjectDetailTab): void;
 }>();
 
+const attachmentPreviewVisible = ref(false)
+const attachmentPreviewSrc = ref("")
+const attachmentPreviewName = ref("")
+
 function setTab(tab: ProjectDetailTab) {
   emit("update:activeTab", tab);
+}
+
+function openFollowupAttachmentPreview(row: any) {
+  const src = getFollowupAttachmentPreviewSrc(row) || getFollowupAttachmentHref(row);
+  if (!src) return;
+  attachmentPreviewSrc.value = src;
+  attachmentPreviewName.value = getFollowupAttachmentName(row);
+  attachmentPreviewVisible.value = true;
+}
+
+function closeAttachmentPreview() {
+  attachmentPreviewVisible.value = false;
+  attachmentPreviewSrc.value = "";
+  attachmentPreviewName.value = "";
 }
 
 const {

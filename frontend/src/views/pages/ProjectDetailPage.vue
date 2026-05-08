@@ -200,25 +200,29 @@
                 <div class="followup-body">{{ f.content || '-' }}</div>
                 <div v-if="f.attachment" class="followup-attachments">
                   <template v-for="(file, idx) in getFollowupAttachmentEntries(f.attachment)" :key="`${f.id}-${idx}`">
+                    <button
+                      v-if="file.href && file.previewable && isImageAttachment(file.name) && canPreviewImage(file.name, file.href)"
+                      type="button"
+                      class="attachment-tile attachment-image-tile"
+                      @click="openAttachmentPreview(file)"
+                    >
+                      <img class="attachment-image" :src="file.previewSrc || file.href" :alt="file.name" />
+                      <span class="attachment-text" :title="file.name">{{ file.name }}</span>
+                    </button>
                     <a
-                      v-if="file.href && file.previewable"
+                      v-else-if="file.href && file.previewable"
                       class="attachment-tile attachment-link"
                       :href="file.href"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <template v-if="isImageAttachment(file.name) && canPreviewImage(file.name, file.href)">
-                        <img class="attachment-image" :src="file.previewSrc || file.href" :alt="file.name" />
-                      </template>
-                      <template v-else>
-                        <span class="attachment-file-icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24">
-                            <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
-                            <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
-                          </svg>
-                        </span>
-                      </template>
+                      <span class="attachment-file-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
+                          <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                      </span>
                       <span class="attachment-text" :title="file.name">{{ file.name }}</span>
                     </a>
                     <a
@@ -760,6 +764,24 @@
         <el-button type="primary" @click="submitNewPayment" :loading="submitting">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="attachmentPreviewVisible"
+      :title="attachmentPreviewName || '图片预览'"
+      width="860px"
+      top="6vh"
+      destroy-on-close
+      @closed="closeAttachmentPreview"
+    >
+      <div class="attachment-preview-dialog">
+        <img
+          v-if="attachmentPreviewSrc"
+          class="attachment-preview-image"
+          :src="attachmentPreviewSrc"
+          :alt="attachmentPreviewName || '图片预览'"
+        />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -812,6 +834,9 @@ const newContractFileList = ref<any[]>([])
 const followupAttachmentFile = ref<File | null>(null)
 const stageContractAttachmentFile = ref<File | null>(null)
 const newContractAttachmentFile = ref<File | null>(null)
+const attachmentPreviewVisible = ref(false)
+const attachmentPreviewSrc = ref('')
+const attachmentPreviewName = ref('')
 const listPageSize = 5
 const contactsPage = ref(1)
 const followupsPage = ref(1)
@@ -1142,6 +1167,20 @@ function isPreviewableAttachment(name: string, href: string, previewSrc: string)
   if (/^data:image\//.test(source) || /^data:application\/pdf/.test(source)) return true
   if (/\.(png|jpe?g|gif|webp|bmp|svg|pdf)(\?.*)?$/.test(source)) return true
   return false
+}
+
+function openAttachmentPreview(file: FollowupAttachmentEntry) {
+  const src = file.previewSrc || file.href
+  if (!src) return
+  attachmentPreviewSrc.value = src
+  attachmentPreviewName.value = file.name
+  attachmentPreviewVisible.value = true
+}
+
+function closeAttachmentPreview() {
+  attachmentPreviewVisible.value = false
+  attachmentPreviewSrc.value = ''
+  attachmentPreviewName.value = ''
 }
 
 function getContractDisplayName(contractId?: string): string {
@@ -2169,6 +2208,20 @@ async function submitNewPayment() {
   cursor: pointer;
 }
 
+button.attachment-image-tile {
+  appearance: none;
+  padding: 8px;
+  background: #fff;
+  color: inherit;
+  border-color: #e2e8f0;
+  cursor: zoom-in;
+}
+
+button.attachment-image-tile:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
 .attachment-file-icon {
   width: 40px;
   height: 40px;
@@ -2185,6 +2238,21 @@ async function submitNewPayment() {
   height: 40px;
   object-fit: cover;
   border-radius: 6px;
+}
+
+.attachment-preview-dialog {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.attachment-preview-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
 }
 
 .attachment-text {
