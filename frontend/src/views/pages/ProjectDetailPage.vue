@@ -326,7 +326,7 @@
             <el-table :data="pagedPayments" border stripe size="small" style="width: 100%">
               <el-table-column label="回款编号" width="150">
                 <template #default="{ row }">
-                  <el-button link type="primary" @click="goContract(row.contractId)">
+                  <el-button link @click="goContract(row.contractId)">
                     {{ row.code || '-' }}
                   </el-button>
                 </template>
