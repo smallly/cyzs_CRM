@@ -201,30 +201,25 @@
                 <div v-if="f.attachment" class="followup-attachments">
                   <template v-for="(file, idx) in getFollowupAttachmentEntries(f.attachment)" :key="`${f.id}-${idx}`">
                     <button
-                      v-if="file.href && file.previewable && isImageAttachment(file.name) && canPreviewImage(file.name, file.href)"
+                      v-if="file.href && file.previewable"
                       type="button"
                       class="attachment-tile attachment-image-tile"
                       @click="openAttachmentPreview(file)"
                     >
-                      <img class="attachment-image" :src="file.previewSrc || file.href" :alt="file.name" />
+                      <template v-if="isImageAttachment(file.name) && canPreviewImage(file.name, file.href)">
+                        <img class="attachment-image" :src="file.previewSrc || file.href" :alt="file.name" />
+                      </template>
+                      <template v-else>
+                        <span class="attachment-file-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24">
+                            <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
+                            <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+                          </svg>
+                        </span>
+                      </template>
                       <span class="attachment-text" :title="file.name">{{ file.name }}</span>
                     </button>
-                    <a
-                      v-else-if="file.href && file.previewable"
-                      class="attachment-tile attachment-link"
-                      :href="file.href"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <span class="attachment-file-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                          <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#ef4444"/>
-                          <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
-                        </svg>
-                      </span>
-                      <span class="attachment-text" :title="file.name">{{ file.name }}</span>
-                    </a>
                     <a
                       v-else-if="file.href"
                       class="attachment-tile attachment-link"
@@ -801,7 +796,7 @@
 
     <el-dialog
       v-model="attachmentPreviewVisible"
-      :title="attachmentPreviewName || '图片预览'"
+      :title="attachmentPreviewName || '附件预览'"
       width="860px"
       top="6vh"
       destroy-on-close
@@ -809,10 +804,16 @@
     >
       <div class="attachment-preview-dialog">
         <img
-          v-if="attachmentPreviewSrc"
+          v-if="attachmentPreviewKind === 'image' && attachmentPreviewSrc"
           class="attachment-preview-image"
           :src="attachmentPreviewSrc"
-          :alt="attachmentPreviewName || '图片预览'"
+          :alt="attachmentPreviewName || '附件预览'"
+        />
+        <iframe
+          v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc"
+          class="attachment-preview-frame"
+          :src="attachmentPreviewSrc"
+          :title="attachmentPreviewName || 'PDF预览'"
         />
       </div>
     </el-dialog>
@@ -880,6 +881,7 @@ const newContractAttachmentFile = ref<File | null>(null)
 const attachmentPreviewVisible = ref(false)
 const attachmentPreviewSrc = ref('')
 const attachmentPreviewName = ref('')
+const attachmentPreviewKind = ref<'image' | 'pdf'>('image')
 const listPageSize = 5
 const contactsPage = ref(1)
 const followupsPage = ref(1)
@@ -1228,6 +1230,11 @@ function isImageAttachment(fileName: string): boolean {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fileName)
 }
 
+function isPdfAttachment(fileName: string, href?: string, previewSrc?: string): boolean {
+  const source = (previewSrc || href || fileName || '').trim().toLowerCase()
+  return /^data:application\/pdf/.test(source) || /\.pdf(\?.*)?$/.test(source)
+}
+
 function canPreviewImage(fileName: string, href?: string): boolean {
   const source = (href || fileName || '').trim()
   return /^(https?:\/\/|data:image\/|\/|\.\/|\.\.\/)/i.test(source)
@@ -1246,6 +1253,7 @@ function openAttachmentPreview(file: FollowupAttachmentEntry) {
   if (!src) return
   attachmentPreviewSrc.value = src
   attachmentPreviewName.value = file.name
+  attachmentPreviewKind.value = isPdfAttachment(file.name, file.href, file.previewSrc) ? 'pdf' : 'image'
   attachmentPreviewVisible.value = true
 }
 
@@ -1253,6 +1261,7 @@ function closeAttachmentPreview() {
   attachmentPreviewVisible.value = false
   attachmentPreviewSrc.value = ''
   attachmentPreviewName.value = ''
+  attachmentPreviewKind.value = 'image'
 }
 
 function getContractDisplayName(contractId?: string): string {
@@ -2377,6 +2386,14 @@ button.attachment-image-tile:hover {
   max-height: 70vh;
   object-fit: contain;
   display: block;
+}
+
+.attachment-preview-frame {
+  width: 100%;
+  height: 70vh;
+  border: 0;
+  display: block;
+  background: #fff;
 }
 
 .attachment-text {

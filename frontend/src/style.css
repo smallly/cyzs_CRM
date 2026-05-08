@@ -1359,6 +1359,13 @@ button.followup-attachment-tile.image:hover {
   object-fit: contain;
   display: block;
 }
+.followup-attachment-preview-frame {
+  width: 100%;
+  height: 70vh;
+  border: 0;
+  display: block;
+  background: #fff;
+}
 
 .followup-foot {
   margin-left: 50px;

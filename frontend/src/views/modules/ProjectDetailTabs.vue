@@ -89,23 +89,26 @@
             >
               <img :src="getFollowupAttachmentPreviewSrc(f)" :alt="getFollowupAttachmentName(f)" />
             </button>
+            <button
+              v-else-if="isPdfAttachment(getFollowupAttachmentName(f), getFollowupAttachmentHref(f), getFollowupAttachmentPreviewSrc(f)) && getFollowupAttachmentHref(f)"
+              type="button"
+              class="followup-attachment-tile image"
+              @click="openFollowupAttachmentPreview(f)"
+            >
+              <span class="file-mark">PDF</span>
+              <span class="file-name">{{ getFollowupAttachmentName(f) }}</span>
+            </button>
             <a
               v-else-if="getFollowupAttachmentHref(f)"
               class="followup-attachment-tile file"
               :href="getFollowupAttachmentHref(f)"
-              target="_blank"
-              rel="noopener noreferrer"
+              :download="getFollowupAttachmentName(f)"
             >
-              <span class="file-mark">附件</span>
+              <span class="file-mark">文件</span>
               <span class="file-name">{{ getFollowupAttachmentName(f) }}</span>
             </a>
-            <div v-else class="followup-attachment-tile file">
-              <span class="file-mark">附件</span>
-              <span class="file-name">{{ getFollowupAttachmentName(f) }}</span>
-            </div>
           </div>
           <div class="followup-foot">
-            <span>跟进时间：{{ formatDate(f.followupAt) }}</span>
             <span>跟进方式：{{ f.method || "-" }}</span>
             <span>关联联系人：{{ getContactDisplayName(f.contactId) }}</span>
             <span>项目阶段：{{ getStageLabel(selectedProject?.stage) }}</span>
@@ -115,10 +118,9 @@
       </div>
       <p v-else class="muted">暂无跟进记录。</p>
     </div>
-
     <el-dialog
       v-model="attachmentPreviewVisible"
-      :title="attachmentPreviewName || '????'"
+      :title="attachmentPreviewName || '附件预览'"
       width="860px"
       top="6vh"
       destroy-on-close
@@ -126,10 +128,16 @@
     >
       <div class="followup-attachment-preview-dialog">
         <img
-          v-if="attachmentPreviewSrc"
+          v-if="attachmentPreviewKind === 'image' && attachmentPreviewSrc"
           class="followup-attachment-preview-image"
           :src="attachmentPreviewSrc"
-          :alt="attachmentPreviewName || '????'"
+          :alt="attachmentPreviewName || '附件预览'"
+        />
+        <iframe
+          v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc"
+          class="followup-attachment-preview-frame"
+          :src="attachmentPreviewSrc"
+          :title="attachmentPreviewName || 'PDF预览'"
         />
       </div>
     </el-dialog>
@@ -279,9 +287,15 @@ const emit = defineEmits<{
 const attachmentPreviewVisible = ref(false)
 const attachmentPreviewSrc = ref("")
 const attachmentPreviewName = ref("")
+const attachmentPreviewKind = ref<'image' | 'pdf'>('image')
 
 function setTab(tab: ProjectDetailTab) {
   emit("update:activeTab", tab);
+}
+
+function isPdfAttachment(fileName: string, href?: string, previewSrc?: string): boolean {
+  const source = (previewSrc || href || fileName || '').trim().toLowerCase();
+  return /^data:application\/pdf/.test(source) || /\.pdf(\?.*)?$/.test(source);
 }
 
 function openFollowupAttachmentPreview(row: any) {
@@ -289,6 +303,7 @@ function openFollowupAttachmentPreview(row: any) {
   if (!src) return;
   attachmentPreviewSrc.value = src;
   attachmentPreviewName.value = getFollowupAttachmentName(row);
+  attachmentPreviewKind.value = isPdfAttachment(getFollowupAttachmentName(row), getFollowupAttachmentHref(row), getFollowupAttachmentPreviewSrc(row)) ? 'pdf' : 'image';
   attachmentPreviewVisible.value = true;
 }
 
@@ -296,6 +311,7 @@ function closeAttachmentPreview() {
   attachmentPreviewVisible.value = false;
   attachmentPreviewSrc.value = "";
   attachmentPreviewName.value = "";
+  attachmentPreviewKind.value = 'image';
 }
 
 const {
