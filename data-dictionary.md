@@ -30,3 +30,23 @@
 | `deleted_at` | 删除时间 | `DATETIME` | 否 | 软删除时间 |
 | `project_ids_json` | 关联项目ID列表 | `TEXT` | 否 | JSON 数组，映射为 `List<String>` |
 
+## payments（回款表）
+
+| 字段名 | 后端字段名 | 中文名 | 类型 | 必填 | 说明 |
+|---|---|---|---|---|---|
+| `id` | `id` | 回款ID | `VARCHAR(64)` | 是 | 主键，UUID |
+| `tenant_id` | `tenantId` | 租户ID | `VARCHAR(64)` | 是 | 多租户隔离字段 |
+| `contract_id` | `contractId` | 关联合同 | `VARCHAR(64)` | 是 | 回款所属合同 |
+| `owner_id` | `ownerId` | 负责人ID | `VARCHAR(64)` | 否 | 当前负责人 |
+| `creator_id` | `creatorId` | 创建人ID | `VARCHAR(64)` | 否 | 创建该回款记录的用户 |
+| `code` | `code` | 回款编号 | `VARCHAR(32)` | 是 | 系统自动生成，租户内唯一 |
+| `paid_date` | `paidDate` | 回款日期 | `DATE` | 是 | 实际收款日期 |
+| `amount` | `amount` | 回款金额 | `DECIMAL(18,2)` | 是 | 实际回款金额，单位元 |
+| `payer_name` | `payerName` | 付款方名称 | `VARCHAR(100)` | 否 | 付款单位或个人名称 |
+| `invoice_status` | `invoiceStatus` | 开票状态 | `VARCHAR(32)` | 否 | `UNISSUED` 未开票，`ISSUED` 已开票，`NOT_REQUIRED` 无需开票 |
+| `voucher` | `voucher` | 回款凭证 | `LONGTEXT` | 否 | 回款凭证文件或附件信息 |
+| `remark` | `remark` | 备注 | `TEXT` | 否 | 其他说明 |
+| `deleted` | `deleted` | 是否已删除 | `TINYINT(1)` | 是 | 软删除标记，`0` 未删，`1` 已删 |
+| `created_at` | `createdAt` | 创建时间 | `DATETIME` | 是 | 默认当前时间 |
+| `updated_at` | `updatedAt` | 最后编辑时间 | `DATETIME` | 是 | 默认当前时间，更新自动刷新 |
+| `deleted_at` | `deletedAt` | 删除时间 | `DATETIME` | 否 | 软删除时间 |

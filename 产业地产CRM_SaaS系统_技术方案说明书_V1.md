@@ -192,6 +192,27 @@ V1 已完成全部 15 个实体的关系型表迁移，采用纯关系型表策�
 | 审计域 | AuditLog | `audit_logs` | 审计日志 |
 | 序列域 | — | `daily_sequences` | 日编号序列（如启用） |
 
+#### `payments` 回款表字段
+
+| 数据库字段 | 后端字段 | 中文名 | 说明 |
+|---|---|---|---|
+| `id` | `id` | 回款ID | 主键，UUID |
+| `tenant_id` | `tenantId` | 租户ID | 多租户隔离字段 |
+| `contract_id` | `contractId` | 关联合同 | 回款所属合同 |
+| `owner_id` | `ownerId` | 负责人ID | 当前负责人 |
+| `creator_id` | `creatorId` | 创建人ID | 创建该回款记录的用户 |
+| `code` | `code` | 回款编号 | 系统自动生成 |
+| `paid_date` | `paidDate` | 回款日期 | 实际收款日期 |
+| `amount` | `amount` | 回款金额 | 实际回款金额，单位元 |
+| `payer_name` | `payerName` | 付款方名称 | 付款单位或个人名称 |
+| `invoice_status` | `invoiceStatus` | 开票状态 | 未开票/已开票/无需开票 |
+| `voucher` | `voucher` | 回款凭证 | 回款凭证文件或附件信息 |
+| `remark` | `remark` | 备注 | 其他说明 |
+| `deleted` | `deleted` | 是否已删除 | 软删除标记 |
+| `created_at` | `createdAt` | 创建时间 | 系统自动记录创建时间 |
+| `updated_at` | `updatedAt` | 最后编辑时间 | 系统自动记录最近一次编辑时间 |
+| `deleted_at` | `deletedAt` | 删除时间 | 软删除时间 |
+
 **`state_store` 保留用途：**
 - 仅作为历史 JSON 数据备份，启动时 `BootstrapService` 会一次性将旧数据迁移到关系型表
 - 不再承载任何业务实体的运行时读写
