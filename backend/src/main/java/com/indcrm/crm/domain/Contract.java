@@ -41,6 +41,8 @@ public class Contract {
     public boolean deleted;
     @TableField("created_at")
     public LocalDateTime createdAt;
+    @TableField("updated_at")
+    public LocalDateTime updatedAt;
     @TableField("deleted_at")
     public LocalDateTime deletedAt;
 }

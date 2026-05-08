@@ -173,6 +173,11 @@ public class BootstrapService {
                 "longtext",
                 "ALTER TABLE contracts MODIFY COLUMN attachment LONGTEXT DEFAULT NULL COMMENT '????'"
         );
+        ensureColumnExists(
+                "contracts",
+                "updated_at",
+                "ALTER TABLE contracts ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后编辑时间' AFTER created_at"
+        );
         ensureColumnType(
                 "payments",
                 "voucher",
