@@ -284,6 +284,9 @@
               <el-table-column prop="title" label="合同标题" min-width="220" show-overflow-tooltip />
               <el-table-column prop="signDate" label="签约日期" width="120" />
               <el-table-column prop="amount" label="合同金额(元)" width="120" />
+              <el-table-column prop="estimatedCommission" label="预计佣金(元)" width="130" />
+              <el-table-column prop="leaseStartDate" label="租赁开始日期" width="130" />
+              <el-table-column prop="leaseEndDate" label="租赁结束日期" width="130" />
               <el-table-column label="创建人" width="120">
                 <template #default="{ row }">
                   {{ getUserDisplayName(row.creatorId || row.ownerId) }}
