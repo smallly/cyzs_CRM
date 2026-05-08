@@ -14,6 +14,12 @@
       @refresh="loadContracts"
       @page-change="handlePageChange"
     >
+      <template #title="{ row }">
+        <el-button link @click="goDetail(row.id)">
+          {{ row.title || '-' }}
+        </el-button>
+      </template>
+
       <template #projectId="{ row }">
         {{ getProjectName(row.projectId) }}
       </template>
@@ -57,7 +63,7 @@ const users = ref<any[]>([])
 const columns: TableColumn[] = [
   { prop: 'projectId', label: '所属项目', width: 200, slot: 'projectId' },
   { prop: 'contractNo', label: '合同编号', width: 150 },
-  { prop: 'title', label: '合同标题', width: 180 },
+  { prop: 'title', label: '合同标题', width: 180, slot: 'title' },
   { prop: 'amount', label: '合同金额(元)', width: 140 },
   { prop: 'estimatedCommission', label: '预估佣金(元)', width: 150 },
   { prop: 'signDate', label: '签约日期', width: 120 },
@@ -96,6 +102,11 @@ async function loadUsers() {
 
 function goCreate() {
   router.push('/contracts/create')
+}
+
+function goDetail(contractId: string) {
+  if (!contractId) return
+  router.push(`/contracts/${contractId}`)
 }
 
 function getProjectName(projectId: string): string {

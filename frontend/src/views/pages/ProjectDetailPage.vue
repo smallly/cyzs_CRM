@@ -280,8 +280,14 @@
           </div>
           <template v-if="contracts.length">
             <el-table :data="pagedContracts" border stripe size="small" style="width: 100%">
+              <el-table-column label="合同标题" min-width="220" fixed="left" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <el-button link @click="goContract(row.id)">
+                    {{ row.title || '-' }}
+                  </el-button>
+                </template>
+              </el-table-column>
               <el-table-column prop="contractNo" label="合同编号" width="150" />
-              <el-table-column prop="title" label="合同标题" min-width="220" show-overflow-tooltip />
               <el-table-column prop="signDate" label="签约日期" width="120" />
               <el-table-column prop="amount" label="合同金额(元)" width="120" />
               <el-table-column prop="estimatedCommission" label="预计佣金(元)" width="130" />
@@ -1830,6 +1836,11 @@ function toDateTimeValue(value?: string | null): string | null {
 
 function goContact(contactId: string) {
   router.push(`/contacts/${contactId}`)
+}
+
+function goContract(contractId: string) {
+  if (!contractId) return
+  router.push(`/contracts/${contractId}`)
 }
 
 function openContractDialog() {

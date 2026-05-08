@@ -80,6 +80,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '新增合同' }
       },
       {
+        path: 'contracts/:id',
+        name: 'ContractDetail',
+        component: () => import('../views/pages/ContractDetailPage.vue'),
+        meta: { title: '合同详情' }
+      },
+      {
         path: 'payments',
         name: 'Payments',
         component: () => import('../views/modules/PaymentsView.vue'),
