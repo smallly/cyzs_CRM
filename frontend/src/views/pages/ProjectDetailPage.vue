@@ -836,6 +836,15 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+type ProjectDetailTab = 'contact' | 'followups' | 'contracts' | 'payments'
+
+const projectDetailTabs: ProjectDetailTab[] = ['contact', 'followups', 'contracts', 'payments']
+
+function normalizeProjectDetailTab(value: unknown): ProjectDetailTab {
+  const text = Array.isArray(value) ? value[0] : value
+  return projectDetailTabs.includes(text as ProjectDetailTab) ? text as ProjectDetailTab : 'contact'
+}
+
 const projectId = ref(route.params.id as string)
 const project = ref<any>(null)
 const users = ref<any[]>([])
@@ -848,7 +857,7 @@ const sourceOptions = ref<string[]>([])
 
 const loading = ref(false)
 const submitting = ref(false)
-const activeTab = ref('contact')
+const activeTab = ref<ProjectDetailTab>(normalizeProjectDetailTab(route.query.tab))
 
 const stageDialogVisible = ref(false)
 const stageFieldDialogVisible = ref(false)
@@ -1030,6 +1039,22 @@ watch(() => contracts.value.length, (total) => {
 
 watch(() => payments.value.length, (total) => {
   paymentsPage.value = clampPage(paymentsPage.value, total, listPageSize)
+})
+
+watch(() => route.query.tab, (tab) => {
+  const normalized = normalizeProjectDetailTab(tab)
+  if (activeTab.value !== normalized) {
+    activeTab.value = normalized
+  }
+})
+
+watch(activeTab, (tab) => {
+  if (route.query.tab === tab) return
+  void router.replace({
+    path: route.path,
+    query: { ...route.query, tab },
+    hash: route.hash
+  })
 })
 
 onMounted(async () => {
@@ -1880,12 +1905,24 @@ function toDateTimeValue(value?: string | null): string | null {
   return `${value}T00:00:00`
 }
 
-function goContact(contactId: string) {
+async function persistCurrentProjectTab() {
+  if (route.query.tab === activeTab.value) return
+  await router.replace({
+    path: route.path,
+    query: { ...route.query, tab: activeTab.value },
+    hash: route.hash
+  })
+}
+
+async function goContact(contactId: string) {
+  if (!contactId) return
+  await persistCurrentProjectTab()
   router.push(`/contacts/${contactId}`)
 }
 
-function goContract(contractId: string) {
+async function goContract(contractId: string) {
   if (!contractId) return
+  await persistCurrentProjectTab()
   router.push(`/contracts/${contractId}`)
 }
 
@@ -2177,15 +2214,11 @@ async function submitNewPayment() {
 }
 
 .detail-data-table {
-  --detail-table-scrollbar-gap: 12px;
+  --detail-table-scrollbar-gap: 16px;
 }
 
-.detail-data-table :deep(.el-table__body-wrapper) {
-  padding-bottom: var(--detail-table-scrollbar-gap);
-}
-
-.detail-data-table :deep(.el-scrollbar__bar.is-horizontal) {
-  bottom: 3px;
+.detail-data-table :deep(.el-table__body tbody tr:last-child > td.el-table__cell) {
+  padding-bottom: var(--detail-table-scrollbar-gap) !important;
 }
 
 /* 跟进记录卡片 */
