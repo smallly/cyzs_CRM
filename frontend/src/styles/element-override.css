@@ -250,6 +250,20 @@ a:hover {
   background: #ffffff !important;
 }
 
+/* All Element Plus tables: keep first column fixed during horizontal scroll. */
+.el-table .el-table__header-wrapper thead tr th.el-table__cell:first-child,
+.el-table .el-table__body-wrapper tbody tr td.el-table__cell:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #ffffff !important;
+}
+
+.el-table .el-table__header-wrapper thead tr th.el-table__cell:first-child {
+  z-index: 4;
+  background: #f7f9fc !important;
+}
+
 /* 输入框样式 */
 .el-input__wrapper {
   border: 1px solid #e2e8f0;
