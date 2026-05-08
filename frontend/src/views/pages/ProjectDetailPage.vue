@@ -2169,6 +2169,8 @@ async function submitNewPayment() {
   color: #334155;
   line-height: 1.8;
   margin-bottom: 12px;
+  margin-left: 12px;
+  margin-right: 12px;
 }
 
 .followup-foot {
@@ -2184,7 +2186,17 @@ async function submitNewPayment() {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 14px 0;
-  margin: 0 20px 12px;
+  margin: 0 12px 12px;
+}
+
+.followup-attachments {
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.followup-foot {
+  margin-left: 12px;
+  margin-right: 12px;
 }
 
 .followup-attachments {
