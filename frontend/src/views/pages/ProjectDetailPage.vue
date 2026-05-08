@@ -324,7 +324,13 @@
           </div>
           <template v-if="payments.length">
             <el-table :data="pagedPayments" border stripe size="small" style="width: 100%">
-              <el-table-column prop="code" label="回款编号" width="150" />
+              <el-table-column label="回款编号" width="150">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="goContract(row.contractId)">
+                    {{ row.code || '-' }}
+                  </el-button>
+                </template>
+              </el-table-column>
               <el-table-column label="关联合同" min-width="220" show-overflow-tooltip>
                 <template #default="{ row }">
                   {{ getContractDisplayName(row.contractId) }}
