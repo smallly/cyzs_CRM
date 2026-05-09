@@ -260,7 +260,6 @@ CREATE TABLE IF NOT EXISTS contracts (
   deleted_at DATETIME DEFAULT NULL COMMENT '删除时间',
   PRIMARY KEY (id),
   UNIQUE KEY uk_contracts_no (tenant_id, contract_no),
-  UNIQUE KEY uk_contracts_project (tenant_id, project_id),
   KEY idx_contracts_tenant (tenant_id),
   KEY idx_contracts_project (project_id),
   KEY idx_contracts_deleted (tenant_id, deleted)
