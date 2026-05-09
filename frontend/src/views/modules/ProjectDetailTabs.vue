@@ -149,8 +149,8 @@
       <table class="detail-list-table">
         <thead>
           <tr>
-            <th>合同编号</th>
             <th>合同标题</th>
+            <th>合同编号</th>
             <th>签约日期</th>
             <th>合同金额（元）</th>
             <th>合同附件</th>
@@ -161,8 +161,8 @@
         </thead>
         <tbody v-if="projectDetailContracts.length">
           <tr v-for="c in projectDetailContracts" :key="c.id">
-            <td>{{ c.contractNo || "-" }}</td>
             <td>{{ c.title || "-" }}</td>
+            <td>{{ c.contractNo || "-" }}</td>
             <td>{{ formatDate(c.signDate) }}</td>
             <td>{{ formatAmount(c.amount) }}</td>
             <td>
