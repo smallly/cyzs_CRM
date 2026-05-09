@@ -509,8 +509,8 @@ function isMenuActive(menuRoute: string): boolean {
 .user-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 10px 4px 4px;
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
   border-radius: 999px;
   cursor: pointer;
   border: 1px solid transparent;
@@ -523,12 +523,12 @@ function isMenuActive(menuRoute: string): boolean {
 }
 
 .user-avatar {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   background: linear-gradient(135deg, #2f5cf6, #4f8bff);
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -550,8 +550,8 @@ function isMenuActive(menuRoute: string): boolean {
 
 .user-name {
   color: #1f2937;
-  font-size: 17px;
-  line-height: 1.1;
+  font-size: 14px;
+  line-height: 1.2;
   font-weight: 400;
   max-width: 180px;
   overflow: hidden;
