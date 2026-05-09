@@ -115,6 +115,43 @@ public class PaymentService {
         return payment;
     }
 
+    public Payment mustGet(User actor, String paymentId) {
+        Payment payment = paymentMapper.selectById(paymentId);
+        if (payment == null || payment.deleted || !actor.tenantId.equals(payment.tenantId)) {
+            throw new BizException(ErrorCode.BIZ_422, "鍥炴璁板綍涓嶅瓨鍦?");
+        }
+        return payment;
+    }
+
+    public Payment update(
+            User actor,
+            String paymentId,
+            String contractId,
+            LocalDate paidDate,
+            BigDecimal amount,
+            String payerName,
+            String invoiceStatus,
+            String voucher,
+            String remark
+    ) {
+        Payment payment = mustGet(actor, paymentId);
+        if (!permissionService.canOperateByOwner(actor, payment.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "鏃犲洖娆剧紪杈戞潈闄?");
+        }
+        if (contractId != null && !contractId.isBlank() && !contractId.equals(payment.contractId)) {
+            throw new BizException(ErrorCode.BIZ_422, "鍥炴鎵€灞炲悎鍚屼笉鍏佽淇敼");
+        }
+        payment.paidDate = paidDate;
+        payment.amount = amount;
+        payment.payerName = normalizeNullable(payerName);
+        payment.invoiceStatus = invoiceStatus;
+        payment.voucher = normalizeNullable(voucher);
+        payment.remark = normalizeNullable(remark);
+        paymentMapper.updateById(payment);
+        auditService.log(actor, "PAYMENT_UPDATE", "Payment", payment.id, payment.code);
+        return payment;
+    }
+
     private String normalizeNullable(String text) {
         if (text == null) {
             return null;

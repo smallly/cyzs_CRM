@@ -151,6 +151,11 @@
               <el-table-column prop="gender" label="性别" width="90" />
               <el-table-column prop="officePhone" label="办公电话" width="140" />
               <el-table-column prop="wechat" label="微信号" width="150" />
+              <el-table-column label="操作" width="90" fixed="right" align="center">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="editContactRow(row)">编辑</el-button>
+                </template>
+              </el-table-column>
             </el-table>
             <div v-if="contacts.length > listPageSize" class="detail-list-pagination">
               <el-pagination
@@ -298,6 +303,11 @@
                   {{ formatDateTime(row.createdAt) }}
                 </template>
               </el-table-column>
+              <el-table-column label="操作" width="90" fixed="right" align="center">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="editContractRow(row)">编辑</el-button>
+                </template>
+              </el-table-column>
             </el-table>
             <div v-if="contracts.length > listPageSize" class="detail-list-pagination">
               <el-pagination
@@ -367,6 +377,11 @@
               <el-table-column prop="createdAt" label="创建时间" width="180">
                 <template #default="{ row }">
                   {{ formatDateTime(row.createdAt) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="90" fixed="right" align="center">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="editPaymentRow(row)">编辑</el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -1951,10 +1966,22 @@ async function goContact(contactId: string) {
   router.push(`/contacts/${contactId}`)
 }
 
+async function editContactRow(row: any) {
+  if (!row?.id) return
+  await persistCurrentProjectTab()
+  router.push({ path: '/contacts', query: { editId: row.id } })
+}
+
 async function goContract(contractId: string) {
   if (!contractId) return
   await persistCurrentProjectTab()
   router.push(`/contracts/${contractId}`)
+}
+
+async function editContractRow(row: any) {
+  if (!row?.id) return
+  await persistCurrentProjectTab()
+  router.push({ path: '/contracts/create', query: { editId: row.id } })
 }
 
 function openContractDialog() {
@@ -2022,6 +2049,12 @@ async function submitNewPayment() {
   } finally {
     submitting.value = false
   }
+}
+
+async function editPaymentRow(row: any) {
+  if (!row?.id) return
+  await persistCurrentProjectTab()
+  router.push({ path: '/payments/create', query: { editId: row.id } })
 }
 </script>
 

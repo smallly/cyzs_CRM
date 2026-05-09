@@ -47,6 +47,30 @@ public class ContractController {
         return ApiResponse.ok(PageUtils.maybePaginate(contractService.list(sessionService.requireUser()), page, size));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<?> get(@PathVariable("id") String id) {
+        return ApiResponse.ok(contractService.mustGet(sessionService.requireUser(), id));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<?> update(@PathVariable("id") String id, @RequestBody UpdateReq req) {
+        return ApiResponse.ok(contractService.update(
+                sessionService.requireUser(),
+                id,
+                req.projectId(),
+                req.contractNo(),
+                req.title(),
+                req.amount(),
+                parseLocalDate(req.signDate()),
+                req.estimatedCommission(),
+                parseLocalDate(req.leaseStartDate()),
+                parseLocalDate(req.leaseEndDate()),
+                req.leaseTermMonths(),
+                req.paymentTerms(),
+                req.attachment()
+        ));
+    }
+
     @PutMapping("/{id}/sign-date")
     public ApiResponse<?> updateSignDate(@PathVariable("id") String id, @RequestBody SignDateReq req) {
         return ApiResponse.ok(contractService.updateSignDate(
@@ -57,6 +81,20 @@ public class ContractController {
     }
 
     public record CreateReq(
+            String projectId,
+            String contractNo,
+            String title,
+            BigDecimal amount,
+            String signDate,
+            BigDecimal estimatedCommission,
+            String leaseStartDate,
+            String leaseEndDate,
+            Integer leaseTermMonths,
+            String paymentTerms,
+            String attachment
+    ) {}
+
+    public record UpdateReq(
             String projectId,
             String contractNo,
             String title,

@@ -117,6 +117,45 @@ public class ContractService {
         return c;
     }
 
+    public Contract update(
+            User actor,
+            String contractId,
+            String projectId,
+            String contractNo,
+            String title,
+            BigDecimal amount,
+            LocalDate signDate,
+            BigDecimal estimatedCommission,
+            LocalDate leaseStartDate,
+            LocalDate leaseEndDate,
+            Integer leaseTermMonths,
+            String paymentTerms,
+            String attachment
+    ) {
+        Contract c = mustGet(actor, contractId);
+        if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "鏃犲悎鍚岀紪杈戞潈闄?");
+        }
+        if (projectId != null && !projectId.isBlank() && !projectId.equals(c.projectId)) {
+            throw new BizException(ErrorCode.BIZ_422, "鍚堝悓鎵€灞炶椤圭洰涓嶅厑璁镐慨鏀?");
+        }
+        validateContractNo(actor.tenantId, c.id, contractNo);
+        c.contractNo = contractNo;
+        c.title = title;
+        c.amount = amount;
+        c.signDate = signDate;
+        c.estimatedCommission = estimatedCommission;
+        c.leaseStartDate = leaseStartDate;
+        c.leaseEndDate = leaseEndDate;
+        c.leaseTermMonths = leaseTermMonths;
+        c.paymentTerms = normalizeNullable(paymentTerms);
+        c.attachment = requireAttachment(attachment);
+        c.updatedAt = LocalDateTime.now();
+        contractMapper.updateById(c);
+        auditService.log(actor, "CONTRACT_UPDATE", "Contract", c.id, c.contractNo);
+        return c;
+    }
+
     public Contract updateSignDate(User actor, String contractId, LocalDate signDate) {
         if (signDate == null) {
             throw new BizException(ErrorCode.BIZ_422, "签约日期不能为空");
@@ -129,6 +168,25 @@ public class ContractService {
         contractMapper.updateById(c);
         auditService.log(actor, "CONTRACT_UPDATE_SIGN_DATE", "Contract", c.id, c.contractNo);
         return c;
+    }
+
+    private void validateContractNo(String tenantId, String selfId, String contractNo) {
+        if (contractNo == null || contractNo.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "鍚堝悓缂栧彿涓嶈兘涓虹┖");
+        }
+        List<Contract> existing = contractMapper.selectList(
+                Wrappers.<Contract>query()
+                        .eq("tenant_id", tenantId)
+                        .eq("deleted", false)
+        );
+        for (Contract other : existing) {
+            if (selfId != null && selfId.equals(other.id)) {
+                continue;
+            }
+            if (contractNo.equals(other.contractNo)) {
+                throw new BizException(ErrorCode.BIZ_409, "鍚堝悓缂栧彿閲嶅");
+            }
+        }
     }
 
     private String requireAttachment(String attachment) {
