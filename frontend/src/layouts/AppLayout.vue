@@ -91,7 +91,7 @@
         <div class="header-right">
           <el-dropdown
             class="user-center"
-            trigger="click"
+            trigger="hover"
             placement="bottom-end"
             popper-class="user-center-popper"
             @command="handleUserCommand"
