@@ -78,7 +78,14 @@ async function loadContract() {
   if (!contractId.value) return
   loading.value = true
   try {
-    const row = await authStore.api<any>(`/api/contracts/${contractId.value}`)
+    let row: any = null
+    try {
+      row = await authStore.api<any>(`/api/contracts/${contractId.value}`)
+    } catch {
+      const res = await authStore.api<PageResult<any> | any[]>('/api/contracts')
+      const records = normalizePageResult<any>(res).records
+      row = records.find((item) => item.id === contractId.value) || null
+    }
     if (!row?.id) {
       ElMessage.warning('合同不存在')
       return
