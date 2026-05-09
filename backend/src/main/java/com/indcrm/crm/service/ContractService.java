@@ -108,6 +108,14 @@ public class ContractService {
         return c;
     }
 
+    public Contract detail(User actor, String contractId) {
+        Contract c = mustGet(actor, contractId);
+        if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "无权限查看合同");
+        }
+        return c;
+    }
+
     public Contract updateSignDate(User actor, String contractId, LocalDate signDate) {
         if (signDate == null) {
             throw new BizException(ErrorCode.BIZ_422, "签约日期不能为空");
@@ -117,9 +125,73 @@ public class ContractService {
             throw new BizException(ErrorCode.AUTH_403, "无合同编辑权限");
         }
         c.signDate = signDate;
+        c.updatedAt = LocalDateTime.now();
         contractMapper.updateById(c);
         auditService.log(actor, "CONTRACT_UPDATE_SIGN_DATE", "Contract", c.id, c.contractNo);
         return c;
+    }
+
+    public Contract update(
+            User actor,
+            String contractId,
+            String projectId,
+            String contractNo,
+            String title,
+            BigDecimal amount,
+            LocalDate signDate,
+            BigDecimal estimatedCommission,
+            LocalDate leaseStartDate,
+            LocalDate leaseEndDate,
+            Integer leaseTermMonths,
+            String paymentTerms,
+            String attachment
+    ) {
+        Contract c = mustGet(actor, contractId);
+        if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "无合同编辑权限");
+        }
+        Project p = projectMapper.selectById(projectId);
+        if (p == null || p.deleted || !actor.tenantId.equals(p.tenantId)) {
+            throw new BizException(ErrorCode.BIZ_422, "项目不存在");
+        }
+        Contract duplicated = contractMapper.selectOne(
+                Wrappers.<Contract>query()
+                        .eq("tenant_id", actor.tenantId)
+                        .eq("deleted", false)
+                        .eq("contract_no", contractNo)
+                        .ne("id", contractId)
+                        .last("LIMIT 1")
+        );
+        if (duplicated != null) {
+            throw new BizException(ErrorCode.BIZ_409, "合同编号重复");
+        }
+        c.projectId = projectId;
+        c.contractNo = contractNo;
+        c.title = title;
+        c.amount = amount;
+        c.signDate = signDate;
+        c.estimatedCommission = estimatedCommission;
+        c.leaseStartDate = leaseStartDate;
+        c.leaseEndDate = leaseEndDate;
+        c.leaseTermMonths = leaseTermMonths;
+        c.paymentTerms = normalizeNullable(paymentTerms);
+        c.attachment = requireAttachment(attachment);
+        c.updatedAt = LocalDateTime.now();
+        contractMapper.updateById(c);
+        auditService.log(actor, "CONTRACT_UPDATE", "Contract", c.id, c.contractNo);
+        return c;
+    }
+
+    public void delete(User actor, String contractId) {
+        Contract c = mustGet(actor, contractId);
+        if (!permissionService.canOperateByOwner(actor, c.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "无合同删除权限");
+        }
+        c.deleted = true;
+        c.deletedAt = LocalDateTime.now();
+        c.updatedAt = c.deletedAt;
+        contractMapper.updateById(c);
+        auditService.log(actor, "CONTRACT_DELETE", "Contract", c.id, c.contractNo);
     }
 
     private String requireAttachment(String attachment) {

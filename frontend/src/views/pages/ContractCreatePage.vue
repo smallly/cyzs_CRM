@@ -1,10 +1,10 @@
-﻿<template>
+<template>
   <el-card>
     <template #header>
       <div class="card-header">
         <div class="card-title-wrap">
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-          <span>新增合同</span>
+          <span>{{ isEditMode ? '编辑合同' : '新增合同' }}</span>
         </div>
       </div>
     </template>
@@ -92,7 +92,7 @@
 
       <el-form-item class="form-actions">
         <el-space>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ submitText }}</el-button>
           <el-button @click="handleCancel">取消</el-button>
         </el-space>
       </el-form-item>
@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -117,6 +117,9 @@ const submitting = ref(false)
 const fileName = ref('')
 const attachmentFile = ref<File | null>(null)
 const projects = ref<any[]>([])
+const editingContractId = ref('')
+const isEditMode = computed(() => !!editingContractId.value)
+const submitText = computed(() => (isEditMode.value ? '保存' : '提交'))
 
 const formData = reactive({
   projectId: '',
@@ -142,6 +145,11 @@ const formRules = {
 
 onMounted(async () => {
   await loadProjects()
+  const contractId = typeof route.query.id === 'string' ? route.query.id : ''
+  if (contractId) {
+    editingContractId.value = contractId
+    await loadContract(contractId)
+  }
   const projectId = typeof route.query.projectId === 'string' ? route.query.projectId : ''
   if (projectId && projects.value.some((p) => p.id === projectId)) {
     formData.projectId = projectId
@@ -151,6 +159,32 @@ onMounted(async () => {
 async function loadProjects() {
   const res = await authStore.api<PageResult<any> | any[]>('/api/projects')
   projects.value = normalizePageResult<any>(res).records
+}
+
+async function loadContract(contractId: string) {
+  const row = await authStore.api<any>(`/api/contracts/${contractId}`)
+  formData.projectId = row.projectId || ''
+  formData.contractNo = row.contractNo || ''
+  formData.title = row.title || ''
+  formData.amount = Number(row.amount || 0)
+  formData.signDate = row.signDate || ''
+  formData.estimatedCommission = Number(row.estimatedCommission || 0)
+  formData.leaseStartDate = row.leaseStartDate || ''
+  formData.leaseEndDate = row.leaseEndDate || ''
+  formData.leaseTermMonths = row.leaseTermMonths ?? undefined
+  formData.paymentTerms = row.paymentTerms || ''
+  formData.attachment = row.attachment || ''
+  fileName.value = parseAttachmentName(row.attachment) || '已上传附件'
+}
+
+function parseAttachmentName(value: string): string {
+  if (!value) return ''
+  try {
+    const parsed = JSON.parse(value) as { name?: string }
+    return parsed.name || ''
+  } catch {
+    return value
+  }
 }
 
 function handleFileChange(file: any) {
@@ -194,15 +228,22 @@ async function handleSubmit() {
     await ensureAttachmentReady()
     submitting.value = true
 
-    await authStore.api('/api/contracts', {
-      method: 'POST',
-      body: JSON.stringify(formData)
-    })
+    if (isEditMode.value) {
+      await authStore.api(`/api/contracts/${editingContractId.value}`, {
+        method: 'PUT',
+        body: JSON.stringify(formData)
+      })
+    } else {
+      await authStore.api('/api/contracts', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      })
+    }
 
-    ElMessage.success('合同已创建')
+    ElMessage.success(isEditMode.value ? '合同已更新' : '合同已创建')
     router.push('/contracts')
   } catch (error: any) {
-    ElMessage.error(error.message || '创建失败')
+    ElMessage.error(error.message || (isEditMode.value ? '更新失败' : '创建失败'))
   } finally {
     submitting.value = false
   }

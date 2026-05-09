@@ -6,11 +6,15 @@
       :columns="columns"
       :loading="loading"
       :show-add="true"
+      :show-edit="true"
+      :show-delete="true"
       :show-pagination="true"
       :total="total"
       :default-current-page="page"
       :default-page-size="pageSize"
       @add="goCreate"
+      @edit="goEdit"
+      @delete="deleteContract"
       @refresh="loadContracts"
       @page-change="handlePageChange"
     >
@@ -104,6 +108,11 @@ function goCreate() {
   router.push('/contracts/create')
 }
 
+function goEdit(row: any) {
+  if (!row?.id) return
+  router.push({ path: '/contracts/create', query: { id: row.id } })
+}
+
 function goDetail(contractId: string) {
   if (!contractId) return
   router.push(`/contracts/${contractId}`)
@@ -131,6 +140,17 @@ function formatDateTime(value?: string | null): string {
 
 function downloadAttachment(row: any) {
   ElMessage.info(`下载附件: ${row.attachment}`)
+}
+
+async function deleteContract(row: any) {
+  if (!row?.id) return
+  try {
+    await authStore.api(`/api/contracts/${row.id}`, { method: 'DELETE' })
+    ElMessage.success('合同已删除')
+    await loadContracts()
+  } catch (error: any) {
+    ElMessage.error(error.message || '删除失败')
+  }
 }
 
 async function handlePageChange(nextPage: number, nextSize: number) {

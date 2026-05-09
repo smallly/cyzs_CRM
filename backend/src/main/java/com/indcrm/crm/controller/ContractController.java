@@ -47,6 +47,11 @@ public class ContractController {
         return ApiResponse.ok(PageUtils.maybePaginate(contractService.list(sessionService.requireUser()), page, size));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<?> detail(@PathVariable("id") String id) {
+        return ApiResponse.ok(contractService.detail(sessionService.requireUser(), id));
+    }
+
     @PutMapping("/{id}/sign-date")
     public ApiResponse<?> updateSignDate(@PathVariable("id") String id, @RequestBody SignDateReq req) {
         return ApiResponse.ok(contractService.updateSignDate(
@@ -54,6 +59,31 @@ public class ContractController {
                 id,
                 parseLocalDate(req.signDate())
         ));
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<?> update(@PathVariable("id") String id, @RequestBody CreateReq req) {
+        return ApiResponse.ok(contractService.update(
+                sessionService.requireUser(),
+                id,
+                req.projectId(),
+                req.contractNo(),
+                req.title(),
+                req.amount(),
+                parseLocalDate(req.signDate()),
+                req.estimatedCommission(),
+                parseLocalDate(req.leaseStartDate()),
+                parseLocalDate(req.leaseEndDate()),
+                req.leaseTermMonths(),
+                req.paymentTerms(),
+                req.attachment()
+        ));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable("id") String id) {
+        contractService.delete(sessionService.requireUser(), id);
+        return ApiResponse.ok(null);
     }
 
     public record CreateReq(
