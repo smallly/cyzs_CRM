@@ -1636,8 +1636,14 @@ async function submitStageUpdate() {
   }
 }
 
-function openProjectEdit() {
+async function openProjectEdit() {
   if (!project.value) {
+    return
+  }
+  try {
+    await Promise.all([loadProject(), loadDicts()])
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载项目详情失败')
     return
   }
   Object.assign(projectEditForm, {

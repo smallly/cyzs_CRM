@@ -178,6 +178,11 @@ public class BootstrapService {
                 "updated_at",
                 "ALTER TABLE contracts ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后编辑时间' AFTER created_at"
         );
+        ensureIndexAbsent(
+                "contracts",
+                "uk_contracts_project",
+                "ALTER TABLE contracts DROP INDEX uk_contracts_project"
+        );
         ensureColumnType(
                 "payments",
                 "voucher",
@@ -206,6 +211,19 @@ public class BootstrapService {
                 tableName,
                 columnName,
                 expectedDataType
+        );
+        if (count == null || count == 0) {
+            return;
+        }
+        jdbcTemplate.execute(alterSql);
+    }
+
+    private void ensureIndexAbsent(String tableName, String indexName, String alterSql) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?",
+                Integer.class,
+                tableName,
+                indexName
         );
         if (count == null || count == 0) {
             return;

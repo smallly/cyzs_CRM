@@ -1,17 +1,23 @@
 package com.indcrm.crm.service;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.indcrm.crm.common.BizException;
 import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.DataScopeMode;
+import com.indcrm.crm.domain.Project;
 import com.indcrm.crm.domain.ProjectDictConfig;
 import com.indcrm.crm.domain.ScopeConfig;
+import com.indcrm.crm.mapper.ProjectMapper;
 import com.indcrm.crm.mapper.ProjectDictConfigMapper;
 import com.indcrm.crm.mapper.ScopeConfigMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SystemConfigService {
@@ -26,10 +32,12 @@ public class SystemConfigService {
 
     private final ScopeConfigMapper scopeConfigMapper;
     private final ProjectDictConfigMapper projectDictConfigMapper;
+    private final ProjectMapper projectMapper;
 
-    public SystemConfigService(ScopeConfigMapper scopeConfigMapper, ProjectDictConfigMapper projectDictConfigMapper) {
+    public SystemConfigService(ScopeConfigMapper scopeConfigMapper, ProjectDictConfigMapper projectDictConfigMapper, ProjectMapper projectMapper) {
         this.scopeConfigMapper = scopeConfigMapper;
         this.projectDictConfigMapper = projectDictConfigMapper;
+        this.projectMapper = projectMapper;
     }
 
     public DataScopeMode getMode(String tenantId) {
@@ -65,19 +73,24 @@ public class SystemConfigService {
         return new DictOptions(levels, sources);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public void setDictOptions(String tenantId, List<String> projectLevels, List<String> projectSources) {
+        ProjectDictConfig existing = projectDictConfigMapper.selectById(tenantId);
+        List<String> previousLevels = existing == null ? null : existing.projectLevels;
+        List<String> previousSources = existing == null ? null : existing.projectSources;
         List<String> levels = normalizeOptions(projectLevels, DEFAULT_PROJECT_LEVELS, "projectLevels");
         List<String> sources = normalizeOptions(projectSources, DEFAULT_PROJECT_SOURCES, "projectSources");
         ProjectDictConfig config = new ProjectDictConfig();
         config.tenantId = tenantId;
         config.projectLevels = levels;
         config.projectSources = sources;
-        ProjectDictConfig existing = projectDictConfigMapper.selectById(tenantId);
         if (existing != null) {
             projectDictConfigMapper.updateById(config);
         } else {
             projectDictConfigMapper.insert(config);
         }
+        migrateProjectDictValues(tenantId, previousLevels, levels, "level");
+        migrateProjectDictValues(tenantId, previousSources, sources, "source");
     }
 
     public record DictOptions(List<String> projectLevels, List<String> projectSources) {}
@@ -103,5 +116,38 @@ public class SystemConfigService {
             throw new BizException(ErrorCode.BIZ_422, fieldName + " size must be <= 20");
         }
         return new ArrayList<>(unique);
+    }
+
+    private void migrateProjectDictValues(String tenantId, List<String> previousValues, List<String> currentValues, String column) {
+        if (previousValues == null || currentValues == null || previousValues.size() != currentValues.size()) {
+            return;
+        }
+
+        Map<String, String> renamedValues = new LinkedHashMap<>();
+        for (int i = 0; i < previousValues.size(); i++) {
+            String previous = previousValues.get(i);
+            String current = currentValues.get(i);
+            if (previous == null || current == null || previous.equals(current)) {
+                continue;
+            }
+            if (!currentValues.contains(previous) && !previousValues.contains(current)) {
+                renamedValues.put(previous, current);
+            }
+        }
+
+        if (renamedValues.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, String> entry : renamedValues.entrySet()) {
+            projectMapper.update(
+                    null,
+                    Wrappers.<Project>update()
+                            .eq("tenant_id", tenantId)
+                            .eq("deleted", false)
+                            .eq(column, entry.getKey())
+                            .set(column, entry.getValue())
+            );
+        }
     }
 }

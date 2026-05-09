@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,18 +50,15 @@ public class ContractService {
         if (!permissionService.canOperateByOwner(actor, p.ownerId)) {
             throw new BizException(ErrorCode.AUTH_403, "无合同创建权限");
         }
-        List<Contract> existing = contractMapper.selectList(
+        Contract duplicated = contractMapper.selectOne(
                 Wrappers.<Contract>query()
                         .eq("tenant_id", actor.tenantId)
                         .eq("deleted", false)
+                        .eq("contract_no", contractNo)
+                        .last("LIMIT 1")
         );
-        for (Contract c : existing) {
-            if (contractNo.equals(c.contractNo)) {
-                throw new BizException(ErrorCode.BIZ_409, "合同编号重复");
-            }
-            if (projectId.equals(c.projectId)) {
-                throw new BizException(ErrorCode.BIZ_422, "一项目仅允许一合同");
-            }
+        if (duplicated != null) {
+            throw new BizException(ErrorCode.BIZ_409, "合同编号重复");
         }
         Contract c = new Contract();
         c.id = UUID.randomUUID().toString();
@@ -95,18 +91,13 @@ public class ContractService {
                         .eq("tenant_id", actor.tenantId)
                         .eq("deleted", false)
         );
-        List<Contract> list = new ArrayList<>();
-        for (Contract c : all) {
-            if (permissionService.canOperateByOwner(actor, c.ownerId)) {
-                list.add(c);
-            }
-        }
-        list.sort((a, b) -> {
+        all.removeIf(c -> !permissionService.canOperateByOwner(actor, c.ownerId));
+        all.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
             LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
             return bt.compareTo(at);
         });
-        return list;
+        return all;
     }
 
     public Contract mustGet(User actor, String contractId) {
