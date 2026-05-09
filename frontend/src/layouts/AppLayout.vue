@@ -106,7 +106,7 @@
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">
                   <el-icon><User /></el-icon>
-                  <span>个人中心</span>
+                  <span>个人信息</span>
                 </el-dropdown-item>
                 <el-dropdown-item command="change-password">
                   <el-icon><Lock /></el-icon>

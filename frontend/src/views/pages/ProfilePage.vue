@@ -3,12 +3,11 @@
     <el-card class="profile-card">
       <template #header>
         <div class="card-header">
-          <span class="header-title">个人中心</span>
+          <span class="header-title">个人信息</span>
         </div>
       </template>
 
       <div class="profile-section">
-        <div class="section-title">基本信息</div>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="姓名">{{ userInfo.name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ userInfo.phone || '-' }}</el-descriptions-item>
@@ -84,13 +83,6 @@ async function loadUserInfo() {
 
 .profile-section {
   padding: 8px 0;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 16px;
 }
 
 </style>
