@@ -4,7 +4,7 @@
       <div class="card-header">
         <div class="card-title-wrap">
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-          <span>{{ isEditing ? '编辑合同' : '新增合同' }}</span>
+          <span>新增合同</span>
         </div>
       </div>
     </template>
@@ -13,7 +13,7 @@
       <el-row :gutter="12">
         <el-col :xs="24" :md="12">
           <el-form-item label="所属项目" prop="projectId">
-            <el-select v-model="formData.projectId" filterable placeholder="请选择项目" :disabled="isEditing">
+            <el-select v-model="formData.projectId" filterable placeholder="请选择项目">
               <el-option
                 v-for="p in projects"
                 :key="p.id"
@@ -92,7 +92,7 @@
 
       <el-form-item class="form-actions">
         <el-space>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ isEditing ? '保存' : '提交' }}</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
           <el-button @click="handleCancel">取消</el-button>
         </el-space>
       </el-form-item>
@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -117,8 +117,6 @@ const submitting = ref(false)
 const fileName = ref('')
 const attachmentFile = ref<File | null>(null)
 const projects = ref<any[]>([])
-const editingContractId = ref('')
-const isEditing = computed(() => Boolean(editingContractId.value))
 
 const formData = reactive({
   projectId: '',
@@ -145,41 +143,14 @@ const formRules = {
 onMounted(async () => {
   await loadProjects()
   const projectId = typeof route.query.projectId === 'string' ? route.query.projectId : ''
-  const editId = typeof route.query.editId === 'string' ? route.query.editId : ''
   if (projectId && projects.value.some((p) => p.id === projectId)) {
     formData.projectId = projectId
-  }
-  if (editId) {
-    await loadContract(editId)
   }
 })
 
 async function loadProjects() {
   const res = await authStore.api<PageResult<any> | any[]>('/api/projects')
   projects.value = normalizePageResult<any>(res).records
-}
-
-async function loadContract(id: string) {
-  const contract = await authStore.api<any>(`/api/contracts/${id}`)
-  editingContractId.value = id
-  formData.projectId = contract.projectId || ''
-  formData.contractNo = contract.contractNo || ''
-  formData.title = contract.title || ''
-  formData.amount = Number(contract.amount || 0)
-  formData.signDate = contract.signDate || ''
-  formData.estimatedCommission = Number(contract.estimatedCommission || 0)
-  formData.leaseStartDate = contract.leaseStartDate || ''
-  formData.leaseEndDate = contract.leaseEndDate || ''
-  formData.leaseTermMonths = contract.leaseTermMonths ?? undefined
-  formData.paymentTerms = contract.paymentTerms || ''
-  formData.attachment = contract.attachment || ''
-  try {
-    const parsed = contract.attachment ? JSON.parse(contract.attachment) : null
-    fileName.value = parsed?.name || contract.attachment || ''
-  } catch {
-    fileName.value = contract.attachment || ''
-  }
-  attachmentFile.value = null
 }
 
 function handleFileChange(file: any) {
@@ -223,23 +194,15 @@ async function handleSubmit() {
     await ensureAttachmentReady()
     submitting.value = true
 
-    if (isEditing.value) {
-      await authStore.api(`/api/contracts/${editingContractId.value}`, {
-        method: 'PUT',
-        body: JSON.stringify(formData)
-      })
-      ElMessage.success('合同已更新')
-      router.back()
-    } else {
-      await authStore.api('/api/contracts', {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      })
-      ElMessage.success('合同已创建')
-      router.push('/contracts')
-    }
+    await authStore.api('/api/contracts', {
+      method: 'POST',
+      body: JSON.stringify(formData)
+    })
+
+    ElMessage.success('合同已创建')
+    router.push('/contracts')
   } catch (error: any) {
-    ElMessage.error(error.message || (isEditing.value ? '保存失败' : '创建失败'))
+    ElMessage.error(error.message || '创建失败')
   } finally {
     submitting.value = false
   }

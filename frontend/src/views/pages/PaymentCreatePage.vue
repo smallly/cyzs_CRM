@@ -4,7 +4,7 @@
       <div class="card-header">
         <div class="card-title-wrap">
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-          <span>{{ isEditing ? '编辑回款' : '新增回款' }}</span>
+          <span>新增回款</span>
         </div>
       </div>
     </template>
@@ -13,7 +13,7 @@
       <el-row :gutter="12">
         <el-col :xs="24" :md="12">
           <el-form-item label="所属合同" prop="contractId">
-            <el-select v-model="formData.contractId" filterable placeholder="请选择合同" :disabled="isEditing">
+            <el-select v-model="formData.contractId" filterable placeholder="请选择合同">
               <el-option
                 v-for="c in contracts"
                 :key="c.id"
@@ -72,7 +72,7 @@
 
       <el-form-item class="form-actions">
         <el-space>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">{{ isEditing ? '保存' : '提交' }}</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
           <el-button @click="handleCancel">取消</el-button>
         </el-space>
       </el-form-item>
@@ -81,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -97,8 +97,6 @@ const submitting = ref(false)
 const fileName = ref('')
 const contracts = ref<any[]>([])
 const projects = ref<any[]>([])
-const editingPaymentId = ref('')
-const isEditing = computed(() => Boolean(editingPaymentId.value))
 
 const formData = reactive({
   contractId: '',
@@ -122,10 +120,6 @@ onMounted(async () => {
   if (contractId && contracts.value.some((c) => c.id === contractId)) {
     formData.contractId = contractId
   }
-  const editId = typeof route.query.editId === 'string' ? route.query.editId : ''
-  if (editId) {
-    await loadPayment(editId)
-  }
 })
 
 async function loadContracts() {
@@ -136,19 +130,6 @@ async function loadContracts() {
 async function loadProjects() {
   const res = await authStore.api<PageResult<any> | any[]>('/api/projects')
   projects.value = normalizePageResult<any>(res).records
-}
-
-async function loadPayment(id: string) {
-  const payment = await authStore.api<any>(`/api/payments/${id}`)
-  editingPaymentId.value = id
-  formData.contractId = payment.contractId || ''
-  formData.paidDate = payment.paidDate || ''
-  formData.amount = Number(payment.amount || 0)
-  formData.payerName = payment.payerName || ''
-  formData.invoiceStatus = payment.invoiceStatus || 'UNISSUED'
-  formData.voucher = payment.voucher || ''
-  formData.remark = payment.remark || ''
-  fileName.value = payment.voucher || ''
 }
 
 function getProjectName(projectId?: string): string {
@@ -167,23 +148,15 @@ async function handleSubmit() {
     await formRef.value?.validate()
     submitting.value = true
 
-    if (isEditing.value) {
-      await authStore.api(`/api/payments/${editingPaymentId.value}`, {
-        method: 'PUT',
-        body: JSON.stringify(formData)
-      })
-      ElMessage.success('回款已更新')
-      router.back()
-    } else {
-      await authStore.api('/api/payments', {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      })
-      ElMessage.success('回款已创建')
-      router.push('/payments')
-    }
+    await authStore.api('/api/payments', {
+      method: 'POST',
+      body: JSON.stringify(formData)
+    })
+
+    ElMessage.success('回款已创建')
+    router.push('/payments')
   } catch (error: any) {
-    ElMessage.error(error.message || (isEditing.value ? '保存失败' : '创建失败'))
+    ElMessage.error(error.message || '创建失败')
   } finally {
     submitting.value = false
   }
