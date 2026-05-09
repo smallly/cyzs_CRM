@@ -10,6 +10,10 @@
               <div class="header-subtitle">{{ contract.contractNo || '未填写合同编号' }}</div>
             </div>
           </div>
+          <div class="header-actions">
+            <el-button @click="handleEdit">编辑</el-button>
+            <el-button type="danger" @click="handleDelete">删除</el-button>
+          </div>
         </div>
       </template>
 
@@ -45,7 +49,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
@@ -74,10 +78,8 @@ async function loadContract() {
   if (!contractId.value) return
   loading.value = true
   try {
-    const res = await authStore.api<PageResult<any> | any[]>('/api/contracts')
-    const records = normalizePageResult<any>(res).records
-    const row = records.find((item) => item.id === contractId.value)
-    if (!row) {
+    const row = await authStore.api<any>(`/api/contracts/${contractId.value}`)
+    if (!row?.id) {
       ElMessage.warning('合同不存在')
       return
     }
@@ -137,6 +139,28 @@ function formatDateTime(value?: string | null): string {
 function handleBack() {
   router.back()
 }
+
+function handleEdit() {
+  if (!contractId.value) return
+  router.push({ path: '/contracts/create', query: { id: contractId.value } })
+}
+
+async function handleDelete() {
+  if (!contractId.value) return
+  try {
+    await ElMessageBox.confirm(`确认删除合同「${contract.title || contract.contractNo || contractId.value}」吗？`, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await authStore.api(`/api/contracts/${contractId.value}`, { method: 'DELETE' })
+    ElMessage.success('合同已删除')
+    router.push('/contracts')
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(error.message || '删除失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -158,6 +182,12 @@ function handleBack() {
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
