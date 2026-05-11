@@ -72,7 +72,7 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="24">
+        <el-col :xs="24" :md="12">
           <el-form-item label="付款方式">
             <el-select
               v-model="formData.paymentTerms"
@@ -88,7 +88,7 @@
           </el-form-item>
         </el-col>
 
-        <el-col :span="24">
+        <el-col :xs="24" :md="12">
           <el-form-item label="合同附件" prop="attachment">
             <el-upload :auto-upload="false" :show-file-list="false" @change="handleFileChange">
               <el-button>选择文件</el-button>
