@@ -2473,7 +2473,7 @@ button.attachment-image-tile:hover {
   padding: 12px 0 0;
 }
 
-:deep(.followup-edit-dialog) {
+:global(.followup-edit-dialog) {
   width: min(820px, calc(100vw - 48px));
   max-height: calc(100vh - 96px);
   display: flex;
@@ -2482,12 +2482,12 @@ button.attachment-image-tile:hover {
   margin-bottom: 48px;
 }
 
-:deep(.followup-edit-dialog .el-dialog__header),
-:deep(.followup-edit-dialog .el-dialog__footer) {
+:global(.followup-edit-dialog .el-dialog__header),
+:global(.followup-edit-dialog .el-dialog__footer) {
   flex: 0 0 auto;
 }
 
-:deep(.followup-edit-dialog .el-dialog__header) {
+:global(.followup-edit-dialog .el-dialog__header) {
   position: relative;
   min-height: 76px;
   padding: 0 64px 0 32px;
@@ -2495,11 +2495,11 @@ button.attachment-image-tile:hover {
   align-items: center;
 }
 
-:deep(.followup-edit-dialog .el-dialog__title) {
+:global(.followup-edit-dialog .el-dialog__title) {
   line-height: 32px;
 }
 
-:deep(.followup-edit-dialog .el-dialog__headerbtn) {
+:global(.followup-edit-dialog .el-dialog__headerbtn) {
   top: 50%;
   right: 24px;
   width: 32px;
@@ -2511,25 +2511,25 @@ button.attachment-image-tile:hover {
   transform: translateY(-50%);
 }
 
-:deep(.followup-edit-dialog .el-dialog__headerbtn:hover),
-:deep(.followup-edit-dialog .el-dialog__headerbtn:focus-visible) {
+:global(.followup-edit-dialog .el-dialog__headerbtn:hover),
+:global(.followup-edit-dialog .el-dialog__headerbtn:focus-visible) {
   background: transparent !important;
 }
 
-:deep(.followup-edit-dialog .el-dialog__body) {
+:global(.followup-edit-dialog .el-dialog__body) {
   flex: 1 1 auto;
   min-height: 0;
   padding: 0 28px 0 32px;
   overflow: hidden;
 }
 
-:deep(.followup-edit-dialog .el-dialog__footer) {
+:global(.followup-edit-dialog .el-dialog__footer) {
   min-height: 72px;
   padding: 16px 28px 16px 32px;
   border-top: 1px solid #e2e8f0;
 }
 
-.followup-edit-dialog-body {
+:global(.followup-edit-dialog-body) {
   max-height: calc(100vh - 96px - 148px);
   padding: 24px 16px 22px 0;
   overflow-y: auto;
@@ -2538,15 +2538,15 @@ button.attachment-image-tile:hover {
   scrollbar-color: #cbd5e1 transparent;
 }
 
-.followup-edit-dialog-body::-webkit-scrollbar {
+:global(.followup-edit-dialog-body::-webkit-scrollbar) {
   width: 6px;
 }
 
-.followup-edit-dialog-body::-webkit-scrollbar-track {
+:global(.followup-edit-dialog-body::-webkit-scrollbar-track) {
   background: transparent;
 }
 
-.followup-edit-dialog-body::-webkit-scrollbar-thumb {
+:global(.followup-edit-dialog-body::-webkit-scrollbar-thumb) {
   background: #cbd5e1;
   border-radius: 999px;
 }
