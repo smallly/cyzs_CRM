@@ -180,6 +180,15 @@ async function handleDelete() {
 
 .detail-card {
   border-radius: 8px;
+  overflow: visible;
+}
+
+.detail-card :deep(.el-card__header) {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .card-header {
