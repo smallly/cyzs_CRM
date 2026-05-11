@@ -238,8 +238,8 @@
 
       <el-form-item class="form-actions">
         <el-space>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
           <el-button @click="handleCancel">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
         </el-space>
       </el-form-item>
     </el-form>
