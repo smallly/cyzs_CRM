@@ -2486,6 +2486,27 @@ button.attachment-image-tile:hover {
   flex: 0 0 auto;
 }
 
+:deep(.followup-edit-dialog .el-dialog__header) {
+  position: relative;
+  min-height: 72px;
+  padding: 0 72px 0 28px;
+  display: flex;
+  align-items: center;
+}
+
+:deep(.followup-edit-dialog .el-dialog__title) {
+  line-height: 32px;
+}
+
+:deep(.followup-edit-dialog .el-dialog__headerbtn) {
+  top: 50%;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+}
+
 :deep(.followup-edit-dialog .el-dialog__body) {
   flex: 1 1 auto;
   min-height: 0;
