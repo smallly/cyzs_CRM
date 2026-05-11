@@ -1,5 +1,5 @@
 <template>
-  <el-card>
+  <el-card class="contract-form-card">
     <template #header>
       <div class="card-header">
         <div class="card-title-wrap">
@@ -10,7 +10,8 @@
     </template>
 
     <el-form ref="formRef" :model="formData" :rules="formRules" label-width="108px" class="create-form">
-      <el-row :gutter="12">
+      <div class="contract-form-scroll">
+        <el-row :gutter="12">
         <el-col :xs="24" :md="12">
           <el-form-item label="所属项目" prop="projectId">
             <el-select v-model="formData.projectId" filterable placeholder="请选择项目">
@@ -90,10 +91,11 @@
 
         <el-col :xs="24" :md="12">
           <el-form-item label="合同附件" prop="attachment">
-            <AttachmentUploadField v-model="formData.attachment" hint-text="建议上传合同扫描件、PDF 或图片。"/>
+            <AttachmentUploadField v-model="formData.attachment" />
           </el-form-item>
         </el-col>
-      </el-row>
+        </el-row>
+      </div>
 
       <el-form-item class="form-actions">
         <el-space>
@@ -248,14 +250,61 @@ function handleCancel() {
 .card-title-wrap {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 4px;
+  text-align: left;
+}
+
+.contract-form-card {
+  height: calc(100vh - 90px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.contract-form-card :deep(.el-card__header) {
+  flex: 0 0 auto;
+}
+
+.contract-form-card :deep(.el-card__body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+}
+
+.create-form {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.contract-form-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
 }
 
 .create-form :deep(.el-form-item) {
   margin-bottom: 12px;
 }
 
+.create-form :deep(.el-input-number .el-input__inner) {
+  text-align: left;
+}
+
+.form-actions {
+  flex: 0 0 auto;
+  margin-bottom: 0 !important;
+  padding: 12px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+}
+
 .create-form :deep(.form-actions .el-form-item__content) {
-  justify-content: center;
+  justify-content: flex-start;
 }
 </style>
