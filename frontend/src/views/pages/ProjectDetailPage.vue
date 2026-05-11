@@ -667,16 +667,7 @@
           <el-input v-model="followupForm.content" type="textarea" :rows="5" placeholder="请输入跟进内容" />
         </el-form-item>
         <el-form-item label="附件">
-          <el-upload
-            class="followup-upload"
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFollowupFileChange"
-            :on-remove="handleFollowupFileRemove"
-            :file-list="followupFileList"
-          >
-            <el-button>选择文件</el-button>
-          </el-upload>
+          <AttachmentUploadField v-model="followupForm.attachment" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -825,6 +816,8 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import VuePdfEmbed from 'vue-pdf-embed'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
+import { AttachmentUploadField } from '../../components/common'
+import { parseStoredAttachmentList, type StoredAttachment } from '../../utils/attachment'
 
 interface DictRes {
   projectLevels: string[]
@@ -870,10 +863,8 @@ const createContactSubmitting = ref(false)
 const createContactFormRef = ref()
 const editingFollowupId = ref('')
 const stageFieldSubmitting = ref(false)
-const followupFileList = ref<any[]>([])
 const stageContractFileList = ref<any[]>([])
 const newContractFileList = ref<any[]>([])
-const followupAttachmentFile = ref<File | null>(null)
 const stageContractAttachmentFile = ref<File | null>(null)
 const newContractAttachmentFile = ref<File | null>(null)
 const attachmentPreviewVisible = ref(false)
@@ -1201,15 +1192,16 @@ function normalizeAttachmentHref(value?: string): string {
 }
 
 function getFollowupAttachmentEntries(raw?: string | null): FollowupAttachmentEntry[] {
-  const parsed = parseStoredAttachment(raw)
-  if (!parsed) return []
+  const parsedList = parseStoredAttachmentList(raw)
+  if (!parsedList.length) return []
 
-  const splitEntries: Array<{ name: string; data?: string }> = parsed.data
-    ? [parsed]
-    : parsed.name
-        .split(/[;,，]/)
-        .map((item) => ({ name: item.trim() }))
-        .filter((item): item is { name: string } => Boolean(item.name))
+  const splitEntries: StoredAttachment[] = parsedList.flatMap((parsed) => {
+    if (parsed.data) return [parsed]
+    return parsed.name
+      .split(/[;,，]/)
+      .map((item) => ({ name: item.trim(), data: '' }))
+      .filter((item) => Boolean(item.name))
+  })
 
   return splitEntries.map((entry) => {
     const name = entry.name.trim()
@@ -1773,17 +1765,14 @@ function openFollowupDrawer() {
   followupForm.followupAt = new Date().toISOString().split('T')[0]
   followupForm.method = ''
   followupForm.contactId = ''
-    followupForm.content = ''
-    followupForm.attachment = ''
-    followupFileList.value = []
-    followupAttachmentFile.value = null
-    followupDrawerVisible.value = true
-  }
+  followupForm.content = ''
+  followupForm.attachment = ''
+  followupDrawerVisible.value = true
+}
 
 async function submitFollowup() {
   submitting.value = true
   try {
-    followupForm.attachment = await ensureAttachmentPayload(followupForm.attachment, followupAttachmentFile.value)
     if (editingFollowupId.value) {
       await authStore.api(`/api/followups/${editingFollowupId.value}`, {
         method: 'PUT',
@@ -1828,9 +1817,6 @@ async function editFollowup(f: any) {
   followupForm.contactId = f.contactId || ''
   followupForm.content = f.content || ''
   followupForm.attachment = f.attachment || ''
-  const attachmentName = getStoredAttachmentName(f.attachment)
-  followupFileList.value = attachmentName ? [{ name: attachmentName, status: 'success' }] : []
-  followupAttachmentFile.value = null
   followupDrawerVisible.value = true
 }
 
@@ -1849,24 +1835,6 @@ async function deleteFollowup(f: any) {
       ElMessage.error(error.message || '删除失败')
     }
   }
-}
-
-function handleFollowupFileChange(file: any) {
-  const rawFile = file?.raw as File | undefined
-  if (!file?.name) {
-    followupForm.attachment = ''
-    followupAttachmentFile.value = null
-    followupFileList.value = []
-    return
-  }
-  followupAttachmentFile.value = rawFile || null
-  followupForm.attachment = JSON.stringify({ name: file.name })
-}
-
-function handleFollowupFileRemove() {
-  followupForm.attachment = ''
-  followupAttachmentFile.value = null
-  followupFileList.value = []
 }
 
 function handleStageContractFileChange(file: any) {
