@@ -305,6 +305,6 @@ function handleCancel() {
 }
 
 .create-form :deep(.form-actions .el-form-item__content) {
-  justify-content: flex-start;
+  justify-content: center;
 }
 </style>

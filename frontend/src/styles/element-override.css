@@ -285,6 +285,17 @@ a:hover {
   border: 1px solid #e2e8f0;
 }
 
+.el-select {
+  --el-input-text-color: #334155;
+  --el-select-multiple-input-color: #334155;
+}
+
+.el-select .el-select__selected-item,
+.el-select .el-select__placeholder,
+.el-select .el-select__input {
+  color: #334155 !important;
+}
+
 /* Tag标签样式 */
 .el-tag {
   border-radius: 6px;
