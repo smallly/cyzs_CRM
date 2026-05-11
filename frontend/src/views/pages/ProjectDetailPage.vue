@@ -648,7 +648,7 @@
     <el-dialog
       v-model="followupDrawerVisible"
       :title="editingFollowupId ? '编辑跟进' : '新增跟进'"
-      width="680px"
+      width="820px"
       class="followup-edit-dialog"
     >
       <div class="followup-edit-dialog-body">
@@ -2474,6 +2474,7 @@ button.attachment-image-tile:hover {
 }
 
 :deep(.followup-edit-dialog) {
+  width: min(820px, calc(100vw - 48px));
   max-height: calc(100vh - 96px);
   display: flex;
   flex-direction: column;
@@ -2488,8 +2489,8 @@ button.attachment-image-tile:hover {
 
 :deep(.followup-edit-dialog .el-dialog__header) {
   position: relative;
-  min-height: 72px;
-  padding: 0 72px 0 28px;
+  min-height: 76px;
+  padding: 0 64px 0 32px;
   display: flex;
   align-items: center;
 }
@@ -2501,25 +2502,53 @@ button.attachment-image-tile:hover {
 :deep(.followup-edit-dialog .el-dialog__headerbtn) {
   top: 50%;
   right: 24px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background: transparent !important;
   transform: translateY(-50%);
+}
+
+:deep(.followup-edit-dialog .el-dialog__headerbtn:hover),
+:deep(.followup-edit-dialog .el-dialog__headerbtn:focus-visible) {
+  background: transparent !important;
 }
 
 :deep(.followup-edit-dialog .el-dialog__body) {
   flex: 1 1 auto;
   min-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0 28px 0 32px;
   overflow: hidden;
+}
+
+:deep(.followup-edit-dialog .el-dialog__footer) {
+  min-height: 72px;
+  padding: 16px 28px 16px 32px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .followup-edit-dialog-body {
   max-height: calc(100vh - 96px - 148px);
-  padding: 18px 0;
+  padding: 24px 16px 22px 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.followup-edit-dialog-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.followup-edit-dialog-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.followup-edit-dialog-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
 /* Element Plus upload list is not always a descendant of the trigger button wrapper.
