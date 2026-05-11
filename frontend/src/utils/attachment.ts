@@ -28,12 +28,22 @@ export function getStoredAttachmentData(raw?: string | null): string {
   return parseStoredAttachment(raw)?.data || ''
 }
 
-export function isStoredAttachmentPreviewable(raw?: string | null): boolean {
+export function getStoredAttachmentKind(raw?: string | null): 'image' | 'pdf' | 'other' {
   const parsed = parseStoredAttachment(raw)
-  if (!parsed?.data) return false
+  if (!parsed?.data) return 'other'
   const source = parsed.data.trim().toLowerCase()
-  if (/^data:image\//.test(source) || /^data:application\/pdf/.test(source)) return true
-  return /\.(png|jpe?g|gif|webp|bmp|svg|pdf)(\?.*)?$/.test(parsed.name.toLowerCase()) || /\.(png|jpe?g|gif|webp|bmp|svg|pdf)(\?.*)?$/.test(source)
+  const name = (parsed.name || '').trim().toLowerCase()
+  if (/^data:image\//.test(source) || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/.test(name) || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/.test(source)) {
+    return 'image'
+  }
+  if (/^data:application\/pdf/.test(source) || /\.pdf(\?.*)?$/.test(name) || /\.pdf(\?.*)?$/.test(source)) {
+    return 'pdf'
+  }
+  return 'other'
+}
+
+export function isStoredAttachmentPreviewable(raw?: string | null): boolean {
+  return getStoredAttachmentKind(raw) !== 'other'
 }
 
 export function openStoredAttachment(raw?: string | null): boolean {

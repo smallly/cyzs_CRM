@@ -48,6 +48,25 @@
         </el-descriptions>
       </template>
     </el-card>
+
+    <el-dialog v-model="attachmentPreviewVisible" :title="attachmentPreviewTitle" width="760px" destroy-on-close>
+      <div class="attachment-preview-modal">
+        <img
+          v-if="attachmentPreviewKind === 'image' && attachmentPreviewSrc"
+          class="attachment-preview-image"
+          :src="attachmentPreviewSrc"
+          :alt="attachmentPreviewTitle"
+        />
+        <iframe
+          v-else-if="attachmentPreviewKind === 'pdf' && attachmentPreviewSrc"
+          class="attachment-preview-frame"
+          :src="attachmentPreviewSrc"
+        />
+        <div v-else class="attachment-preview-empty">
+          当前附件没有可直接展示的预览内容
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -58,7 +77,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
-import { getStoredAttachmentName, openStoredAttachment } from '../../utils/attachment'
+import { getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentName } from '../../utils/attachment'
 
 const route = useRoute()
 const router = useRouter()
@@ -68,9 +87,13 @@ const loading = ref(false)
 const contract = reactive<any>({})
 const projects = ref<any[]>([])
 const users = ref<any[]>([])
+const attachmentPreviewVisible = ref(false)
+const attachmentPreviewSrc = ref('')
+const attachmentPreviewKind = ref<'image' | 'pdf' | 'other'>('other')
 
 const contractId = computed(() => String(route.params.id || ''))
 const attachmentName = computed(() => getStoredAttachmentName(contract.attachment))
+const attachmentPreviewTitle = computed(() => attachmentName.value || '附件预览')
 const projectName = computed(() => {
   if (!contract.projectId) return '-'
   const project = projects.value.find((p) => p.id === contract.projectId)
@@ -161,9 +184,15 @@ function handleEdit() {
 }
 
 function handleAttachmentPreview() {
-  if (!openStoredAttachment(contract.attachment)) {
-    ElMessage.info(`附件：${attachmentName.value}`)
+  const kind = getStoredAttachmentKind(contract.attachment)
+  const src = getStoredAttachmentData(contract.attachment)
+  if (!src || kind === 'other') {
+    ElMessage.info(`当前附件仅能查看名称：${attachmentName.value}`)
+    return
   }
+  attachmentPreviewKind.value = kind
+  attachmentPreviewSrc.value = src
+  attachmentPreviewVisible.value = true
 }
 
 async function handleDelete() {
@@ -244,5 +273,32 @@ async function handleDelete() {
 
 .section-title:first-child {
   margin-top: 0;
+}
+
+.attachment-preview-modal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  background: #f8fafc;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.attachment-preview-image {
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+}
+
+.attachment-preview-frame {
+  width: 100%;
+  height: 72vh;
+  border: none;
+}
+
+.attachment-preview-empty {
+  padding: 32px;
+  color: #64748b;
 }
 </style>
