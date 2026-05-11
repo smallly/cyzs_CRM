@@ -35,8 +35,8 @@
       </template>
 
       <template #attachment="{ row }">
-        <el-button v-if="row.attachment" link @click="downloadAttachment(row)">
-          {{ row.attachment }}
+        <el-button v-if="getAttachmentName(row.attachment)" link @click="downloadAttachment(row)">
+          {{ getAttachmentName(row.attachment) }}
         </el-button>
         <span v-else>-</span>
       </template>
@@ -52,6 +52,7 @@ import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+import { getStoredAttachmentName, openStoredAttachment } from '../../utils/attachment'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -138,7 +139,12 @@ function formatDateTime(value?: string | null): string {
 }
 
 function downloadAttachment(row: any) {
-  ElMessage.info(`下载附件: ${row.attachment}`)
+  if (openStoredAttachment(row.attachment)) return
+  ElMessage.info(`下载附件: ${getAttachmentName(row.attachment)}`)
+}
+
+function getAttachmentName(raw?: string | null): string {
+  return getStoredAttachmentName(raw)
 }
 
 async function deleteContract(row: any) {

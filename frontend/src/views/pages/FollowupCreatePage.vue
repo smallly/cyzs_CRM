@@ -57,12 +57,7 @@
 
         <el-col :span="24">
           <el-form-item label="附件">
-            <el-upload :auto-upload="false" :show-file-list="false" @change="handleFileChange">
-              <el-button>选择文件</el-button>
-              <template #tip>
-                <div v-if="fileName" class="el-upload__tip">{{ fileName }}</div>
-              </template>
-            </el-upload>
+            <AttachmentUploadField v-model="formData.attachment" hint-text="支持图片、PDF 和常见文档，点击回显可预览。"/>
           </el-form-item>
         </el-col>
       </el-row>
@@ -83,6 +78,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
+import { AttachmentUploadField } from '../../components/common'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
 const router = useRouter()
@@ -91,8 +87,6 @@ const authStore = useAuthStore()
 
 const formRef = ref()
 const submitting = ref(false)
-const fileName = ref('')
-const attachmentFile = ref<File | null>(null)
 const projects = ref<any[]>([])
 const contacts = ref<any[]>([])
 
@@ -157,45 +151,9 @@ function toDateTimeValue(date: string): string {
   return `${date}T00:00:00`
 }
 
-function handleFileChange(file: any) {
-  const rawFile = file?.raw as File | undefined
-  if (!file?.name) {
-    fileName.value = ''
-    attachmentFile.value = null
-    formData.attachment = ''
-    return
-  }
-  fileName.value = file.name
-  attachmentFile.value = rawFile || null
-  formData.attachment = JSON.stringify({ name: file.name })
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '')
-    reader.onerror = () => reject(new Error('文件读取失败'))
-    reader.readAsDataURL(file)
-  })
-}
-
-async function ensureAttachmentReady() {
-  if (!attachmentFile.value) return
-  const current = (formData.attachment || '').trim()
-  try {
-    const parsed = current ? (JSON.parse(current) as { name?: string; data?: string }) : null
-    if (parsed?.data) return
-  } catch {
-    // fall through and re-encode below
-  }
-  const dataUrl = await readFileAsDataUrl(attachmentFile.value)
-  formData.attachment = JSON.stringify({ name: fileName.value || attachmentFile.value.name, data: dataUrl })
-}
-
 async function handleSubmit() {
   try {
     await formRef.value?.validate()
-    await ensureAttachmentReady()
     submitting.value = true
 
     await authStore.api('/api/followups', {

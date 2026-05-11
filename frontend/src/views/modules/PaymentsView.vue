@@ -31,8 +31,8 @@
       </template>
 
       <template #voucher="{ row }">
-        <el-button v-if="row.voucher" link @click="downloadVoucher(row)">
-          {{ row.voucher }}
+        <el-button v-if="getVoucherName(row.voucher)" link @click="downloadVoucher(row)">
+          {{ getVoucherName(row.voucher) }}
         </el-button>
         <span v-else>-</span>
       </template>
@@ -48,6 +48,7 @@ import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+import { getStoredAttachmentName, openStoredAttachment } from '../../utils/attachment'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -143,7 +144,12 @@ function getInvoiceStatusLabel(status: string): string {
 }
 
 function downloadVoucher(row: any) {
-  ElMessage.info(`下载凭证: ${row.voucher}`)
+  if (openStoredAttachment(row.voucher)) return
+  ElMessage.info(`下载凭证: ${getVoucherName(row.voucher)}`)
+}
+
+function getVoucherName(raw?: string | null): string {
+  return getStoredAttachmentName(raw)
 }
 
 async function handlePageChange(nextPage: number, nextSize: number) {

@@ -30,7 +30,12 @@
           <el-descriptions-item label="租赁结束日期">{{ formatDate(contract.leaseEndDate) }}</el-descriptions-item>
           <el-descriptions-item label="租赁期限(月)">{{ contract.leaseTermMonths ?? '-' }}</el-descriptions-item>
           <el-descriptions-item label="付款方式" :span="2">{{ contract.paymentTerms || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="附件" :span="2">{{ contract.attachment || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="附件" :span="2">
+            <el-button v-if="attachmentName" link @click="handleAttachmentPreview">
+              {{ attachmentName }}
+            </el-button>
+            <span v-else>-</span>
+          </el-descriptions-item>
         </el-descriptions>
 
         <div class="section-title">系统信息</div>
@@ -53,6 +58,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
+import { getStoredAttachmentName, openStoredAttachment } from '../../utils/attachment'
 
 const route = useRoute()
 const router = useRouter()
@@ -64,6 +70,7 @@ const projects = ref<any[]>([])
 const users = ref<any[]>([])
 
 const contractId = computed(() => String(route.params.id || ''))
+const attachmentName = computed(() => getStoredAttachmentName(contract.attachment))
 const projectName = computed(() => {
   if (!contract.projectId) return '-'
   const project = projects.value.find((p) => p.id === contract.projectId)
@@ -151,6 +158,12 @@ function handleBack() {
 function handleEdit() {
   if (!contractId.value) return
   router.push({ path: '/contracts/create', query: { id: contractId.value } })
+}
+
+function handleAttachmentPreview() {
+  if (!openStoredAttachment(contract.attachment)) {
+    ElMessage.info(`附件：${attachmentName.value}`)
+  }
 }
 
 async function handleDelete() {

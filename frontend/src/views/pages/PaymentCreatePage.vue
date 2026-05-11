@@ -54,12 +54,7 @@
 
         <el-col :xs="24" :md="12">
           <el-form-item label="回款凭证">
-            <el-upload :auto-upload="false" :show-file-list="false" @change="handleFileChange">
-              <el-button>选择文件</el-button>
-              <template #tip>
-                <div v-if="fileName" class="el-upload__tip">{{ fileName }}</div>
-              </template>
-            </el-upload>
+            <AttachmentUploadField v-model="formData.voucher" hint-text="支持图片、PDF 和常见文档，回显后可点击预览。"/>
           </el-form-item>
         </el-col>
 
@@ -86,6 +81,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
+import { AttachmentUploadField } from '../../components/common'
 import { normalizePageResult, type PageResult } from '../../api/page'
 
 const router = useRouter()
@@ -94,7 +90,6 @@ const authStore = useAuthStore()
 
 const formRef = ref()
 const submitting = ref(false)
-const fileName = ref('')
 const contracts = ref<any[]>([])
 const projects = ref<any[]>([])
 
@@ -136,11 +131,6 @@ function getProjectName(projectId?: string): string {
   if (!projectId) return '-'
   const project = projects.value.find((p) => p.id === projectId)
   return project?.name || projectId
-}
-
-function handleFileChange(file: any) {
-  fileName.value = file.name
-  formData.voucher = file.name
 }
 
 async function handleSubmit() {
