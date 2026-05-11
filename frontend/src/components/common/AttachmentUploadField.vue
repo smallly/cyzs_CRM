@@ -165,27 +165,43 @@ function handleRemove(index: number) {
 }
 
 .attachment-chip-remove {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 22px;
   height: 22px;
+  padding: 0;
   margin-left: 2px;
   border: none;
   border-radius: 999px;
-  background: transparent;
+  background: transparent !important;
+  box-shadow: none;
   color: #64748b;
   opacity: 1;
   transition: color 0.15s ease;
 }
 
 .attachment-chip-remove:hover {
+  background: transparent !important;
   color: #ef4444;
 }
 
+.attachment-chip-remove:focus,
+.attachment-chip-remove:active {
+  background: transparent !important;
+  box-shadow: none;
+  outline: none;
+}
+
+.attachment-chip-remove:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
 .attachment-chip-remove svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
 }
 
 .attachment-upload-hint {

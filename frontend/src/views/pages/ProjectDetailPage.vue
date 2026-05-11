@@ -672,7 +672,7 @@
       </el-form>
       <template #footer>
         <el-button @click="followupDrawerVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitFollowup" :loading="submitting">{{ editingFollowupId ? '更新' : '保存' }}</el-button>
+        <el-button type="primary" @click="submitFollowup" :loading="submitting">保存</el-button>
       </template>
     </el-dialog>
 
