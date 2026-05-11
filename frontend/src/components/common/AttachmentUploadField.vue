@@ -5,43 +5,47 @@
       :auto-upload="false"
       :show-file-list="false"
       :accept="accept"
+      :multiple="multiple"
       :disabled="disabled"
       @change="handleFileChange"
     >
       <el-button :disabled="disabled">{{ buttonText }}</el-button>
     </el-upload>
 
-    <div
-      v-if="fileName"
-      class="attachment-chip"
-      :class="{ 'is-previewable': canPreview }"
-      :title="canPreview ? '点击预览' : fileName"
-      @click="handlePreview"
-      @keydown.enter.prevent="handlePreview"
-      @keydown.space.prevent="handlePreview"
-      tabindex="0"
-      role="button"
-    >
-      <span class="attachment-chip-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#3b82f6" />
-          <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
-        </svg>
-      </span>
-      <span class="attachment-chip-name">{{ fileName }}</span>
-      <span class="attachment-chip-preview" v-if="canPreview">预览</span>
-      <button
-        type="button"
-        class="attachment-chip-remove"
-        :disabled="disabled"
-        aria-label="删除附件"
-        @click.stop="handleRemove"
+    <div v-if="attachments.length" class="attachment-list">
+      <div
+        v-for="(item, index) in attachments"
+        :key="`${item.name}-${index}`"
+        class="attachment-chip"
+        :class="{ 'is-previewable': isPreviewable(item) }"
+        :title="isPreviewable(item) ? '点击预览' : item.name"
+        tabindex="0"
+        role="button"
+        @click="handlePreview(item)"
+        @keydown.enter.prevent="handlePreview(item)"
+        @keydown.space.prevent="handlePreview(item)"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-        </svg>
-      </button>
+        <span class="attachment-chip-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#3b82f6" />
+            <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+        </span>
+        <span class="attachment-chip-name" :title="item.name">{{ item.name }}</span>
+        <span class="attachment-chip-preview" v-if="isPreviewable(item)">预览</span>
+        <button
+          type="button"
+          class="attachment-chip-remove"
+          :disabled="disabled"
+          aria-label="删除附件"
+          @click.stop="handleRemove(index)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div v-if="hintText" class="attachment-upload-hint">{{ hintText }}</div>
@@ -50,6 +54,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import {
+  encodeStoredAttachments,
+  getStoredAttachmentKind,
+  getStoredAttachmentData,
+  parseStoredAttachmentList,
+  type StoredAttachment
+} from '../../utils/attachment'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -57,46 +68,27 @@ const props = withDefaults(defineProps<{
   accept?: string
   disabled?: boolean
   hintText?: string
+  multiple?: boolean
 }>(), {
   modelValue: '',
   buttonText: '选择文件',
   accept: '',
   disabled: false,
-  hintText: ''
+  hintText: '',
+  multiple: true
 })
 
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void
-  (event: 'change', value: File | null): void
+  (event: 'change', value: File[] | null): void
 }>()
 
 const uploadRef = ref()
 
-const parsed = computed(() => parseAttachmentValue(props.modelValue))
-const fileName = computed(() => parsed.value.name)
-const previewSource = computed(() => parsed.value.data)
-const canPreview = computed(() => isPreviewable(fileName.value, previewSource.value))
+const attachments = computed(() => parseStoredAttachmentList(props.modelValue))
 
-function parseAttachmentValue(value: string): { name: string; data: string } {
-  const text = (value || '').trim()
-  if (!text) return { name: '', data: '' }
-  try {
-    const parsedValue = JSON.parse(text) as { name?: string; data?: string }
-    return {
-      name: parsedValue.name || text,
-      data: parsedValue.data || ''
-    }
-  } catch {
-    return { name: text, data: '' }
-  }
-}
-
-function isPreviewable(name: string, source: string): boolean {
-  const text = (source || '').trim().toLowerCase()
-  if (!text) return false
-  if (/^data:image\//.test(text) || /^data:application\/pdf/.test(text)) return true
-  const lowerName = (name || '').trim().toLowerCase()
-  return /\.(png|jpe?g|gif|webp|bmp|svg|pdf)(\?.*)?$/.test(lowerName) || /\.(png|jpe?g|gif|webp|bmp|svg|pdf)(\?.*)?$/.test(text)
+function isPreviewable(item: StoredAttachment): boolean {
+  return getStoredAttachmentKind(JSON.stringify(item)) !== 'other'
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -108,26 +100,32 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
-async function handleFileChange(file: any) {
+async function handleFileChange(file: any, fileList: File[] = []) {
   const rawFile = file?.raw as File | undefined
   if (!rawFile || !file?.name) {
-    handleRemove()
+    emit('change', fileList.length ? fileList : null)
     return
   }
+
   const dataUrl = await readFileAsDataUrl(rawFile)
-  emit('update:modelValue', JSON.stringify({ name: file.name, data: dataUrl }))
-  emit('change', rawFile)
+  const next = props.multiple ? [...attachments.value, { name: file.name, data: dataUrl }] : [{ name: file.name, data: dataUrl }]
+  emit('update:modelValue', encodeStoredAttachments(next))
+  emit('change', fileList as File[])
 }
 
-function handleRemove() {
+function handleRemove(index: number) {
+  const next = attachments.value.filter((_, idx) => idx !== index)
   uploadRef.value?.clearFiles?.()
-  emit('update:modelValue', '')
+  emit('update:modelValue', next.length ? encodeStoredAttachments(next) : '')
   emit('change', null)
 }
 
-function handlePreview() {
-  if (!canPreview.value || !previewSource.value) return
-  window.open(previewSource.value, '_blank', 'noopener,noreferrer')
+function handlePreview(item: StoredAttachment) {
+  const kind = getStoredAttachmentKind(JSON.stringify(item))
+  if (kind === 'other') return
+  const data = getStoredAttachmentData(JSON.stringify(item))
+  if (!data) return
+  window.open(data, '_blank', 'noopener,noreferrer')
 }
 </script>
 
@@ -137,6 +135,13 @@ function handlePreview() {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
 }
 
 .attachment-chip {
@@ -177,7 +182,7 @@ function handlePreview() {
 
 .attachment-chip-name {
   min-width: 0;
-  max-width: 260px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
