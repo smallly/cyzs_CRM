@@ -2535,7 +2535,7 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog-body) {
   max-height: calc(100vh - 172px);
-  padding: 6px 14px 8px 0 !important;
+  padding: 14px 14px 8px 0 !important;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
