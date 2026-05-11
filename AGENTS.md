@@ -48,3 +48,11 @@
 - `application.yml` → 更新 README 环境配置说明
 - 新增/删除实体 → 更新技术方案说明书领域模型章节
 - 接口路径变更 → 更新 `api-conventions.md`
+
+## 5. Frontend style guardrails
+
+- Do not use broad global native button selectors such as `button:not(.el-button)` for primary styling.
+- Default native primary button styling must stay opt-in by absence of a class: `button:not([class])`.
+- Any icon-only, text-only, close, remove, tab, or row-link button must define and own an explicit class.
+- Before fixing a small action button style, check both the component CSS and `frontend/src/style.css`.
+- See `docs/frontend-style-guardrails.md` for details.
