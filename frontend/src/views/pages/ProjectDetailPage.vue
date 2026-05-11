@@ -386,7 +386,7 @@
     </el-card>
 
     <!-- 更新阶段Dialog -->
-    <el-dialog v-model="stageDialogVisible" title="更新阶段" width="600">
+    <el-dialog v-model="stageDialogVisible" title="更新阶段" width="600" class="project-detail-form-dialog">
       <el-form :model="stageForm" label-width="120px">
         <el-form-item label="更新阶段至" required>
           <el-select v-model="stageForm.stage" @change="onStageChange">
@@ -471,7 +471,7 @@
     </el-dialog>
 
     <!-- 更换负责人Dialog -->
-    <el-dialog v-model="ownerDialogVisible" title="更换负责人" width="400">
+    <el-dialog v-model="ownerDialogVisible" title="更换负责人" width="400" class="project-detail-form-dialog">
       <el-form :model="ownerForm" label-width="100px">
         <el-form-item label="新负责人" required>
           <el-select v-model="ownerForm.ownerId">
@@ -489,7 +489,7 @@
     </el-dialog>
 
     <!-- 项目编辑Dialog -->
-    <el-dialog v-model="projectEditDialogVisible" title="编辑项目" width="680">
+    <el-dialog v-model="projectEditDialogVisible" title="编辑项目" width="680" class="project-detail-form-dialog">
       <el-form :model="projectEditForm" label-width="110px">
         <el-row :gutter="12">
           <el-col :span="12">
@@ -553,7 +553,7 @@
     </el-dialog>
 
     <!-- 阶段时间编辑Dialog -->
-    <el-dialog v-model="stageFieldDialogVisible" :title="stageFieldDialogTitle" width="420">
+    <el-dialog v-model="stageFieldDialogVisible" :title="stageFieldDialogTitle" width="420" class="project-detail-form-dialog">
       <el-form label-width="100px">
         <el-form-item :label="getStageFieldLabel(stageFieldForm.stageCode)" required>
           <el-date-picker
@@ -571,7 +571,7 @@
     </el-dialog>
 
     <!-- 新建联系人Dialog -->
-    <el-dialog v-model="createContactDialogVisible" title="新建联系人" width="860px" destroy-on-close>
+    <el-dialog v-model="createContactDialogVisible" title="新建联系人" width="860px" class="project-detail-form-dialog" destroy-on-close>
       <el-form ref="createContactFormRef" :model="createContactFormData" :rules="createContactFormRules" label-width="100px">
         <el-row :gutter="12">
           <el-col :xs="24" :md="12">
@@ -649,7 +649,7 @@
       v-model="followupDrawerVisible"
       :title="editingFollowupId ? '编辑跟进' : '新增跟进'"
       width="760px"
-      class="followup-edit-dialog"
+      class="project-detail-form-dialog followup-edit-dialog"
     >
       <div class="followup-edit-dialog-body">
         <el-form :model="followupForm" label-width="100px">
@@ -684,7 +684,7 @@
     </el-dialog>
 
     <!-- 新增合同Dialog -->
-    <el-dialog v-model="contractDialogVisible" title="新增合同" width="680">
+    <el-dialog v-model="contractDialogVisible" title="新增合同" width="680" class="project-detail-form-dialog">
       <el-form ref="contractFormRef" :model="newContractForm" label-width="110px">
         <el-row :gutter="12">
           <el-col :span="12">
@@ -750,7 +750,7 @@
     </el-dialog>
 
     <!-- 新增回款Dialog -->
-    <el-dialog v-model="paymentDialogVisible" title="新增回款" width="680">
+    <el-dialog v-model="paymentDialogVisible" title="新增回款" width="680" class="project-detail-form-dialog">
       <el-form ref="paymentFormRef" :model="newPaymentForm" label-width="110px">
         <el-row :gutter="12">
           <el-col :span="12">
@@ -2471,6 +2471,67 @@ button.attachment-image-tile:hover {
   display: flex;
   justify-content: flex-end;
   padding: 12px 0 0;
+}
+
+:global(.project-detail-form-dialog) {
+  max-height: calc(100vh - 60px);
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+:global(.project-detail-form-dialog .el-dialog__header),
+:global(.project-detail-form-dialog .el-dialog__footer) {
+  flex: 0 0 auto;
+}
+
+:global(.project-detail-form-dialog .el-dialog__header) {
+  position: relative;
+  min-height: 56px !important;
+  padding: 0 52px 0 28px !important;
+  display: flex;
+  align-items: center;
+}
+
+:global(.project-detail-form-dialog .el-dialog__title) {
+  line-height: 30px;
+}
+
+:global(.project-detail-form-dialog .el-dialog__headerbtn) {
+  top: 50%;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  transform: translateY(-50%);
+}
+
+:global(.project-detail-form-dialog .el-dialog__headerbtn:hover),
+:global(.project-detail-form-dialog .el-dialog__headerbtn:focus-visible) {
+  background: transparent !important;
+}
+
+:global(.project-detail-form-dialog .el-dialog__body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 172px);
+  padding: 14px 24px 16px 28px !important;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+:global(.project-detail-form-dialog .el-dialog__footer) {
+  min-height: 56px !important;
+  padding: 0 24px 0 28px !important;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 :global(.followup-edit-dialog) {
