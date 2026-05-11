@@ -648,7 +648,7 @@
     <el-dialog
       v-model="followupDrawerVisible"
       :title="editingFollowupId ? '编辑跟进' : '新增跟进'"
-      width="820px"
+      width="760px"
       class="followup-edit-dialog"
     >
       <div class="followup-edit-dialog-body">
@@ -2474,12 +2474,12 @@ button.attachment-image-tile:hover {
 }
 
 :global(.followup-edit-dialog) {
-  width: min(820px, calc(100vw - 48px));
-  max-height: calc(100vh - 96px);
+  width: min(760px, calc(100vw - 48px)) !important;
+  max-height: calc(100vh - 72px);
   display: flex;
   flex-direction: column;
-  margin-top: 48px;
-  margin-bottom: 48px;
+  margin-top: 36px;
+  margin-bottom: 36px;
 }
 
 :global(.followup-edit-dialog .el-dialog__header),
@@ -2489,8 +2489,8 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog .el-dialog__header) {
   position: relative;
-  min-height: 76px;
-  padding: 0 64px 0 32px;
+  min-height: 64px;
+  padding: 0 56px 0 28px;
   display: flex;
   align-items: center;
 }
@@ -2501,7 +2501,7 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog .el-dialog__headerbtn) {
   top: 50%;
-  right: 24px;
+  right: 20px;
   width: 32px;
   height: 32px;
   display: inline-flex;
@@ -2519,19 +2519,19 @@ button.attachment-image-tile:hover {
 :global(.followup-edit-dialog .el-dialog__body) {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 28px 0 32px;
+  padding: 0 24px 0 28px;
   overflow: hidden;
 }
 
 :global(.followup-edit-dialog .el-dialog__footer) {
-  min-height: 72px;
-  padding: 16px 28px 16px 32px;
+  min-height: 64px;
+  padding: 12px 24px 12px 28px;
   border-top: 1px solid #e2e8f0;
 }
 
 :global(.followup-edit-dialog-body) {
-  max-height: calc(100vh - 96px - 148px);
-  padding: 24px 16px 22px 0;
+  max-height: calc(100vh - 200px);
+  padding: 18px 14px 18px 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
