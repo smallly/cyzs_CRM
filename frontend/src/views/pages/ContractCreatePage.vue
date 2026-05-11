@@ -38,13 +38,13 @@
 
         <el-col :xs="24" :md="12">
           <el-form-item label="合同金额(元)" prop="amount">
-            <el-input-number v-model="formData.amount" :min="0" style="width: 100%" />
+            <el-input-number v-model="formData.amount" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
         </el-col>
 
         <el-col :xs="24" :md="12">
           <el-form-item label="预估佣金(元)">
-            <el-input-number v-model="formData.estimatedCommission" :min="0" style="width: 100%" />
+            <el-input-number v-model="formData.estimatedCommission" :min="0" :controls="false" style="width: 100%" />
           </el-form-item>
         </el-col>
 
