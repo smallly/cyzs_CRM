@@ -2489,8 +2489,8 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog .el-dialog__header) {
   position: relative;
-  min-height: 64px;
-  padding: 0 56px 0 28px;
+  min-height: 52px !important;
+  padding: 0 52px 0 28px !important;
   display: flex;
   align-items: center;
 }
@@ -2519,19 +2519,22 @@ button.attachment-image-tile:hover {
 :global(.followup-edit-dialog .el-dialog__body) {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 24px 0 28px;
+  padding: 0 24px 0 28px !important;
   overflow: hidden;
 }
 
 :global(.followup-edit-dialog .el-dialog__footer) {
-  min-height: 64px;
-  padding: 12px 24px 12px 28px;
+  min-height: 52px !important;
+  padding: 0 24px 0 28px !important;
   border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 :global(.followup-edit-dialog-body) {
-  max-height: calc(100vh - 200px);
-  padding: 18px 14px 18px 0;
+  max-height: calc(100vh - 160px);
+  padding: 10px 14px 12px 0 !important;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
