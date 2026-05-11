@@ -77,6 +77,8 @@ public class ContractService {
         c.paymentTerms = normalizeNullable(paymentTerms);
         c.attachment = requireAttachment(attachment);
         c.createdAt = LocalDateTime.now();
+        c.updatedBy = actor.id;
+        c.updatedAt = c.createdAt;
         contractMapper.insert(c);
 
         p.stage = ProjectStage.SIGNING;

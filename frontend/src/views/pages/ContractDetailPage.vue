@@ -37,6 +37,7 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="所属项目">{{ projectName }}</el-descriptions-item>
           <el-descriptions-item label="创建人">{{ getUserDisplayName(contract.creatorId || contract.ownerId) }}</el-descriptions-item>
+          <el-descriptions-item label="最后编辑人">{{ getUserDisplayName(contract.updatedBy || contract.creatorId || contract.ownerId) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(contract.createdAt) }}</el-descriptions-item>
           <el-descriptions-item label="最后编辑时间">{{ formatDateTime(contract.updatedAt) }}</el-descriptions-item>
         </el-descriptions>
