@@ -133,6 +133,15 @@ public class FollowupService {
         return list;
     }
 
+    public Followup get(User actor, String followupId) {
+        Followup followup = mustGet(actor, followupId);
+        Project project = mustGetProject(actor, followup.projectId);
+        if (!permissionService.canOperateByOwner(actor, project.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "No permission to view followup");
+        }
+        return followup;
+    }
+
     public Followup update(
             User actor,
             String followupId,

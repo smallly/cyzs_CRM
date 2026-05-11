@@ -13,7 +13,13 @@
     </template>
 
     <el-table :data="followups" v-loading="loading" border stripe>
-      <el-table-column prop="code" label="跟进编号" width="150" />
+      <el-table-column label="跟进编号" width="170" fixed="left">
+        <template #default="{ row }">
+          <el-button link @click="goDetail(row.id)">
+            {{ row.code || row.id || '-' }}
+          </el-button>
+        </template>
+      </el-table-column>
       <el-table-column label="关联项目" width="240">
         <template #default="{ row }">
           {{ getProjectDisplayName(row.projectId) }}
@@ -31,7 +37,6 @@
           {{ getContactDisplayName(row.contactId) }}
         </template>
       </el-table-column>
-      <el-table-column prop="id" label="ID" width="220" />
       <el-table-column label="创建人" width="120">
         <template #default="{ row }">
           {{ getUserDisplayName(row.creatorId || row.ownerId) }}
@@ -133,6 +138,11 @@ function handleSizeChange(nextSize: number) {
 
 function goCreate() {
   router.push('/followups/create')
+}
+
+function goDetail(followupId: string) {
+  if (!followupId) return
+  router.push(`/followups/${followupId}`)
 }
 
 function getProjectDisplayName(projectId?: string): string {

@@ -98,6 +98,17 @@ public class PaymentService {
         return list;
     }
 
+    public Payment get(User actor, String paymentId) {
+        Payment payment = paymentMapper.selectById(paymentId);
+        if (payment == null || payment.deleted || !actor.tenantId.equals(payment.tenantId)) {
+            throw new BizException(ErrorCode.BIZ_422, "Payment does not exist");
+        }
+        if (!permissionService.canOperateByOwner(actor, payment.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "No permission to view payment");
+        }
+        return payment;
+    }
+
     public Payment updatePaidDate(User actor, String paymentId, LocalDate paidDate) {
         if (paidDate == null) {
             throw new BizException(ErrorCode.BIZ_422, "回款日期不能为空");

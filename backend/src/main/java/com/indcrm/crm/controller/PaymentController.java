@@ -43,6 +43,11 @@ public class PaymentController {
         return ApiResponse.ok(PageUtils.maybePaginate(paymentService.list(sessionService.requireUser()), page, size));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<?> get(@PathVariable("id") String id) {
+        return ApiResponse.ok(paymentService.get(sessionService.requireUser(), id));
+    }
+
     @PutMapping("/{id}/paid-date")
     public ApiResponse<?> updatePaidDate(@PathVariable("id") String id, @RequestBody PaidDateReq req) {
         return ApiResponse.ok(paymentService.updatePaidDate(

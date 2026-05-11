@@ -45,6 +45,7 @@ public record ApiResponse<T>(int code, String message, T data) {
 | 模块 | 方法 | 路径 | 说明 |
 |---|---|---|---|
 | 回款 | GET | `/api/payments` | 列表（支持分页） |
+| Payment | GET | `/api/payments/{id}` | Detail |
 | 回款 | POST | `/api/payments` | 新建（必须关联合同） |
 | 回款 | PUT | `/api/payments/{id}/paid-date` | 修改实际回款日期 |
 
@@ -198,6 +199,7 @@ public record ApiResponse<T>(int code, String message, T data) {
 现行查询示例�?
 ```http
 GET /api/followups
+GET /api/followups/{id}
 GET /api/followups?projectId=90d737bb-857d-4a96-bf66-a4da74d3aa9f
 ```
 

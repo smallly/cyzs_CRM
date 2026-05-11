@@ -55,6 +55,11 @@ public class FollowupController {
         return ApiResponse.ok("ok");
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<?> get(@PathVariable("id") String id) {
+        return ApiResponse.ok(followupService.get(sessionService.requireUser(), id));
+    }
+
     @GetMapping
     public ApiResponse<?> list(
             @RequestParam(value = "projectId", required = false) String projectId,

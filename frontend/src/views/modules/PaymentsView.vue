@@ -14,6 +14,12 @@
       @refresh="loadPayments"
       @page-change="handlePageChange"
     >
+      <template #code="{ row }">
+        <el-button link @click="goDetail(row.id)">
+          {{ row.code || row.id || '-' }}
+        </el-button>
+      </template>
+
       <template #contractId="{ row }">
         {{ getContractNo(row.contractId) }}
       </template>
@@ -62,14 +68,13 @@ const contracts = ref<any[]>([])
 const users = ref<any[]>([])
 
 const columns: TableColumn[] = [
-  { prop: 'code', label: '编号', width: 150 },
+  { prop: 'code', label: '编号', width: 160, fixed: 'left', slot: 'code' },
   { prop: 'contractId', label: '合同', width: 200, slot: 'contractId' },
   { prop: 'paidDate', label: '回款日期', width: 120 },
   { prop: 'amount', label: '金额(元)', width: 120 },
   { prop: 'payerName', label: '付款方', width: 160 },
   { prop: 'invoiceStatus', label: '开票状态', width: 120, slot: 'invoiceStatus' },
   { prop: 'voucher', label: '回款凭证', width: 200, slot: 'voucher' },
-  { prop: 'id', label: 'ID', width: 220 },
   { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
   { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
 ]
@@ -103,6 +108,11 @@ async function loadUsers() {
 
 function goCreate() {
   router.push('/payments/create')
+}
+
+function goDetail(paymentId: string) {
+  if (!paymentId) return
+  router.push(`/payments/${paymentId}`)
 }
 
 function getContractNo(contractId: string): string {

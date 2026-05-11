@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '新增跟进记录' }
       },
       {
+        path: 'followups/:id',
+        name: 'FollowupDetail',
+        component: () => import('../views/pages/FollowupDetailPage.vue'),
+        meta: { title: '跟进详情' }
+      },
+      {
         path: 'projects/create',
         name: 'ProjectCreate',
         component: () => import('../views/modules/ProjectCreateView.vue'),
@@ -96,6 +102,12 @@ const routes: RouteRecordRaw[] = [
         name: 'PaymentCreate',
         component: () => import('../views/pages/PaymentCreatePage.vue'),
         meta: { title: '新增回款' }
+      },
+      {
+        path: 'payments/:id',
+        name: 'PaymentDetail',
+        component: () => import('../views/pages/PaymentDetailPage.vue'),
+        meta: { title: '回款详情' }
       },
       {
         path: 'settings/org',
