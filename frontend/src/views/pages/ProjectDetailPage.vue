@@ -2490,7 +2490,7 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog .el-dialog__header) {
   position: relative;
-  min-height: 70px !important;
+  min-height: 56px !important;
   padding: 0 52px 0 28px !important;
   display: flex;
   align-items: center;
@@ -2525,7 +2525,7 @@ button.attachment-image-tile:hover {
 }
 
 :global(.followup-edit-dialog .el-dialog__footer) {
-  min-height: 70px !important;
+  min-height: 56px !important;
   padding: 0 24px 0 28px !important;
   border-top: 1px solid #e2e8f0;
   display: flex;
@@ -2534,7 +2534,7 @@ button.attachment-image-tile:hover {
 }
 
 :global(.followup-edit-dialog-body) {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 172px);
   padding: 6px 14px 8px 0 !important;
   overflow-y: auto;
   overflow-x: hidden;
