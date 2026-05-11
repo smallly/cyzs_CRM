@@ -116,8 +116,8 @@ function handleRemove(index: number) {
 
 .attachment-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   width: 100%;
 }
 
@@ -125,10 +125,11 @@ function handleRemove(index: number) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
-  min-height: 40px;
-  padding: 7px 10px;
+  min-height: 36px;
+  padding: 5px 10px;
   border: 1px solid #d9e0ea;
   border-radius: 8px;
   background: #fff;
@@ -155,8 +156,9 @@ function handleRemove(index: number) {
 }
 
 .attachment-chip-name {
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: 360px;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -169,6 +171,7 @@ function handleRemove(index: number) {
   justify-content: center;
   width: 22px;
   height: 22px;
+  flex: 0 0 22px;
   padding: 0;
   margin-left: 2px;
   border: none;

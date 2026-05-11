@@ -645,31 +645,38 @@
     </el-dialog>
 
     <!-- 新增跟进Dialog -->
-    <el-dialog v-model="followupDrawerVisible" :title="editingFollowupId ? '编辑跟进' : '新增跟进'" width="680px">
-      <el-form :model="followupForm" label-width="100px">
-        <el-form-item label="关联项目">
-          <el-input :value="project?.name" disabled />
-        </el-form-item>
-        <el-form-item label="跟进时间" required>
-          <el-date-picker v-model="followupForm.followupAt" type="date" value-format="YYYY-MM-DD" />
-        </el-form-item>
-        <el-form-item label="跟进方式">
-          <el-select v-model="followupForm.method">
-            <el-option v-for="m in followupMethodOptions" :key="m" :label="m" :value="m" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="拜访对象">
-          <el-select v-model="followupForm.contactId">
-            <el-option v-for="c in contacts" :key="c.id" :label="c.name" :value="c.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="跟进内容" required>
-          <el-input v-model="followupForm.content" type="textarea" :rows="5" placeholder="请输入跟进内容" />
-        </el-form-item>
-        <el-form-item label="附件">
-          <AttachmentUploadField v-model="followupForm.attachment" />
-        </el-form-item>
-      </el-form>
+    <el-dialog
+      v-model="followupDrawerVisible"
+      :title="editingFollowupId ? '编辑跟进' : '新增跟进'"
+      width="680px"
+      class="followup-edit-dialog"
+    >
+      <div class="followup-edit-dialog-body">
+        <el-form :model="followupForm" label-width="100px">
+          <el-form-item label="关联项目">
+            <el-input :value="project?.name" disabled />
+          </el-form-item>
+          <el-form-item label="跟进时间" required>
+            <el-date-picker v-model="followupForm.followupAt" type="date" value-format="YYYY-MM-DD" />
+          </el-form-item>
+          <el-form-item label="跟进方式">
+            <el-select v-model="followupForm.method">
+              <el-option v-for="m in followupMethodOptions" :key="m" :label="m" :value="m" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="拜访对象">
+            <el-select v-model="followupForm.contactId">
+              <el-option v-for="c in contacts" :key="c.id" :label="c.name" :value="c.id" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="跟进内容" required>
+            <el-input v-model="followupForm.content" type="textarea" :rows="5" placeholder="请输入跟进内容" />
+          </el-form-item>
+          <el-form-item label="附件">
+            <AttachmentUploadField v-model="followupForm.attachment" />
+          </el-form-item>
+        </el-form>
+      </div>
       <template #footer>
         <el-button @click="followupDrawerVisible = false">取消</el-button>
         <el-button type="primary" @click="submitFollowup" :loading="submitting">保存</el-button>
@@ -2464,6 +2471,34 @@ button.attachment-image-tile:hover {
   display: flex;
   justify-content: flex-end;
   padding: 12px 0 0;
+}
+
+:deep(.followup-edit-dialog) {
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  margin-top: 48px;
+  margin-bottom: 48px;
+}
+
+:deep(.followup-edit-dialog .el-dialog__header),
+:deep(.followup-edit-dialog .el-dialog__footer) {
+  flex: 0 0 auto;
+}
+
+:deep(.followup-edit-dialog .el-dialog__body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.followup-edit-dialog-body {
+  max-height: calc(100vh - 96px - 148px);
+  padding: 18px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Element Plus upload list is not always a descendant of the trigger button wrapper.
