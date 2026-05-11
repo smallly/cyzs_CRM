@@ -34,9 +34,7 @@
           aria-label="删除附件"
           @click.stop="handleRemove(index)"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 6 6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          </svg>
+          ×
         </button>
       </div>
     </div>
@@ -178,6 +176,9 @@ function handleRemove(index: number) {
   background: transparent !important;
   box-shadow: none;
   color: #64748b;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
   opacity: 1;
   transition: color 0.15s ease;
 }
@@ -197,11 +198,6 @@ function handleRemove(index: number) {
 .attachment-chip-remove:disabled {
   color: #cbd5e1;
   cursor: not-allowed;
-}
-
-.attachment-chip-remove svg {
-  width: 16px;
-  height: 16px;
 }
 
 .attachment-upload-hint {
