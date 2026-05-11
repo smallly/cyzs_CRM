@@ -90,7 +90,7 @@
 
         <el-col :xs="24" :md="12">
           <el-form-item label="合同附件" prop="attachment">
-            <AttachmentUploadField v-model="formData.attachment" hint-text="建议上传合同扫描件、PDF 或图片，支持点击回显预览。"/>
+            <AttachmentUploadField v-model="formData.attachment" hint-text="建议上传合同扫描件、PDF 或图片。"/>
           </el-form-item>
         </el-col>
       </el-row>

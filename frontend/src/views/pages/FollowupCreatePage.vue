@@ -57,7 +57,7 @@
 
         <el-col :span="24">
           <el-form-item label="附件">
-            <AttachmentUploadField v-model="formData.attachment" hint-text="支持图片、PDF 和常见文档，点击回显可预览。"/>
+            <AttachmentUploadField v-model="formData.attachment" hint-text="支持图片、PDF 和常见文档。"/>
           </el-form-item>
         </el-col>
       </el-row>

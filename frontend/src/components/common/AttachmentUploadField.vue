@@ -17,13 +17,7 @@
         v-for="(item, index) in attachments"
         :key="`${item.name}-${index}`"
         class="attachment-chip"
-        :class="{ 'is-previewable': isPreviewable(item) }"
-        :title="isPreviewable(item) ? '点击预览' : item.name"
-        tabindex="0"
-        role="button"
-        @click="handlePreview(item)"
-        @keydown.enter.prevent="handlePreview(item)"
-        @keydown.space.prevent="handlePreview(item)"
+        :title="item.name"
       >
         <span class="attachment-chip-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
@@ -33,7 +27,6 @@
           </svg>
         </span>
         <span class="attachment-chip-name" :title="item.name">{{ item.name }}</span>
-        <span class="attachment-chip-preview" v-if="isPreviewable(item)">预览</span>
         <button
           type="button"
           class="attachment-chip-remove"
@@ -56,10 +49,7 @@
 import { computed, ref } from 'vue'
 import {
   encodeStoredAttachments,
-  getStoredAttachmentKind,
-  getStoredAttachmentData,
   parseStoredAttachmentList,
-  type StoredAttachment
 } from '../../utils/attachment'
 
 const props = withDefaults(defineProps<{
@@ -86,10 +76,6 @@ const emit = defineEmits<{
 const uploadRef = ref()
 
 const attachments = computed(() => parseStoredAttachmentList(props.modelValue))
-
-function isPreviewable(item: StoredAttachment): boolean {
-  return getStoredAttachmentKind(JSON.stringify(item)) !== 'other'
-}
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -120,13 +106,6 @@ function handleRemove(index: number) {
   emit('change', null)
 }
 
-function handlePreview(item: StoredAttachment) {
-  const kind = getStoredAttachmentKind(JSON.stringify(item))
-  if (kind === 'other') return
-  const data = getStoredAttachmentData(JSON.stringify(item))
-  if (!data) return
-  window.open(data, '_blank', 'noopener,noreferrer')
-}
 </script>
 
 <style scoped>
@@ -159,10 +138,6 @@ function handlePreview(item: StoredAttachment) {
   transition: all 0.18s ease;
 }
 
-.attachment-chip.is-previewable {
-  cursor: pointer;
-}
-
 .attachment-chip:hover {
   border-color: #93c5fd;
   background: #eff6ff;
@@ -188,11 +163,6 @@ function handlePreview(item: StoredAttachment) {
   white-space: nowrap;
 }
 
-.attachment-chip-preview {
-  font-size: 12px;
-  color: #3b82f6;
-}
-
 .attachment-chip-remove {
   display: inline-flex;
   align-items: center;
@@ -203,19 +173,12 @@ function handlePreview(item: StoredAttachment) {
   border: none;
   border-radius: 999px;
   background: transparent;
-  color: #94a3b8;
-  opacity: 0;
-  transform: scale(0.92);
-  transition: opacity 0.15s ease, transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-}
-
-.attachment-chip:hover .attachment-chip-remove {
+  color: #64748b;
   opacity: 1;
-  transform: scale(1);
+  transition: color 0.15s ease;
 }
 
 .attachment-chip-remove:hover {
-  background: #fee2e2;
   color: #ef4444;
 }
 

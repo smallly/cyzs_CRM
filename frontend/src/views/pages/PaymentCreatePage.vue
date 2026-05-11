@@ -54,7 +54,7 @@
 
         <el-col :xs="24" :md="12">
           <el-form-item label="回款凭证">
-            <AttachmentUploadField v-model="formData.voucher" hint-text="支持图片、PDF 和常见文档，回显后可点击预览。"/>
+            <AttachmentUploadField v-model="formData.voucher" hint-text="支持图片、PDF 和常见文档。"/>
           </el-form-item>
         </el-col>
 
