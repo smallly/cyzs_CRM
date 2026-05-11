@@ -31,7 +31,7 @@
         </el-col>
 
         <el-col :xs="24" :md="12">
-          <el-form-item label="合同标题">
+          <el-form-item label="合同标题" prop="title">
             <el-input v-model="formData.title" placeholder="请输入合同标题" />
           </el-form-item>
         </el-col>
@@ -74,7 +74,17 @@
 
         <el-col :span="24">
           <el-form-item label="付款方式">
-            <el-input v-model="formData.paymentTerms" type="textarea" :rows="3" placeholder="请输入付款方式" />
+            <el-select
+              v-model="formData.paymentTerms"
+              filterable
+              allow-create
+              default-first-option
+              clearable
+              placeholder="请选择或输入付款方式"
+              style="width: 100%"
+            >
+              <el-option v-for="option in paymentOptions" :key="option" :label="option" :value="option" />
+            </el-select>
           </el-form-item>
         </el-col>
 
@@ -126,7 +136,7 @@ const formData = reactive({
   contractNo: '',
   title: '',
   amount: 0,
-  signDate: '',
+  signDate: getTodayDate(),
   estimatedCommission: 0,
   leaseStartDate: '',
   leaseEndDate: '',
@@ -135,9 +145,19 @@ const formData = reactive({
   attachment: ''
 })
 
+const paymentOptions = [
+  '银行卡打款',
+  '对公转账',
+  '现金',
+  '支票',
+  '微信转账',
+  '支付宝转账'
+]
+
 const formRules = {
   projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
   contractNo: [{ required: true, message: '请输入合同编号', trigger: 'blur' }],
+  title: [{ required: true, message: '请输入合同标题', trigger: 'blur' }],
   amount: [{ required: true, message: '请输入合同金额', trigger: 'blur' }],
   signDate: [{ required: true, message: '请选择签约日期', trigger: 'change' }],
   attachment: [{ required: true, message: '请上传合同附件', trigger: 'change' }]
@@ -175,6 +195,14 @@ async function loadContract(contractId: string) {
   formData.paymentTerms = row.paymentTerms || ''
   formData.attachment = row.attachment || ''
   fileName.value = parseAttachmentName(row.attachment) || '已上传附件'
+}
+
+function getTodayDate(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = `${now.getMonth() + 1}`.padStart(2, '0')
+  const day = `${now.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function parseAttachmentName(value: string): string {

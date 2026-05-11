@@ -72,7 +72,6 @@ const columns: TableColumn[] = [
   { prop: 'estimatedCommission', label: '预估佣金(元)', width: 150 },
   { prop: 'signDate', label: '签约日期', width: 120 },
   { prop: 'attachment', label: '合同附件', width: 200, slot: 'attachment' },
-  { prop: 'id', label: 'ID', width: 220 },
   { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
   { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
 ]
