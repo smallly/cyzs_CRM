@@ -21,7 +21,7 @@
       >
         <span class="attachment-chip-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
-            <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#3b82f6" />
+            <path d="M7 2h7l5 5v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#94a3b8" />
             <path d="M14 2v5h5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
             <path d="M9 14h6M9 17h6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
           </svg>
@@ -129,18 +129,19 @@ function handleRemove(index: number) {
   gap: 8px;
   min-width: 0;
   max-width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #dbe4ff;
-  border-radius: 10px;
-  background: #f8fbff;
-  color: #1f2d3d;
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid #d9e0ea;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
   cursor: default;
   transition: all 0.18s ease;
 }
 
 .attachment-chip:hover {
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .attachment-chip-icon {
@@ -157,7 +158,7 @@ function handleRemove(index: number) {
 
 .attachment-chip-name {
   min-width: 0;
-  max-width: 240px;
+  max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
