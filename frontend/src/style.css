@@ -328,7 +328,7 @@ body,
   cursor: not-allowed;
 }
 
-input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner),
+input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner):not(.el-select__input),
 select,
 textarea,
 button:not([class]) {
@@ -338,7 +338,7 @@ button:not([class]) {
   padding: 8px 10px;
 }
 
-input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner),
+input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner):not(.el-select__input),
 select,
 textarea {
   min-width: 140px;
@@ -366,7 +366,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
-input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner):focus,
+input:not([type="radio"]):not(.el-input__inner):not(.el-textarea__inner):not(.el-select__input):focus,
 select:focus,
 textarea:focus {
   outline: none;
