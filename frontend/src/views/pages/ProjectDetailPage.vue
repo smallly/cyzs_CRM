@@ -2475,11 +2475,11 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog) {
   width: min(760px, calc(100vw - 48px)) !important;
-  max-height: calc(100vh - 72px);
+  max-height: calc(100vh - 60px);
   display: flex;
   flex-direction: column;
-  margin-top: 36px;
-  margin-bottom: 36px;
+  margin-top: 30px;
+  margin-bottom: 30px;
 }
 
 :global(.followup-edit-dialog .el-dialog__header),
@@ -2489,14 +2489,14 @@ button.attachment-image-tile:hover {
 
 :global(.followup-edit-dialog .el-dialog__header) {
   position: relative;
-  min-height: 52px !important;
+  min-height: 44px !important;
   padding: 0 52px 0 28px !important;
   display: flex;
   align-items: center;
 }
 
 :global(.followup-edit-dialog .el-dialog__title) {
-  line-height: 32px;
+  line-height: 30px;
 }
 
 :global(.followup-edit-dialog .el-dialog__headerbtn) {
@@ -2524,7 +2524,7 @@ button.attachment-image-tile:hover {
 }
 
 :global(.followup-edit-dialog .el-dialog__footer) {
-  min-height: 52px !important;
+  min-height: 44px !important;
   padding: 0 24px 0 28px !important;
   border-top: 1px solid #e2e8f0;
   display: flex;
@@ -2533,8 +2533,8 @@ button.attachment-image-tile:hover {
 }
 
 :global(.followup-edit-dialog-body) {
-  max-height: calc(100vh - 160px);
-  padding: 10px 14px 12px 0 !important;
+  max-height: calc(100vh - 148px);
+  padding: 6px 14px 8px 0 !important;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
