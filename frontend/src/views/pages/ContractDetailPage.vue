@@ -188,7 +188,7 @@ function handleBack() {
 
 function handleEdit() {
   if (!contractId.value) return
-  router.push({ path: '/contracts/create', query: { id: contractId.value } })
+  router.push({ path: '/contracts/create', query: { id: contractId.value, from: 'detail' } })
 }
 
 function handleAttachmentPreview(item: { name: string; data: string }) {

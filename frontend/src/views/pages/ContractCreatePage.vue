@@ -125,6 +125,7 @@ const submitting = ref(false)
 const projects = ref<any[]>([])
 const editingContractId = ref('')
 const isEditMode = computed(() => !!editingContractId.value)
+const fromPage = computed(() => String(route.query.from || ''))
 const submitText = computed(() => (isEditMode.value ? '保存' : '提交'))
 
 const formData = reactive({
@@ -218,7 +219,11 @@ async function handleSubmit() {
     }
 
     ElMessage.success(isEditMode.value ? '合同已更新' : '合同已创建')
-    router.push('/contracts')
+    if (fromPage.value === 'detail' && isEditMode.value) {
+      router.push(`/contracts/${editingContractId.value}`)
+    } else {
+      router.push('/contracts')
+    }
   } catch (error: any) {
     ElMessage.error(error.message || (isEditMode.value ? '更新失败' : '创建失败'))
   } finally {
