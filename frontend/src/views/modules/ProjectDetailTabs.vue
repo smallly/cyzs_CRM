@@ -238,6 +238,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import VuePdfEmbed from 'vue-pdf-embed'
+import { openInNewTab } from '../../utils/attachment'
 type ProjectDetailTab = "contact" | "followups" | "contracts" | "payments";
 
 const props = defineProps<{
@@ -319,7 +320,7 @@ async function openFollowupAttachmentPreview(row: any) {
   const rawSrc = getFollowupAttachmentPreviewSrc(row) || getFollowupAttachmentHref(row);
   if (!rawSrc) return;
   if (isPdfAttachment(getFollowupAttachmentName(row), getFollowupAttachmentHref(row), getFollowupAttachmentPreviewSrc(row))) {
-    window.open(rawSrc, '_blank', 'noopener,noreferrer');
+    openInNewTab(rawSrc);
     return;
   }
   const src = await resolveAttachmentPreviewSrc(row);

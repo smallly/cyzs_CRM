@@ -85,7 +85,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
-import { getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList } from '../../utils/attachment'
+import { getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList, openInNewTab } from '../../utils/attachment'
 
 const route = useRoute()
 const router = useRouter()
@@ -200,7 +200,7 @@ function handleAttachmentPreview(item: { name: string; data: string }) {
     return
   }
   if (kind === 'pdf') {
-    window.open(src, '_blank', 'noopener,noreferrer')
+    openInNewTab(src)
     return
   }
   attachmentPreviewKind.value = kind

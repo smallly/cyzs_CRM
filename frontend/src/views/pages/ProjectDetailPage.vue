@@ -836,7 +836,7 @@ import VuePdfEmbed from 'vue-pdf-embed'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 import { AttachmentUploadField } from '../../components/common'
-import { parseStoredAttachmentList, type StoredAttachment } from '../../utils/attachment'
+import { parseStoredAttachmentList, type StoredAttachment, openInNewTab } from '../../utils/attachment'
 
 interface DictRes {
   projectLevels: string[]
@@ -1285,7 +1285,7 @@ async function openAttachmentPreview(file: FollowupAttachmentEntry) {
   const src = file.previewSrc || file.href
   if (!src) return
   if (isPdfAttachment(file.name, file.href, file.previewSrc)) {
-    window.open(src, '_blank', 'noopener,noreferrer')
+    openInNewTab(src)
     return
   }
   revokeAttachmentPreviewObjectUrl()

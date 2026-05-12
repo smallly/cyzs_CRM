@@ -79,9 +79,20 @@ export function isStoredAttachmentPreviewable(raw?: string | null): boolean {
   return getStoredAttachmentKind(raw) !== 'other'
 }
 
+export function openInNewTab(url: string): void {
+  const a = document.createElement('a')
+  a.href = url
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  setTimeout(() => document.body.removeChild(a), 0)
+}
+
 export function openStoredAttachment(raw?: string | null): boolean {
   const parsed = parseStoredAttachment(raw)
   if (!parsed?.data) return false
-  window.open(parsed.data, '_blank', 'noopener,noreferrer')
+  openInNewTab(parsed.data)
   return true
 }
