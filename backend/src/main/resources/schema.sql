@@ -267,6 +267,9 @@ CREATE TABLE IF NOT EXISTS contracts (
   KEY idx_contracts_deleted (tenant_id, deleted)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='合同表';
 
+-- 兼容旧库：contracts 表在 updated_by 字段添加前已创建的情况
+ALTER TABLE contracts ADD COLUMN IF NOT EXISTS updated_by VARCHAR(64) DEFAULT NULL COMMENT '最后编辑人' AFTER updated_at;
+
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(64) NOT NULL COMMENT '回款ID',
   tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
