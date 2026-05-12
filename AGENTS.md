@@ -56,3 +56,16 @@
 - Any icon-only, text-only, close, remove, tab, or row-link button must define and own an explicit class.
 - Before fixing a small action button style, check both the component CSS and `frontend/src/style.css`.
 - See `docs/frontend-style-guardrails.md` for details.
+
+## 6. 复盘日志（强制）
+
+**同一个问题如果反复修改超过一次才做对，必须追加到 `docs/incident-log.md`。**
+
+记录模板：
+- 现象（用户看到的问题）
+- 迭代过程（每一次尝试和结果）
+- 根因分析（为什么前几次错了）
+- 正确做法（以后遇到同类问题怎么做）
+- 相关文件
+
+目的：避免同类型坑重复踩，新功能开发前先查日志。
