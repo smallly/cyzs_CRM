@@ -1,79 +1,71 @@
 ﻿<template>
-  <el-card>
-    <template #header>
-      <div class="card-header">
-        <span>跟进记录</span>
-        <el-space>
-          <el-select v-model="filterProjectId" clearable placeholder="按项目筛选" style="width: 260px" @change="handleProjectFilterChange">
-            <el-option v-for="project in projects" :key="project.id" :label="`${project.name} (${project.code})`" :value="project.id" />
-          </el-select>
-          <el-button type="primary" @click="goCreate">新增跟进</el-button>
-        </el-space>
-      </div>
-    </template>
+  <div>
+    <CrudTable
+      title="跟进记录"
+      :data="followups"
+      :columns="columns"
+      :loading="loading"
+      :show-add="true"
+      :show-edit="true"
+      :show-delete="true"
+      :show-pagination="true"
+      :total="total"
+      :default-current-page="page"
+      :default-page-size="pageSize"
+      @add="goCreate"
+      @edit="goEdit"
+      @delete="deleteFollowup"
+      @refresh="loadFollowups"
+      @page-change="handlePageChange"
+    >
+      <template #header-actions>
+        <el-select
+          v-model="filterProjectId"
+          clearable
+          placeholder="按项目筛选"
+          style="width: 260px"
+          @change="handleProjectFilterChange"
+        >
+          <el-option
+            v-for="project in projects"
+            :key="project.id"
+            :label="`${project.name} (${project.code})`"
+            :value="project.id"
+          />
+        </el-select>
+      </template>
 
-    <el-table :data="followups" v-loading="loading" border stripe>
-      <el-table-column label="跟进编号" width="170" fixed="left">
-        <template #default="{ row }">
-          <el-button link @click="goDetail(row.id)">
-            {{ row.code || row.id || '-' }}
-          </el-button>
-        </template>
-      </el-table-column>
-      <el-table-column label="关联项目" width="240">
-        <template #default="{ row }">
-          {{ getProjectDisplayName(row.projectId) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="followupAt" label="跟进时间" width="180">
-        <template #default="{ row }">
-          {{ formatDateTime(row.followupAt) }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="method" label="跟进方式" width="120" />
-      <el-table-column prop="content" label="跟进内容" min-width="280" show-overflow-tooltip />
-      <el-table-column label="关联联系人" width="160">
-        <template #default="{ row }">
-          {{ getContactDisplayName(row.contactId) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="创建人" width="120">
-        <template #default="{ row }">
-          {{ getUserDisplayName(row.creatorId || row.ownerId) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="创建时间" width="180">
-        <template #default="{ row }">
-          {{ formatDateTime(row.createdAt) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="最后编辑时间" width="180">
-        <template #default="{ row }">
-          {{ formatDateTime(row.updatedAt) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right" align="center">
-        <template #default="{ row }">
-          <el-space>
-            <el-button size="small" @click="goEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="deleteFollowup(row)">删除</el-button>
-          </el-space>
-        </template>
-      </el-table-column>
-    </el-table>
-    <div class="pagination-wrap">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :background="false"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-      />
-    </div>
-  </el-card>
+      <template #code="{ row }">
+        <el-button link @click="goDetail(row.id)">
+          {{ row.code || row.id || '-' }}
+        </el-button>
+      </template>
+
+      <template #projectId="{ row }">
+        {{ getProjectDisplayName(row.projectId) }}
+      </template>
+
+      <template #followupAt="{ row }">
+        {{ formatDateTime(row.followupAt) }}
+      </template>
+
+      <template #contactId="{ row }">
+        {{ getContactDisplayName(row.contactId) }}
+      </template>
+
+      <template #creatorId="{ row }">
+        {{ getUserDisplayName(row.creatorId || row.ownerId) }}
+      </template>
+
+      <template #createdAt="{ row }">
+        {{ formatDateTime(row.createdAt) }}
+      </template>
+
+      <template #updatedAt="{ row }">
+        {{ formatDateTime(row.updatedAt) }}
+      </template>
+    </CrudTable>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -81,6 +73,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
+import CrudTable from '../../components/common/CrudTable.vue'
+import type { TableColumn } from '../../components/common/CrudTable.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 
 const authStore = useAuthStore()
@@ -95,6 +89,18 @@ const total = ref(0)
 const projects = ref<any[]>([])
 const users = ref<any[]>([])
 const contacts = ref<any[]>([])
+
+const columns: TableColumn[] = [
+  { prop: 'code', label: '跟进编号', width: 170, fixed: 'left', slot: 'code' },
+  { prop: 'projectId', label: '关联项目', width: 240, slot: 'projectId' },
+  { prop: 'followupAt', label: '跟进时间', width: 180, slot: 'followupAt' },
+  { prop: 'method', label: '跟进方式', width: 120 },
+  { prop: 'content', label: '跟进内容', minWidth: 280, showOverflowTooltip: true },
+  { prop: 'contactId', label: '关联联系人', width: 160, slot: 'contactId' },
+  { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
+  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' },
+  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' }
+]
 
 onMounted(async () => {
   await loadAll()
@@ -138,14 +144,9 @@ function handleProjectFilterChange() {
   void loadFollowups()
 }
 
-function handlePageChange(nextPage: number) {
+function handlePageChange(nextPage: number, nextSize: number) {
   page.value = nextPage
-  void loadFollowups()
-}
-
-function handleSizeChange(nextSize: number) {
   pageSize.value = nextSize
-  page.value = 1
   void loadFollowups()
 }
 
@@ -209,15 +210,4 @@ function formatDateTime(value?: string | null): string {
 </script>
 
 <style scoped>
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.pagination-wrap {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-end;
-}
 </style>

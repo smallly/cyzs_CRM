@@ -13,11 +13,15 @@
       :columns="columns"
       :loading="loading"
       :show-add="true"
+      :show-edit="true"
+      :show-delete="true"
       :show-pagination="true"
       :total="total"
       :default-current-page="page"
       :default-page-size="pageSize"
       @add="goCreate"
+      @edit="editContact"
+      @delete="deleteContact"
       @refresh="loadContacts"
       @page-change="handlePageChange"
     >
@@ -46,12 +50,7 @@
       <template #createdAt="{ row }">{{ formatDateTime(row.createdAt) }}</template>
       <template #updatedAt="{ row }">{{ formatDateTime(row.updatedAt) }}</template>
 
-      <template #actions="{ row }">
-        <el-space>
-          <el-button size="small" @click="editContact(row)">编辑</el-button>
-          <el-button size="small" type="danger" @click="deleteContact(row.id)">删除</el-button>
-        </el-space>
-      </template>
+
     </CrudTable>
 
     <FormDialog

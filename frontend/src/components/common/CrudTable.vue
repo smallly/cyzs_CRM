@@ -1,20 +1,25 @@
 <template>
   <el-card>
     <template #header>
-      <div class="crud-table-header">
-        <span>{{ title }}</span>
-        <el-space>
-          <el-button v-if="showAdd" type="primary" @click="$emit('add')">
-            新增
-          </el-button>
-</el-space>
-      </div>
+      <slot name="header">
+        <div class="crud-table-header">
+          <span>{{ title }}</span>
+          <el-space>
+            <slot name="header-actions" />
+            <el-button v-if="showAdd" type="primary" @click="$emit('add')">
+              新增
+            </el-button>
+          </el-space>
+        </div>
+      </slot>
     </template>
 
     <el-table
       :data="data"
       v-loading="loading"
       stripe
+      :border="border"
+      :size="size"
       :height="height"
       @selection-change="handleSelectionChange"
       @sort-change="handleSortChange"
@@ -31,6 +36,7 @@
         :sortable="col.sortable"
         :fixed="col.fixed"
         :align="col.align || 'left'"
+        :show-overflow-tooltip="col.showOverflowTooltip"
       >
         <template #default="{ row }" v-if="col.slot">
           <slot :name="col.slot" :row="row" />
@@ -103,6 +109,7 @@ export interface TableColumn {
   formatter?: (value: any, row: any) => string
   type?: 'tag'
   tagMap?: Record<string, { type: string; label: string }>
+  showOverflowTooltip?: boolean
 }
 
 const props = withDefaults(
@@ -120,6 +127,8 @@ const props = withDefaults(
     showActions?: boolean
     actionsWidth?: number | string
     showPagination?: boolean
+    border?: boolean
+    size?: 'default' | 'small' | 'large'
     total?: number
     pageSizes?: number[]
     defaultPageSize?: number
@@ -136,6 +145,8 @@ const props = withDefaults(
     showActions: true,
     actionsWidth: 200,
     showPagination: false,
+    border: false,
+    size: 'default',
     total: 0,
     pageSizes: () => [10, 20, 50, 100],
     defaultPageSize: 20,
@@ -226,5 +237,13 @@ function getTagLabel(value: any, tagMap?: Record<string, { type: string; label: 
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+:deep(.el-table) {
+  font-size: 14px;
+}
+
+:deep(.el-table__cell) {
+  padding: 8px 12px !important;
 }
 </style>
