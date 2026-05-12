@@ -238,6 +238,6 @@ function formatDateTime(value?: string | null): string {
 }
 
 .linked-projects-table :deep(.el-table__cell) {
-  font-size: 13px;
+  font-size: 15px;
 }
 </style>

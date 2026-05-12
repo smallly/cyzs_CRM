@@ -453,7 +453,7 @@ button.secondary:not(.el-button):hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 15px;
 }
 
 th:not(.el-table__cell),
@@ -1075,12 +1075,13 @@ th {
   border-bottom: 1px solid #dde7fb;
   border-left: none;
   border-right: none;
-  font-size: 12px;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .detail-list-table thead th {
   background: #f5f9ff;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   color: #1e3a8a;
 }
@@ -1113,7 +1114,7 @@ th {
   background: transparent;
   color: var(--primary-blue);
   padding: 0;
-  font-size: 12px;
+  font-size: 15px;
   text-decoration: none;
   appearance: none;
   text-align: left;

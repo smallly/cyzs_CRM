@@ -192,6 +192,7 @@ body,
 .el-table {
   border: none !important;
   border-radius: 0;
+  font-size: 15px;
 }
 
 .el-table--border,
@@ -209,11 +210,13 @@ body,
 .el-table th.el-table__cell {
   background: #f7f9fc;
   color: #334155;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .el-table td.el-table__cell {
   color: #1f2937;
+  font-size: 15px;
 }
 
 /* 可点击文本统一蓝色 */
@@ -232,6 +235,7 @@ a:hover {
 /* 去掉竖线，仅保留横向分隔 */
 .el-table .el-table__cell {
   border-right: none !important;
+  line-height: 1.45;
 }
 
 /* 表头统一底色 */
