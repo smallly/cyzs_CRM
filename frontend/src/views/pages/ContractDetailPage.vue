@@ -18,6 +18,7 @@
       <template v-else>
         <div class="section-title">合同信息</div>
         <el-descriptions :column="2" border>
+          <el-descriptions-item label="所属项目">{{ projectName }}</el-descriptions-item>
           <el-descriptions-item label="合同标题">{{ contract.title || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同编号">{{ contract.contractNo || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同金额(元)">{{ formatAmount(contract.amount) }}</el-descriptions-item>
@@ -51,10 +52,9 @@
 
         <div class="section-title">系统信息</div>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="所属项目">{{ projectName }}</el-descriptions-item>
           <el-descriptions-item label="创建人">{{ getUserDisplayName(contract.creatorId || contract.ownerId) }}</el-descriptions-item>
-          <el-descriptions-item label="最后编辑人">{{ getUserDisplayName(contract.updatedBy || contract.creatorId || contract.ownerId) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(contract.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item label="最后编辑人">{{ getUserDisplayName(contract.updatedBy || contract.creatorId || contract.ownerId) }}</el-descriptions-item>
           <el-descriptions-item label="最后编辑时间">{{ formatDateTime(contract.updatedAt) }}</el-descriptions-item>
         </el-descriptions>
       </template>
