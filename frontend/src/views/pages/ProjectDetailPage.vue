@@ -514,7 +514,7 @@
               <el-select v-model="projectEditForm.dealType">
                 <el-option label="租赁" value="RENT" />
                 <el-option label="购买" value="BUY" />
-                <el-option label="租购皆可" value="BOTH" />
+                <el-option label="可租可售" value="BOTH" />
               </el-select>
             </el-form-item>
           </el-col>

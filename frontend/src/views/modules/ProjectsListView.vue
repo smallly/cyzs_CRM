@@ -111,9 +111,9 @@ const ownerOptions = computed(() => {
 const dealTypeLabelMap: Record<string, string> = {
   RENT: '租赁',
   BUY: '购买',
-  BOTH: '租购皆可',
+  BOTH: '可租可售',
   PURCHASE: '购买',
-  RENT_OR_PURCHASE: '租购皆可'
+  RENT_OR_PURCHASE: '可租可售'
 }
 
 const stageLabelMap: Record<string, string> = {
