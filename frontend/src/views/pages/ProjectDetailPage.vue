@@ -2227,6 +2227,24 @@ async function submitNewPayment() {
 
 .detail-data-table {
   --detail-table-scrollbar-gap: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detail-data-table :deep(.el-table__cell) {
+  padding: 13px 12px !important;
+  line-height: 1.5;
+}
+
+.detail-data-table :deep(th.el-table__cell) {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+  font-weight: 700;
+}
+
+.detail-data-table :deep(.el-button.is-link) {
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .detail-data-table :deep(.el-table__body tbody tr:last-child > td.el-table__cell) {
