@@ -220,9 +220,9 @@ async function handleSubmit() {
 
     ElMessage.success(isEditMode.value ? '合同已更新' : '合同已创建')
     if (fromPage.value === 'detail' && isEditMode.value) {
-      router.push(`/contracts/${editingContractId.value}`)
+      router.replace(`/contracts/${editingContractId.value}`)
     } else {
-      router.push('/contracts')
+      router.replace('/contracts')
     }
   } catch (error: any) {
     ElMessage.error(error.message || (isEditMode.value ? '更新失败' : '创建失败'))
