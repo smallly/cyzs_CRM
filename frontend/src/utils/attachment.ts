@@ -79,15 +79,23 @@ export function isStoredAttachmentPreviewable(raw?: string | null): boolean {
   return getStoredAttachmentKind(raw) !== 'other'
 }
 
-export function openInNewTab(url: string): void {
+export async function openInNewTab(url: string): Promise<void> {
+  let targetUrl = url
+  if (url.startsWith('data:')) {
+    const blob = await fetch(url).then((r) => r.blob())
+    targetUrl = URL.createObjectURL(blob)
+  }
   const a = document.createElement('a')
-  a.href = url
+  a.href = targetUrl
   a.target = '_blank'
   a.rel = 'noopener noreferrer'
   a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
-  setTimeout(() => document.body.removeChild(a), 0)
+  setTimeout(() => {
+    document.body.removeChild(a)
+    if (targetUrl !== url) URL.revokeObjectURL(targetUrl)
+  }, 0)
 }
 
 export function openStoredAttachment(raw?: string | null): boolean {
