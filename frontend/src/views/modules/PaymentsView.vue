@@ -40,13 +40,6 @@
         </el-tag>
       </template>
 
-      <template #voucher="{ row }">
-        <el-button v-if="getVoucherName(row.voucher)" link @click="downloadVoucher(row)">
-          {{ getVoucherName(row.voucher) }}
-        </el-button>
-        <span v-else>-</span>
-      </template>
-
       <template #actions="{ row }">
         <el-space>
           <el-button size="small" @click="goEdit(row)">编辑</el-button>
@@ -65,7 +58,6 @@ import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
-import { getStoredAttachmentName, openStoredAttachment } from '../../utils/attachment'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -85,7 +77,6 @@ const columns: TableColumn[] = [
   { prop: 'amount', label: '金额(元)', width: 120 },
   { prop: 'payerName', label: '付款方', width: 160 },
   { prop: 'invoiceStatus', label: '开票状态', width: 120, slot: 'invoiceStatus' },
-  { prop: 'voucher', label: '回款凭证', width: 200, slot: 'voucher' },
   { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
   { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
 ]
@@ -167,15 +158,6 @@ function getInvoiceStatusLabel(status: string): string {
     NOT_REQUIRED: '无需开票'
   }
   return map[status] || status
-}
-
-function downloadVoucher(row: any) {
-  if (openStoredAttachment(row.voucher)) return
-  ElMessage.info(`下载凭证: ${getVoucherName(row.voucher)}`)
-}
-
-function getVoucherName(raw?: string | null): string {
-  return getStoredAttachmentName(raw)
 }
 
 async function deletePayment(row: any) {
