@@ -5,10 +5,7 @@
         <div class="card-header">
           <div class="header-left">
             <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-            <div>
-              <div class="header-title">{{ followup.code || followup.id || '-' }}</div>
-              <div class="header-subtitle">{{ projectName }}</div>
-            </div>
+            <div class="header-title">{{ followup.code || followup.id || '-' }}</div>
           </div>
         </div>
       </template>
@@ -59,9 +56,9 @@
 
         <div class="section-title">系统信息</div>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="ID">{{ followup.id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="创建人">{{ getUserDisplayName(followup.creatorId || followup.ownerId) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(followup.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item label="ID">{{ followup.id || '-' }}</el-descriptions-item>
           <el-descriptions-item label="状态">{{ followup.deleted ? '已删除' : '正常' }}</el-descriptions-item>
         </el-descriptions>
       </template>
@@ -269,11 +266,6 @@ function handleBack() {
   color: #1f2d3d;
 }
 
-.header-subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #64748b;
-}
 
 .section-title {
   margin: 24px 0 12px;

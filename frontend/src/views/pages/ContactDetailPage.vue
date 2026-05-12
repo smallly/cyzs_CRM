@@ -5,10 +5,7 @@
         <div class="card-header">
           <div class="header-left">
             <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-            <div>
-              <div class="header-title">{{ contact.name || '-' }}</div>
-              <div class="header-subtitle">{{ contact.enterpriseName || '未填写企业名称' }}</div>
-            </div>
+            <div class="header-title">{{ contact.name || '-' }}</div>
           </div>
           <el-button type="primary" @click="editContact">编辑</el-button>
         </div>
@@ -50,9 +47,9 @@
 
         <div class="section-title">系统信息</div>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="负责人">{{ getUserDisplayName(contact.ownerId) }}</el-descriptions-item>
           <el-descriptions-item label="创建人">{{ getUserDisplayName(contact.creatorId) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(contact.createdAt) }}</el-descriptions-item>
+          <el-descriptions-item label="负责人">{{ getUserDisplayName(contact.ownerId) }}</el-descriptions-item>
           <el-descriptions-item label="最后编辑时间">{{ formatDateTime(contact.updatedAt) }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ contact.remark || '-' }}</el-descriptions-item>
         </el-descriptions>
@@ -191,11 +188,6 @@ function formatDateTime(value?: string | null): string {
   color: #1f2d3d;
 }
 
-.header-subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #64748b;
-}
 
 .section-title {
   margin: 24px 0 12px;
