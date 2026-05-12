@@ -66,6 +66,7 @@ public class PaymentService {
         p.voucher = normalizeNullable(voucher);
         p.remark = normalizeNullable(remark);
         p.createdAt = LocalDateTime.now();
+        p.updatedAt = p.createdAt;
         paymentMapper.insert(p);
 
         Project project = projectMapper.selectById(c.projectId);
@@ -142,6 +143,7 @@ public class PaymentService {
         payment.invoiceStatus = normalizeNullable(invoiceStatus);
         payment.voucher = normalizeNullable(voucher);
         payment.remark = normalizeNullable(remark);
+        payment.updatedAt = LocalDateTime.now();
         paymentMapper.updateById(payment);
         auditService.log(actor, "PAYMENT_UPDATE", "Payment", payment.id, payment.code);
         return payment;
@@ -151,6 +153,7 @@ public class PaymentService {
         Payment payment = get(actor, paymentId);
         payment.deleted = true;
         payment.deletedAt = LocalDateTime.now();
+        payment.updatedAt = payment.deletedAt;
         paymentMapper.updateById(payment);
         auditService.log(actor, "PAYMENT_DELETE", "Payment", payment.id, payment.code);
     }
@@ -167,6 +170,7 @@ public class PaymentService {
             throw new BizException(ErrorCode.AUTH_403, "无回款编辑权限");
         }
         payment.paidDate = paidDate;
+        payment.updatedAt = LocalDateTime.now();
         paymentMapper.updateById(payment);
         auditService.log(actor, "PAYMENT_UPDATE_PAID_DATE", "Payment", payment.id, payment.code);
         return payment;

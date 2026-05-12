@@ -33,6 +33,9 @@
       <template #createdAt="{ row }">
         {{ formatDateTime(row.createdAt) }}
       </template>
+      <template #updatedAt="{ row }">
+        {{ formatDateTime(row.updatedAt) }}
+      </template>
 
       <template #attachment="{ row }">
         <el-button v-if="getAttachmentName(row.attachment)" link @click="downloadAttachment(row)">
@@ -74,7 +77,8 @@ const columns: TableColumn[] = [
   { prop: 'signDate', label: '签约日期', width: 120 },
   { prop: 'attachment', label: '合同附件', width: 200, slot: 'attachment' },
   { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
-  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
+  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' },
+  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' }
 ]
 
 onMounted(async () => {

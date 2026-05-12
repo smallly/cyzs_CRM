@@ -47,6 +47,11 @@
           {{ formatDateTime(row.createdAt) }}
         </template>
       </el-table-column>
+      <el-table-column label="最后编辑时间" width="180">
+        <template #default="{ row }">
+          {{ formatDateTime(row.updatedAt) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="150" fixed="right" align="center">
         <template #default="{ row }">
           <el-space>

@@ -33,6 +33,9 @@
       <template #createdAt="{ row }">
         {{ formatDateTime(row.createdAt) }}
       </template>
+      <template #updatedAt="{ row }">
+        {{ formatDateTime(row.updatedAt) }}
+      </template>
 
       <template #invoiceStatus="{ row }">
         <el-tag :type="getInvoiceStatusType(row.invoiceStatus)">
@@ -78,7 +81,8 @@ const columns: TableColumn[] = [
   { prop: 'payerName', label: '付款方', width: 160 },
   { prop: 'invoiceStatus', label: '开票状态', width: 120, slot: 'invoiceStatus' },
   { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
-  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
+  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' },
+  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' }
 ]
 
 onMounted(async () => {

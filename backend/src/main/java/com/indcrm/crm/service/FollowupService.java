@@ -81,6 +81,7 @@ public class FollowupService {
         followup.attachment = normalizeNullable(attachment);
         followup.followupAt = followupAt == null ? LocalDateTime.now() : followupAt;
         followup.createdAt = LocalDateTime.now();
+        followup.updatedAt = followup.createdAt;
         followupMapper.insert(followup);
 
         if (project.lastFollowupAt == null || followup.followupAt.isAfter(project.lastFollowupAt)) {
@@ -179,6 +180,7 @@ public class FollowupService {
         followup.method = normalizeNullable(method);
         followup.contactId = normalizedContactId;
         followup.attachment = normalizeNullable(attachment);
+        followup.updatedAt = LocalDateTime.now();
         followupMapper.updateById(followup);
         recalculateProjectLastFollowupAt(project.id);
 
@@ -194,6 +196,7 @@ public class FollowupService {
         }
         followup.deleted = true;
         followup.deletedAt = LocalDateTime.now();
+        followup.updatedAt = followup.deletedAt;
         followupMapper.updateById(followup);
         recalculateProjectLastFollowupAt(project.id);
         auditService.log(actor, "FOLLOWUP_DELETE", "Followup", followup.id, followup.code);
