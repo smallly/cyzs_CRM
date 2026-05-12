@@ -138,7 +138,7 @@ async function loadProjects() {
 
 async function loadPayment() {
   try {
-    const data = await authStore.api<any>(`/api/payments/${editId.value}`)
+    const data = await getPaymentDetail()
     formData.contractId = data.contractId || ''
     formData.paidDate = toDateValue(data.paidDate)
     formData.amount = Number(data.amount || 0)
@@ -149,6 +149,17 @@ async function loadPayment() {
   } catch (error: any) {
     ElMessage.error(error.message || '回款记录加载失败')
     router.push('/payments')
+  }
+}
+
+async function getPaymentDetail() {
+  try {
+    return await authStore.api<any>(`/api/payments/${editId.value}`)
+  } catch {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/payments')
+    const row = normalizePageResult<any>(res).records.find((item) => item.id === editId.value)
+    if (!row) throw new Error('回款记录不存在')
+    return row
   }
 }
 

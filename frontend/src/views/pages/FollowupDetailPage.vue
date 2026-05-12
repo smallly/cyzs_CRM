@@ -124,12 +124,23 @@ async function loadFollowup() {
   if (!followupId.value) return
   loading.value = true
   try {
-    const data = await authStore.api<any>(`/api/followups/${followupId.value}`)
+    const data = await getFollowupDetail()
     Object.assign(followup, data)
   } catch (error: any) {
     ElMessage.error(error.message || '跟进详情加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function getFollowupDetail() {
+  try {
+    return await authStore.api<any>(`/api/followups/${followupId.value}`)
+  } catch {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/followups')
+    const row = normalizePageResult<any>(res).records.find((item) => item.id === followupId.value)
+    if (!row) throw new Error('跟进记录不存在')
+    return row
   }
 }
 

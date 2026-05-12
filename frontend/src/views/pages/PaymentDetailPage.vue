@@ -131,12 +131,23 @@ async function loadPayment() {
   if (!paymentId.value) return
   loading.value = true
   try {
-    const data = await authStore.api<any>(`/api/payments/${paymentId.value}`)
+    const data = await getPaymentDetail()
     Object.assign(payment, data)
   } catch (error: any) {
     ElMessage.error(error.message || '回款详情加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function getPaymentDetail() {
+  try {
+    return await authStore.api<any>(`/api/payments/${paymentId.value}`)
+  } catch {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/payments')
+    const row = normalizePageResult<any>(res).records.find((item) => item.id === paymentId.value)
+    if (!row) throw new Error('回款记录不存在')
+    return row
   }
 }
 

@@ -148,7 +148,7 @@ async function loadContacts() {
 
 async function loadFollowup() {
   try {
-    const data = await authStore.api<any>(`/api/followups/${editId.value}`)
+    const data = await getFollowupDetail()
     formData.projectId = data.projectId || ''
     formData.content = data.content || ''
     formData.followupAt = toDateValue(data.followupAt) || new Date().toISOString().split('T')[0]
@@ -158,6 +158,17 @@ async function loadFollowup() {
   } catch (error: any) {
     ElMessage.error(error.message || '跟进记录加载失败')
     router.push('/followups')
+  }
+}
+
+async function getFollowupDetail() {
+  try {
+    return await authStore.api<any>(`/api/followups/${editId.value}`)
+  } catch {
+    const res = await authStore.api<PageResult<any> | any[]>('/api/followups')
+    const row = normalizePageResult<any>(res).records.find((item) => item.id === editId.value)
+    if (!row) throw new Error('跟进记录不存在')
+    return row
   }
 }
 
