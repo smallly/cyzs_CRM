@@ -2232,19 +2232,24 @@ async function submitNewPayment() {
 }
 
 .detail-data-table :deep(.el-table__cell) {
-  padding: 13px 12px !important;
-  line-height: 1.5;
+  padding: 10px 12px !important;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .detail-data-table :deep(th.el-table__cell) {
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding-top: 11px !important;
+  padding-bottom: 11px !important;
   font-weight: 700;
 }
 
+.detail-data-table :deep(th.el-table__cell .cell) {
+  white-space: nowrap;
+}
+
 .detail-data-table :deep(.el-button.is-link) {
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .detail-data-table :deep(.el-table__body tbody tr:last-child > td.el-table__cell) {
