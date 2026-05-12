@@ -47,7 +47,13 @@
                 class="attachment-inline-chip"
                 @click="handleVoucherPreview(item)"
               >
-                {{ item.name }}
+                <span class="attachment-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+                    <polyline points="13 2 13 9 20 9"/>
+                  </svg>
+                </span>
+                <span class="attachment-name">{{ item.name }}</span>
               </button>
             </div>
             <span v-else>-</span>
@@ -327,12 +333,34 @@ function handleBack() {
 .attachment-inline-chip {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   max-width: 100%;
   padding: 0;
   border: none;
   background: transparent;
   color: #3b82f6;
   cursor: pointer;
+}
+
+.attachment-inline-chip .attachment-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.attachment-inline-chip .attachment-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.attachment-inline-chip .attachment-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .attachment-preview-modal {
