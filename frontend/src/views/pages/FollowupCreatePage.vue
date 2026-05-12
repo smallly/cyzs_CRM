@@ -4,7 +4,7 @@
       <div class="card-header">
         <div class="card-title-wrap">
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-          <span>新增跟进记录</span>
+          <span>{{ isEditMode ? '编辑跟进记录' : '新增跟进记录' }}</span>
         </div>
       </div>
     </template>
@@ -13,7 +13,7 @@
       <el-row :gutter="12">
         <el-col :xs="24" :md="12">
           <el-form-item label="所属项目" prop="projectId">
-            <el-select v-model="formData.projectId" filterable placeholder="请选择项目" @change="handleProjectChange">
+            <el-select v-model="formData.projectId" :disabled="isEditMode" filterable placeholder="请选择项目" @change="handleProjectChange">
               <el-option
                 v-for="p in projects"
                 :key="p.id"
@@ -65,7 +65,9 @@
       <el-form-item class="form-actions">
         <el-space>
           <el-button @click="handleCancel">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit">
+            {{ isEditMode ? '保存' : '提交' }}
+          </el-button>
         </el-space>
       </el-form-item>
     </el-form>
@@ -89,6 +91,9 @@ const formRef = ref()
 const submitting = ref(false)
 const projects = ref<any[]>([])
 const contacts = ref<any[]>([])
+
+const editId = computed(() => (typeof route.query.id === 'string' ? route.query.id : ''))
+const isEditMode = computed(() => Boolean(editId.value))
 
 const formData = reactive({
   projectId: '',
@@ -119,6 +124,11 @@ const availableContacts = computed(() => {
 onMounted(async () => {
   await Promise.all([loadProjects(), loadContacts()])
 
+  if (isEditMode.value) {
+    await loadFollowup()
+    return
+  }
+
   const projectId = typeof route.query.projectId === 'string' ? route.query.projectId : ''
   if (projectId && projects.value.some((p) => p.id === projectId)) {
     formData.projectId = projectId
@@ -136,6 +146,21 @@ async function loadContacts() {
   contacts.value = normalizePageResult<any>(res).records
 }
 
+async function loadFollowup() {
+  try {
+    const data = await authStore.api<any>(`/api/followups/${editId.value}`)
+    formData.projectId = data.projectId || ''
+    formData.content = data.content || ''
+    formData.followupAt = toDateValue(data.followupAt) || new Date().toISOString().split('T')[0]
+    formData.method = data.method || ''
+    formData.contactId = data.contactId || ''
+    formData.attachment = data.attachment || ''
+  } catch (error: any) {
+    ElMessage.error(error.message || '跟进记录加载失败')
+    router.push('/followups')
+  }
+}
+
 function handleProjectChange() {
   const project = projects.value.find((p) => p.id === formData.projectId)
   if (!project) {
@@ -151,13 +176,18 @@ function toDateTimeValue(date: string): string {
   return `${date}T00:00:00`
 }
 
+function toDateValue(value?: string | null): string {
+  if (!value) return ''
+  return String(value).split('T')[0]
+}
+
 async function handleSubmit() {
   try {
     await formRef.value?.validate()
     submitting.value = true
 
-    await authStore.api('/api/followups', {
-      method: 'POST',
+    await authStore.api(isEditMode.value ? `/api/followups/${editId.value}` : '/api/followups', {
+      method: isEditMode.value ? 'PUT' : 'POST',
       body: JSON.stringify({
         projectId: formData.projectId,
         content: formData.content,
@@ -168,7 +198,7 @@ async function handleSubmit() {
       })
     })
 
-    ElMessage.success('跟进记录已创建')
+    ElMessage.success(isEditMode.value ? '跟进记录已保存' : '跟进记录已创建')
     router.push('/followups')
   } catch (error: any) {
     ElMessage.error(error.message || '创建失败')

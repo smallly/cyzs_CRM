@@ -46,10 +46,11 @@ public record ApiResponse<T>(int code, String message, T data) {
 |---|---|---|---|
 | 回款 | GET | `/api/payments` | 列表（支持分页） |
 | Payment | GET | `/api/payments/{id}` | Detail |
+| Payment | PUT | `/api/payments/{id}` | Update |
+| Payment | DELETE | `/api/payments/{id}` | Delete |
 | 回款 | POST | `/api/payments` | 新建（必须关联合同） |
 | 回款 | PUT | `/api/payments/{id}/paid-date` | 修改实际回款日期 |
 
-> 注：V1 暂无完整 `PUT /api/payments/{id}` �?`DELETE /api/payments/{id}`�?
 ### 4.7 用户本人（`/api/me`�?
 | 模块 | 方法 | 路径 | 说明 |
 |---|---|---|---|

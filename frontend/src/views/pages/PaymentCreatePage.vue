@@ -4,7 +4,7 @@
       <div class="card-header">
         <div class="card-title-wrap">
           <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-          <span>新增回款</span>
+          <span>{{ isEditMode ? '编辑回款' : '新增回款' }}</span>
         </div>
       </div>
     </template>
@@ -68,7 +68,9 @@
       <el-form-item class="form-actions">
         <el-space>
           <el-button @click="handleCancel">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit">
+            {{ isEditMode ? '保存' : '提交' }}
+          </el-button>
         </el-space>
       </el-form-item>
     </el-form>
@@ -76,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
@@ -92,6 +94,9 @@ const formRef = ref()
 const submitting = ref(false)
 const contracts = ref<any[]>([])
 const projects = ref<any[]>([])
+
+const editId = computed(() => (typeof route.query.id === 'string' ? route.query.id : ''))
+const isEditMode = computed(() => Boolean(editId.value))
 
 const formData = reactive({
   contractId: '',
@@ -111,6 +116,10 @@ const formRules = {
 
 onMounted(async () => {
   await Promise.all([loadContracts(), loadProjects()])
+  if (isEditMode.value) {
+    await loadPayment()
+    return
+  }
   const contractId = typeof route.query.contractId === 'string' ? route.query.contractId : ''
   if (contractId && contracts.value.some((c) => c.id === contractId)) {
     formData.contractId = contractId
@@ -127,10 +136,31 @@ async function loadProjects() {
   projects.value = normalizePageResult<any>(res).records
 }
 
+async function loadPayment() {
+  try {
+    const data = await authStore.api<any>(`/api/payments/${editId.value}`)
+    formData.contractId = data.contractId || ''
+    formData.paidDate = toDateValue(data.paidDate)
+    formData.amount = Number(data.amount || 0)
+    formData.payerName = data.payerName || ''
+    formData.invoiceStatus = data.invoiceStatus || 'UNISSUED'
+    formData.voucher = data.voucher || ''
+    formData.remark = data.remark || ''
+  } catch (error: any) {
+    ElMessage.error(error.message || '回款记录加载失败')
+    router.push('/payments')
+  }
+}
+
 function getProjectName(projectId?: string): string {
   if (!projectId) return '-'
   const project = projects.value.find((p) => p.id === projectId)
   return project?.name || projectId
+}
+
+function toDateValue(value?: string | null): string {
+  if (!value) return ''
+  return String(value).split('T')[0]
 }
 
 async function handleSubmit() {
@@ -138,12 +168,12 @@ async function handleSubmit() {
     await formRef.value?.validate()
     submitting.value = true
 
-    await authStore.api('/api/payments', {
-      method: 'POST',
+    await authStore.api(isEditMode.value ? `/api/payments/${editId.value}` : '/api/payments', {
+      method: isEditMode.value ? 'PUT' : 'POST',
       body: JSON.stringify(formData)
     })
 
-    ElMessage.success('回款已创建')
+    ElMessage.success(isEditMode.value ? '回款已保存' : '回款已创建')
     router.push('/payments')
   } catch (error: any) {
     ElMessage.error(error.message || '创建失败')

@@ -47,6 +47,14 @@
           {{ formatDateTime(row.createdAt) }}
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="150" fixed="right" align="center">
+        <template #default="{ row }">
+          <el-space>
+            <el-button size="small" @click="goEdit(row)">编辑</el-button>
+            <el-button size="small" type="danger" @click="deleteFollowup(row)">删除</el-button>
+          </el-space>
+        </template>
+      </el-table-column>
     </el-table>
     <div class="pagination-wrap">
       <el-pagination
@@ -66,7 +74,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 
@@ -143,6 +151,28 @@ function goCreate() {
 function goDetail(followupId: string) {
   if (!followupId) return
   router.push(`/followups/${followupId}`)
+}
+
+function goEdit(row: any) {
+  if (!row?.id) return
+  router.push({ path: '/followups/create', query: { id: row.id } })
+}
+
+async function deleteFollowup(row: any) {
+  if (!row?.id) return
+  try {
+    await ElMessageBox.confirm(`确认删除跟进记录「${row.code || row.id}」吗？`, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await authStore.api(`/api/followups/${row.id}`, { method: 'DELETE' })
+    ElMessage.success('跟进记录已删除')
+    await loadFollowups()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(error.message || '删除失败')
+  }
 }
 
 function getProjectDisplayName(projectId?: string): string {

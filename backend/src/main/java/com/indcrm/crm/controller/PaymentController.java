@@ -48,6 +48,27 @@ public class PaymentController {
         return ApiResponse.ok(paymentService.get(sessionService.requireUser(), id));
     }
 
+    @PutMapping("/{id}")
+    public ApiResponse<?> update(@PathVariable("id") String id, @RequestBody UpdateReq req) {
+        return ApiResponse.ok(paymentService.update(
+                sessionService.requireUser(),
+                id,
+                req.contractId(),
+                parseLocalDate(req.paidDate()),
+                req.amount(),
+                req.payerName(),
+                req.invoiceStatus(),
+                req.voucher(),
+                req.remark()
+        ));
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<?> delete(@PathVariable("id") String id) {
+        paymentService.delete(sessionService.requireUser(), id);
+        return ApiResponse.ok("ok");
+    }
+
     @PutMapping("/{id}/paid-date")
     public ApiResponse<?> updatePaidDate(@PathVariable("id") String id, @RequestBody PaidDateReq req) {
         return ApiResponse.ok(paymentService.updatePaidDate(
@@ -58,6 +79,16 @@ public class PaymentController {
     }
 
     public record CreateReq(
+            String contractId,
+            String paidDate,
+            BigDecimal amount,
+            String payerName,
+            String invoiceStatus,
+            String voucher,
+            String remark
+    ) {}
+
+    public record UpdateReq(
             String contractId,
             String paidDate,
             BigDecimal amount,

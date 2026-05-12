@@ -6,11 +6,15 @@
       :columns="columns"
       :loading="loading"
       :show-add="true"
+      :show-edit="true"
+      :show-delete="true"
       :show-pagination="true"
       :total="total"
       :default-current-page="page"
       :default-page-size="pageSize"
       @add="goCreate"
+      @edit="goEdit"
+      @delete="deletePayment"
       @refresh="loadPayments"
       @page-change="handlePageChange"
     >
@@ -42,6 +46,13 @@
         </el-button>
         <span v-else>-</span>
       </template>
+
+      <template #actions="{ row }">
+        <el-space>
+          <el-button size="small" @click="goEdit(row)">编辑</el-button>
+          <el-button size="small" type="danger" @click="deletePayment(row)">删除</el-button>
+        </el-space>
+      </template>
     </CrudTable>
   </div>
 </template>
@@ -49,7 +60,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
@@ -115,6 +126,11 @@ function goDetail(paymentId: string) {
   router.push(`/payments/${paymentId}`)
 }
 
+function goEdit(row: any) {
+  if (!row?.id) return
+  router.push({ path: '/payments/create', query: { id: row.id } })
+}
+
 function getContractNo(contractId: string): string {
   const contract = contracts.value.find((c) => c.id === contractId)
   return contract?.contractNo || contractId
@@ -160,6 +176,23 @@ function downloadVoucher(row: any) {
 
 function getVoucherName(raw?: string | null): string {
   return getStoredAttachmentName(raw)
+}
+
+async function deletePayment(row: any) {
+  if (!row?.id) return
+  try {
+    await ElMessageBox.confirm(`确认删除回款记录「${row.code || row.id}」吗？`, '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await authStore.api(`/api/payments/${row.id}`, { method: 'DELETE' })
+    ElMessage.success('回款记录已删除')
+    await loadPayments()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(error.message || '删除失败')
+  }
 }
 
 async function handlePageChange(nextPage: number, nextSize: number) {

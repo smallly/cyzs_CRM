@@ -109,6 +109,52 @@ public class PaymentService {
         return payment;
     }
 
+    public Payment update(
+            User actor,
+            String paymentId,
+            String contractId,
+            LocalDate paidDate,
+            BigDecimal amount,
+            String payerName,
+            String invoiceStatus,
+            String voucher,
+            String remark
+    ) {
+        Payment payment = get(actor, paymentId);
+        Contract contract = contractMapper.selectById(contractId);
+        if (contract == null || contract.deleted || !actor.tenantId.equals(contract.tenantId)) {
+            throw new BizException(ErrorCode.BIZ_422, "Contract does not exist");
+        }
+        if (!permissionService.canOperateByOwner(actor, contract.ownerId)) {
+            throw new BizException(ErrorCode.AUTH_403, "No permission to edit payment");
+        }
+        if (paidDate == null) {
+            throw new BizException(ErrorCode.BIZ_422, "paidDate is required");
+        }
+        if (amount == null) {
+            throw new BizException(ErrorCode.BIZ_422, "amount is required");
+        }
+
+        payment.contractId = contractId;
+        payment.paidDate = paidDate;
+        payment.amount = amount;
+        payment.payerName = normalizeNullable(payerName);
+        payment.invoiceStatus = normalizeNullable(invoiceStatus);
+        payment.voucher = normalizeNullable(voucher);
+        payment.remark = normalizeNullable(remark);
+        paymentMapper.updateById(payment);
+        auditService.log(actor, "PAYMENT_UPDATE", "Payment", payment.id, payment.code);
+        return payment;
+    }
+
+    public void delete(User actor, String paymentId) {
+        Payment payment = get(actor, paymentId);
+        payment.deleted = true;
+        payment.deletedAt = LocalDateTime.now();
+        paymentMapper.updateById(payment);
+        auditService.log(actor, "PAYMENT_DELETE", "Payment", payment.id, payment.code);
+    }
+
     public Payment updatePaidDate(User actor, String paymentId, LocalDate paidDate) {
         if (paidDate == null) {
             throw new BizException(ErrorCode.BIZ_422, "回款日期不能为空");
