@@ -5,10 +5,7 @@
         <div class="card-header">
           <div class="header-left">
             <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
-            <div>
-              <div class="header-title">{{ contract.title || '-' }}</div>
-              <div class="header-subtitle">{{ contract.contractNo || '未填写合同编号' }}</div>
-            </div>
+            <div class="header-title">{{ contract.title || '-' }}</div>
           </div>
           <div class="header-actions">
             <el-button @click="handleEdit">编辑</el-button>
@@ -281,11 +278,7 @@ async function handleDelete() {
   color: #1f2d3d;
 }
 
-.header-subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #64748b;
-}
+
 
 .section-title {
   margin: 24px 0 12px;
