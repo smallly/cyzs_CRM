@@ -7,6 +7,10 @@
             <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
             <div class="header-title">{{ followup.code || followup.id || '-' }}</div>
           </div>
+          <div class="header-actions">
+            <el-button @click="handleEdit">编辑</el-button>
+            <el-button type="danger" @click="handleDelete">删除</el-button>
+          </div>
         </div>
       </template>
 
@@ -87,7 +91,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 import { downloadStoredAttachment, getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList, openInNewTab } from '../../utils/attachment'
@@ -220,6 +224,25 @@ function goContact() {
   router.push(`/contacts/${followup.contactId}`)
 }
 
+function handleEdit() {
+  if (!followupId.value) return
+  router.push({ path: '/followups/create', query: { id: followupId.value } })
+}
+
+async function handleDelete() {
+  if (!followupId.value) return
+  try {
+    await ElMessageBox.confirm('确定删除该跟进记录吗？删除后不可恢复。', '确认删除', { type: 'warning' })
+    await authStore.api(`/api/followups/${followupId.value}`, { method: 'DELETE' })
+    ElMessage.success('跟进记录已删除')
+    router.push('/followups')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
 function handleBack() {
   if (window.history.length > 1) {
     router.back()
@@ -258,6 +281,12 @@ function handleBack() {
 
 .card-header {
   justify-content: space-between;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .header-title {

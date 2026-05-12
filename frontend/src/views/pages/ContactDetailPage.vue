@@ -8,6 +8,7 @@
             <div class="header-title">{{ contact.name || '-' }}</div>
           </div>
           <el-button type="primary" @click="editContact">编辑</el-button>
+          <el-button type="danger" @click="handleDelete">删除</el-button>
         </div>
       </template>
 
@@ -61,7 +62,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
@@ -118,6 +119,20 @@ async function loadProjects() {
 
 function editContact() {
   router.push({ path: '/contacts', query: { editId: contact.id } })
+}
+
+async function handleDelete() {
+  if (!contactId.value) return
+  try {
+    await ElMessageBox.confirm('确定删除该联系人吗？删除后不可恢复。', '确认删除', { type: 'warning' })
+    await authStore.api(`/api/contacts/${contactId.value}`, { method: 'DELETE' })
+    ElMessage.success('联系人已删除')
+    router.push('/contacts')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
 }
 
 function handleBack() {
@@ -177,6 +192,12 @@ function formatDateTime(value?: string | null): string {
 }
 
 .header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions {
   display: flex;
   align-items: center;
   gap: 8px;

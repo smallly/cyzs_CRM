@@ -7,6 +7,10 @@
             <el-button class="back-icon-btn" link :icon="ArrowLeft" @click="handleBack" />
             <div class="header-title">{{ payment.code || payment.id || '-' }}</div>
           </div>
+          <div class="header-actions">
+            <el-button @click="handleEdit">编辑</el-button>
+            <el-button type="danger" @click="handleDelete">删除</el-button>
+          </div>
         </div>
       </template>
 
@@ -93,7 +97,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 import { downloadStoredAttachment, getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList } from '../../utils/attachment'
@@ -253,6 +257,25 @@ function goProject() {
   router.push(`/projects/${projectId.value}`)
 }
 
+function handleEdit() {
+  if (!paymentId.value) return
+  router.push({ path: '/payments/create', query: { id: paymentId.value } })
+}
+
+async function handleDelete() {
+  if (!paymentId.value) return
+  try {
+    await ElMessageBox.confirm('确定删除该回款记录吗？删除后不可恢复。', '确认删除', { type: 'warning' })
+    await authStore.api(`/api/payments/${paymentId.value}`, { method: 'DELETE' })
+    ElMessage.success('回款记录已删除')
+    router.push('/payments')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
+}
+
 function handleBack() {
   if (window.history.length > 1) {
     router.back()
@@ -291,6 +314,12 @@ function handleBack() {
 
 .card-header {
   justify-content: space-between;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .header-title {
