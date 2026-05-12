@@ -148,7 +148,11 @@
                   {{ row.decisionMaker ? '是' : '否' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="gender" label="性别" width="90" />
+              <el-table-column label="性别" width="90">
+                <template #default="{ row }">
+                  {{ formatGender(row.gender) }}
+                </template>
+              </el-table-column>
               <el-table-column prop="officePhone" label="办公电话" width="140" />
               <el-table-column prop="wechat" label="微信号" width="150" />
             </el-table>
@@ -911,6 +915,10 @@ const invoiceStatusLabelMap: Record<string, string> = {
   ISSUED: '已开票',
   NOT_REQUIRED: '无需开票'
 }
+const genderLabelMap: Record<string, string> = {
+  MALE: '男',
+  FEMALE: '女'
+}
 const followupMethodOptions = ['电话', '微信', '面谈', '邮件', '其他']
 
 const stageForm = reactive({
@@ -1515,6 +1523,11 @@ function formatDateTime(value?: string | null): string {
   } catch {
     return value
   }
+}
+
+function formatGender(value?: string | null): string {
+  if (!value) return '-'
+  return genderLabelMap[value] || value
 }
 
 function openStageUpdateDialog() {
@@ -2233,7 +2246,7 @@ async function submitNewPayment() {
 
 .detail-data-table :deep(.el-table__cell) {
   padding: 10px 12px !important;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -2248,7 +2261,7 @@ async function submitNewPayment() {
 }
 
 .detail-data-table :deep(.el-button.is-link) {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
