@@ -25,9 +25,9 @@
           <el-descriptions-item label="合同编号">{{ contract.contractNo || '-' }}</el-descriptions-item>
           <el-descriptions-item label="合同金额(元)">{{ formatAmount(contract.amount) }}</el-descriptions-item>
           <el-descriptions-item label="预计佣金(元)">{{ formatAmount(contract.estimatedCommission) }}</el-descriptions-item>
-          <el-descriptions-item label="签约日期">{{ formatDate(contract.signDate) }}</el-descriptions-item>
           <el-descriptions-item label="租赁开始日期">{{ formatDate(contract.leaseStartDate) }}</el-descriptions-item>
           <el-descriptions-item label="租赁结束日期">{{ formatDate(contract.leaseEndDate) }}</el-descriptions-item>
+          <el-descriptions-item label="签约日期">{{ formatDate(contract.signDate) }}</el-descriptions-item>
           <el-descriptions-item label="租赁期限(月)">{{ contract.leaseTermMonths ?? '-' }}</el-descriptions-item>
           <el-descriptions-item label="付款方式" :span="2">{{ contract.paymentTerms || '-' }}</el-descriptions-item>
           <el-descriptions-item label="附件" :span="2">
