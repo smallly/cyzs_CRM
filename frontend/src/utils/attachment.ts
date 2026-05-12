@@ -98,6 +98,17 @@ export async function openInNewTab(url: string): Promise<void> {
   }, 0)
 }
 
+export function downloadStoredAttachment(item: { name: string; data: string }): void {
+  if (!item.data) return
+  const a = document.createElement('a')
+  a.href = item.data
+  a.download = item.name
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  setTimeout(() => document.body.removeChild(a), 0)
+}
+
 export function openStoredAttachment(raw?: string | null): boolean {
   const parsed = parseStoredAttachment(raw)
   if (!parsed?.data) return false

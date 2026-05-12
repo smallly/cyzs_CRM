@@ -93,7 +93,7 @@ import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
-import { getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList } from '../../utils/attachment'
+import { downloadStoredAttachment, getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList } from '../../utils/attachment'
 
 const route = useRoute()
 const router = useRouter()
@@ -227,8 +227,12 @@ function handleVoucherPreview(item: { name: string; data: string }) {
   const raw = JSON.stringify(item)
   const kind = getStoredAttachmentKind(raw)
   const src = getStoredAttachmentData(raw)
-  if (!src || kind === 'other') {
+  if (!src) {
     ElMessage.info(`当前凭证仅能查看名称：${item.name}`)
+    return
+  }
+  if (kind === 'other') {
+    downloadStoredAttachment(item)
     return
   }
   voucherPreviewKind.value = kind
