@@ -199,6 +199,10 @@ function handleAttachmentPreview(item: { name: string; data: string }) {
     ElMessage.info(`当前附件仅能查看名称：${item.name}`)
     return
   }
+  if (kind === 'pdf') {
+    window.open(src, '_blank', 'noopener,noreferrer')
+    return
+  }
   attachmentPreviewKind.value = kind
   attachmentPreviewSrc.value = src
   attachmentPreviewVisible.value = true

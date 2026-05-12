@@ -1284,12 +1284,15 @@ async function resolveAttachmentPreviewSrc(file: FollowupAttachmentEntry): Promi
 async function openAttachmentPreview(file: FollowupAttachmentEntry) {
   const src = file.previewSrc || file.href
   if (!src) return
+  if (isPdfAttachment(file.name, file.href, file.previewSrc)) {
+    window.open(src, '_blank', 'noopener,noreferrer')
+    return
+  }
   revokeAttachmentPreviewObjectUrl()
   const previewSrc = await resolveAttachmentPreviewSrc(file)
-  attachmentPreviewSrc.value = src
-  attachmentPreviewName.value = file.name
-  attachmentPreviewKind.value = isPdfAttachment(file.name, file.href, file.previewSrc) ? 'pdf' : 'image'
   attachmentPreviewSrc.value = previewSrc || src
+  attachmentPreviewName.value = file.name
+  attachmentPreviewKind.value = 'image'
   attachmentPreviewVisible.value = true
 }
 

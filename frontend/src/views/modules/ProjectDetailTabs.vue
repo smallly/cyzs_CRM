@@ -316,11 +316,17 @@ async function resolveAttachmentPreviewSrc(row: any): Promise<string> {
 
 async function openFollowupAttachmentPreview(row: any) {
   revokeAttachmentPreviewObjectUrl();
+  const rawSrc = getFollowupAttachmentPreviewSrc(row) || getFollowupAttachmentHref(row);
+  if (!rawSrc) return;
+  if (isPdfAttachment(getFollowupAttachmentName(row), getFollowupAttachmentHref(row), getFollowupAttachmentPreviewSrc(row))) {
+    window.open(rawSrc, '_blank', 'noopener,noreferrer');
+    return;
+  }
   const src = await resolveAttachmentPreviewSrc(row);
   if (!src) return;
   attachmentPreviewSrc.value = src;
   attachmentPreviewName.value = getFollowupAttachmentName(row);
-  attachmentPreviewKind.value = isPdfAttachment(getFollowupAttachmentName(row), getFollowupAttachmentHref(row), getFollowupAttachmentPreviewSrc(row)) ? 'pdf' : 'image';
+  attachmentPreviewKind.value = 'image';
   attachmentPreviewVisible.value = true;
 }
 
