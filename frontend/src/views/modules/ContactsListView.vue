@@ -136,10 +136,9 @@ const columns: TableColumn[] = [
   { prop: 'email', label: '邮箱', width: 200 },
   { prop: 'ownerId', label: '负责人', width: 120, slot: 'ownerId' },
   { prop: 'deleted', label: '状态', width: 100, slot: 'deleted' },
-  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' },
-  { prop: 'id', label: 'ID', width: 220 },
   { prop: 'creatorId', label: '创建人', width: 120, slot: 'creatorId' },
-  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' }
+  { prop: 'createdAt', label: '创建时间', width: 180, slot: 'createdAt' },
+  { prop: 'updatedAt', label: '最后编辑时间', width: 180, slot: 'updatedAt' }
 ]
 
 const formFields: FormField[] = [
