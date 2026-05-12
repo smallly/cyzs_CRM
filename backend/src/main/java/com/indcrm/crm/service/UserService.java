@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class UserService {
@@ -99,7 +99,7 @@ public class UserService {
 
         LocalDateTime now = LocalDateTime.now();
         User user = new User();
-        user.id = UUID.randomUUID().toString();
+        user.id = IdGenerator.nextId();
         user.tenantId = actor.tenantId;
         user.phone = phone.trim();
         user.password = passwordEncoder.encode(password);
@@ -233,7 +233,7 @@ public class UserService {
         );
         if (auth == null) {
             auth = new UserAuthentication();
-            auth.id = UUID.randomUUID().toString();
+            auth.id = IdGenerator.nextId();
             auth.userId = user.id;
             auth.authType = AuthenticationType.PHONE;
             auth.createdAt = user.createdAt != null ? user.createdAt : LocalDateTime.now();
@@ -258,7 +258,7 @@ public class UserService {
         );
         if (tenantUser == null) {
             tenantUser = new TenantUser();
-            tenantUser.id = UUID.randomUUID().toString();
+            tenantUser.id = IdGenerator.nextId();
             tenantUser.tenantId = user.tenantId;
             tenantUser.userId = user.id;
             tenantUser.createdAt = user.createdAt != null ? user.createdAt : LocalDateTime.now();
@@ -310,7 +310,7 @@ public class UserService {
         );
         if (membership == null) {
             membership = new OrganizationMembership();
-            membership.id = UUID.randomUUID().toString();
+            membership.id = IdGenerator.nextId();
             membership.tenantUserId = tenantUser.id;
             membership.primary = true;
             membership.createdAt = LocalDateTime.now();

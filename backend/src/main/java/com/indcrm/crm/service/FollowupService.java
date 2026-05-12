@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class FollowupService {
@@ -69,7 +69,7 @@ public class FollowupService {
         }
 
         Followup followup = new Followup();
-        followup.id = UUID.randomUUID().toString();
+        followup.id = IdGenerator.nextId();
         followup.tenantId = actor.tenantId;
         followup.code = codeService.next(actor.tenantId);
         followup.projectId = projectId;

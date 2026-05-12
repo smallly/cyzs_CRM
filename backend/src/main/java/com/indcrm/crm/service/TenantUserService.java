@@ -8,6 +8,7 @@ import com.indcrm.crm.mapper.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.indcrm.crm.common.IdGenerator;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -63,7 +64,7 @@ public class TenantUserService {
 
         LocalDateTime now = LocalDateTime.now();
         TenantUser tenantUser = new TenantUser();
-        tenantUser.id = UUID.randomUUID().toString();
+        tenantUser.id = IdGenerator.nextId();
         tenantUser.tenantId = actor.tenantId;
         tenantUser.userId = null;
         tenantUser.pendingPhone = normalizedPhone;
@@ -78,7 +79,7 @@ public class TenantUserService {
         tenantUserMapper.insert(tenantUser);
 
         OrganizationMembership membership = new OrganizationMembership();
-        membership.id = UUID.randomUUID().toString();
+        membership.id = IdGenerator.nextId();
         membership.tenantUserId = tenantUser.id;
         membership.departmentId = department.id;
         membership.position = normalizeBlank(position);

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Component
 @DependsOn("stateStorePersistenceService")
@@ -239,7 +239,7 @@ public class BootstrapService {
             return;
         }
         VendorAdmin vendorAdmin = new VendorAdmin();
-        vendorAdmin.id = UUID.randomUUID().toString();
+        vendorAdmin.id = IdGenerator.nextId();
         vendorAdmin.phone = DEFAULT_VENDOR_ADMIN_PHONE;
         vendorAdmin.password = DEFAULT_VENDOR_ADMIN_PASSWORD;
         vendorAdmin.name = DEFAULT_VENDOR_ADMIN_NAME;
@@ -263,7 +263,7 @@ public class BootstrapService {
             return;
         }
         VendorAdminAuthentication auth = new VendorAdminAuthentication();
-        auth.id = UUID.randomUUID().toString();
+        auth.id = IdGenerator.nextId();
         auth.adminId = admin.id;
         auth.authType = AuthenticationType.PHONE;
         auth.authIdentifier = admin.phone;
@@ -306,7 +306,7 @@ public class BootstrapService {
     private void seedData() {
         // 创建 SaaS 平台管理员 (13800000000 / Admin@123)
         User saasAdmin = new User();
-        saasAdmin.id = UUID.randomUUID().toString();
+        saasAdmin.id = IdGenerator.nextId();
         saasAdmin.tenantId = "tenant-a";
         saasAdmin.phone = DEFAULT_SAAS_ADMIN_PHONE;
         saasAdmin.password = passwordEncoder.encode(DEFAULT_SAAS_ADMIN_PASSWORD);
@@ -321,7 +321,7 @@ public class BootstrapService {
         ensureTenantExists(saasAdmin.tenantId, "默认租户", saasAdmin.id, saasAdmin.phone, saasAdmin.createdAt);
 
         Department rootDept = new Department();
-        rootDept.id = UUID.randomUUID().toString();
+        rootDept.id = IdGenerator.nextId();
         rootDept.tenantId = saasAdmin.tenantId;
         rootDept.name = "总部";
         rootDept.status = DepartmentStatus.ENABLED;
@@ -337,7 +337,7 @@ public class BootstrapService {
 
         // 创建销售用户
         User sales = new User();
-        sales.id = UUID.randomUUID().toString();
+        sales.id = IdGenerator.nextId();
         sales.tenantId = "tenant-a";
         sales.phone = DEFAULT_SALES_PHONE;
         sales.password = passwordEncoder.encode("Sales@123");
@@ -399,7 +399,7 @@ public class BootstrapService {
             );
             if (exists == 0) {
                 TenantUser tu = new TenantUser();
-                tu.id = UUID.randomUUID().toString();
+                tu.id = IdGenerator.nextId();
                 tu.tenantId = tenantId;
                 tu.userId = admin.id;
                 tu.name = admin.name;
@@ -499,7 +499,7 @@ public class BootstrapService {
             return root.id;
         }
         Department dept = new Department();
-        dept.id = UUID.randomUUID().toString();
+        dept.id = IdGenerator.nextId();
         dept.tenantId = tenantId;
         dept.name = "默认部门";
         dept.parentId = null;
@@ -552,7 +552,7 @@ public class BootstrapService {
             return;
         }
         UserAuthentication auth = new UserAuthentication();
-        auth.id = UUID.randomUUID().toString();
+        auth.id = IdGenerator.nextId();
         auth.userId = user.id;
         auth.authType = AuthenticationType.PHONE;
         auth.authIdentifier = user.phone;
@@ -577,7 +577,7 @@ public class BootstrapService {
             return;
         }
         TenantUser tenantUser = new TenantUser();
-        tenantUser.id = UUID.randomUUID().toString();
+        tenantUser.id = IdGenerator.nextId();
         tenantUser.tenantId = user.tenantId;
         tenantUser.userId = user.id;
         tenantUser.pendingPhone = null;
@@ -593,7 +593,7 @@ public class BootstrapService {
 
         if (departmentId != null) {
             OrganizationMembership membership = new OrganizationMembership();
-            membership.id = UUID.randomUUID().toString();
+            membership.id = IdGenerator.nextId();
             membership.tenantUserId = tenantUser.id;
             membership.departmentId = departmentId;
             membership.position = null;

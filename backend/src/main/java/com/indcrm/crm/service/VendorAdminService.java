@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class VendorAdminService {
@@ -64,7 +64,7 @@ public class VendorAdminService {
 
         LocalDateTime now = LocalDateTime.now();
         VendorAdmin admin = new VendorAdmin();
-        admin.id = UUID.randomUUID().toString();
+        admin.id = IdGenerator.nextId();
         admin.phone = normalizedPhone;
         admin.password = passwordEncoder.encode(password);
         admin.name = name.trim();
@@ -130,7 +130,7 @@ public class VendorAdminService {
             return;
         }
         VendorAdminAuthentication auth = new VendorAdminAuthentication();
-        auth.id = UUID.randomUUID().toString();
+        auth.id = IdGenerator.nextId();
         auth.adminId = admin.id;
         auth.authType = AuthenticationType.PHONE;
         auth.authIdentifier = admin.phone;

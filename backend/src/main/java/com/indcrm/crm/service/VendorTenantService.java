@@ -23,7 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class VendorTenantService {
@@ -131,7 +131,7 @@ public class VendorTenantService {
 
             admin = new User();
             vendorAdmin = null;
-            admin.id = UUID.randomUUID().toString();
+            admin.id = IdGenerator.nextId();
             admin.tenantId = tenantId;
             admin.phone = normalizedPhone;
             admin.password = passwordEncoder.encode(normalizedPassword);
@@ -145,7 +145,7 @@ public class VendorTenantService {
         }
 
         Department rootDept = new Department();
-        rootDept.id = UUID.randomUUID().toString();
+        rootDept.id = IdGenerator.nextId();
         rootDept.tenantId = tenantId;
         rootDept.name = "总部";
         rootDept.parentId = null;
@@ -173,7 +173,7 @@ public class VendorTenantService {
         tenantMapper.insert(tenant);
 
         TenantOrder order = new TenantOrder();
-        order.id = UUID.randomUUID().toString();
+        order.id = IdGenerator.nextId();
         order.tenantId = tenantId;
         order.startTime = startDate;
         order.expireTime = expireDate;
@@ -298,7 +298,7 @@ public class VendorTenantService {
         tenantMapper.updateById(tenant);
 
         TenantOrder order = new TenantOrder();
-        order.id = UUID.randomUUID().toString();
+        order.id = IdGenerator.nextId();
         order.tenantId = tenantId;
         order.startTime = base.toLocalDate();
         order.expireTime = tenant.expireAt != null ? tenant.expireAt.toLocalDate() : null;

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class ProjectService {
@@ -120,7 +120,7 @@ public class ProjectService {
         }
 
         Project p = new Project();
-        p.id = UUID.randomUUID().toString();
+        p.id = IdGenerator.nextId();
         p.tenantId = actor.tenantId;
         p.code = codeService.next(actor.tenantId);
         p.name = normalizedName;

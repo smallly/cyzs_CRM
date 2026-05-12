@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class AuditService {
@@ -31,7 +31,7 @@ public class AuditService {
 
     public void log(User actor, String action, String objectType, String objectId, String detail) {
         AuditLog log = new AuditLog();
-        log.id = UUID.randomUUID().toString();
+        log.id = IdGenerator.nextId();
         log.tenantId = actor.tenantId;
         log.actorId = actor.id;
         log.action = action;

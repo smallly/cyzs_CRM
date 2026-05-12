@@ -10,6 +10,7 @@ import com.indcrm.crm.mapper.TenantUserMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.indcrm.crm.common.IdGenerator;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -61,7 +62,7 @@ public class MembershipService {
 
         LocalDateTime now = LocalDateTime.now();
         OrganizationMembership membership = new OrganizationMembership();
-        membership.id = UUID.randomUUID().toString();
+        membership.id = IdGenerator.nextId();
         membership.tenantUserId = tenantUser.id;
         membership.departmentId = department.id;
         membership.position = normalizeBlank(position);

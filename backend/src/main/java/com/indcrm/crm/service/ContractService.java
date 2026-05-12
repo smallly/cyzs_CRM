@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class ContractService {
@@ -61,7 +61,7 @@ public class ContractService {
             throw new BizException(ErrorCode.BIZ_409, "合同编号重复");
         }
         Contract c = new Contract();
-        c.id = UUID.randomUUID().toString();
+        c.id = IdGenerator.nextId();
         c.tenantId = actor.tenantId;
         c.projectId = projectId;
         c.ownerId = actor.id;

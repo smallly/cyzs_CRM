@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 import java.util.stream.Collectors;
 
 @Service
@@ -53,7 +53,7 @@ public class ContactService {
         List<String> normalizedProjectIds = normalizeProjectIds(projectIds);
         validateProjectLinks(actor, normalizedProjectIds);
         Contact c = new Contact();
-        c.id = UUID.randomUUID().toString();
+        c.id = IdGenerator.nextId();
         c.tenantId = actor.tenantId;
         c.name = name;
         c.enterpriseName = enterpriseName;

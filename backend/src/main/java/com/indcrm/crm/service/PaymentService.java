@@ -14,7 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class PaymentService {
@@ -53,7 +53,7 @@ public class PaymentService {
             throw new BizException(ErrorCode.AUTH_403, "无回款登记权限");
         }
         Payment p = new Payment();
-        p.id = UUID.randomUUID().toString();
+        p.id = IdGenerator.nextId();
         p.tenantId = actor.tenantId;
         p.contractId = contractId;
         p.ownerId = actor.id;

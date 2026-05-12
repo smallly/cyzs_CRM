@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import com.indcrm.crm.common.IdGenerator;
 
 @Service
 public class DepartmentService {
@@ -67,7 +67,7 @@ public class DepartmentService {
         String resolvedHeadUserId = normalizeHeadUser(actor, headUserId);
 
         Department dept = new Department();
-        dept.id = UUID.randomUUID().toString();
+        dept.id = IdGenerator.nextId();
         dept.tenantId = actor.tenantId;
         dept.name = trimmedName;
         dept.parentId = parent.id;
