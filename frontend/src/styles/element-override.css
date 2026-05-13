@@ -491,15 +491,6 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   padding: 10px 14px;
 }
 
-/* Dialog关闭按钮悬停不改底色 */
-.el-dialog__headerbtn:hover .el-dialog__close {
-  color: #2f5cf6;
-}
-
-.el-dialog__headerbtn:focus .el-dialog__close {
-  color: #2f5cf6;
-}
-
 /* Pagination分页样式 */
 .el-pagination.is-background .el-pager li:not(.is-disabled).is-active {
   background: transparent;
