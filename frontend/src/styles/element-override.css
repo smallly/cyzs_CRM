@@ -678,6 +678,12 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   justify-content: center;
 }
 
+.el-dialog__headerbtn:hover,
+.el-dialog__headerbtn:focus-visible {
+  background: transparent !important;
+  color: #94a3b8 !important;
+}
+
 .el-date-editor .el-input__wrapper {
   display: flex;
   align-items: center;
