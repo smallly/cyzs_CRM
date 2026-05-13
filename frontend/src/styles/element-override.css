@@ -484,12 +484,18 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   border-radius: 12px;
 }
 
-.el-dialog__header {
+.el-dialog .el-dialog__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid #e2e8f0;
-  padding: 10px 14px;
+  padding: 10px;
+}
+
+.el-dialog .el-dialog__title {
+  margin: 0;
+  padding: 0;
+  line-height: 1.4;
 }
 
 /* Pagination分页样式 */
