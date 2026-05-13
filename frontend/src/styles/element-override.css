@@ -651,8 +651,6 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   padding: 0;
 }
 
-.el-dialog__headerbtn:hover,
-.el-dialog__headerbtn:focus-visible,
 .el-drawer__close-btn:hover,
 .el-drawer__close-btn:focus-visible,
 .el-message-box__headerbtn:hover,
@@ -670,7 +668,9 @@ body .el-select__tags .el-tag .el-tag__close:hover {
 }
 
 .el-dialog__headerbtn:hover,
-.el-dialog__headerbtn:focus-visible {
+.el-dialog__headerbtn:focus-visible,
+.el-dialog__headerbtn:hover .el-dialog__close,
+.el-dialog__headerbtn:focus-visible .el-dialog__close {
   background: transparent !important;
   color: #94a3b8 !important;
 }
