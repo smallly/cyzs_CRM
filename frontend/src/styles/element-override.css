@@ -484,6 +484,9 @@ body .el-select__tags .el-tag .el-tag__close:hover {
 }
 
 .el-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   border-bottom: 1px solid #e2e8f0;
   padding: 14px;
 }
@@ -666,6 +669,13 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   background: #eef2f8 !important;
   color: #475569 !important;
   outline: none;
+}
+
+.el-dialog__headerbtn {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .el-date-editor .el-input__wrapper {
