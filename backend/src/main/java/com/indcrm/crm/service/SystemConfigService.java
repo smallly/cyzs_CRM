@@ -76,8 +76,8 @@ public class SystemConfigService {
     @Transactional(rollbackFor = Exception.class)
     public void setDictOptions(String tenantId, List<String> projectLevels, List<String> projectSources) {
         ProjectDictConfig existing = projectDictConfigMapper.selectById(tenantId);
-        List<String> previousLevels = existing == null ? null : existing.projectLevels;
-        List<String> previousSources = existing == null ? null : existing.projectSources;
+        List<String> previousLevels = existing == null ? new ArrayList<>(DEFAULT_PROJECT_LEVELS) : existing.projectLevels;
+        List<String> previousSources = existing == null ? new ArrayList<>(DEFAULT_PROJECT_SOURCES) : existing.projectSources;
         List<String> levels = normalizeOptions(projectLevels, DEFAULT_PROJECT_LEVELS, "projectLevels");
         List<String> sources = normalizeOptions(projectSources, DEFAULT_PROJECT_SOURCES, "projectSources");
         ProjectDictConfig config = new ProjectDictConfig();
