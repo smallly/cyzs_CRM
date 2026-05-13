@@ -51,57 +51,51 @@
             </div>
           </div>
 
-          <el-divider />
-
-          <!-- 权限矩阵 -->
-          <div class="perm-section">
-            <div class="perm-section-title">菜单访问权限</div>
-
-            <div class="perm-group" v-for="group in menuGroups" :key="group.name">
-              <div class="perm-group-title">{{ group.name }}</div>
-              <div class="perm-table">
-                <div class="perm-table-header">
-                  <div class="perm-col perm-col-module">模块</div>
-                  <div class="perm-col perm-col-access">访问权限</div>
-                  <div class="perm-col perm-col-function">功能权限</div>
-                </div>
-                <div
-                  v-for="menu in group.menus"
-                  :key="menu.key"
-                  class="perm-table-row"
-                >
-                  <div class="perm-col perm-col-module">{{ menu.label }}</div>
-                  <div class="perm-col perm-col-access">
-                    <el-checkbox :model-value="hasMenu(menu.key)" disabled>
-                      {{ menu.label }}
-                    </el-checkbox>
+          <!-- Tab 切换 -->
+          <el-tabs v-model="activeTab" class="role-tabs">
+            <el-tab-pane label="菜单访问权限" name="menu">
+              <div class="perm-group" v-for="group in menuGroups" :key="group.name">
+                <div class="perm-group-title">{{ group.name }}</div>
+                <div class="perm-table">
+                  <div class="perm-table-header">
+                    <div class="perm-col perm-col-module">模块</div>
+                    <div class="perm-col perm-col-access">访问权限</div>
+                    <div class="perm-col perm-col-function">功能权限</div>
                   </div>
-                  <div class="perm-col perm-col-function">
-                    <el-checkbox :model-value="hasMenu(menu.key)" disabled>
-                      查看
-                    </el-checkbox>
+                  <div
+                    v-for="menu in group.menus"
+                    :key="menu.key"
+                    class="perm-table-row"
+                  >
+                    <div class="perm-col perm-col-module">{{ menu.label }}</div>
+                    <div class="perm-col perm-col-access">
+                      <el-checkbox :model-value="hasMenu(menu.key)" disabled>
+                        {{ menu.label }}
+                      </el-checkbox>
+                    </div>
+                    <div class="perm-col perm-col-function">
+                      <el-checkbox :model-value="hasMenu(menu.key)" disabled>
+                        查看
+                      </el-checkbox>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </el-tab-pane>
 
-          <el-divider />
-
-          <!-- 数据权限 -->
-          <div class="perm-section">
-            <div class="perm-section-title">数据权限范围</div>
-            <div class="scope-options">
-              <el-checkbox
-                v-for="scope in scopeModeOptions"
-                :key="scope.value"
-                :model-value="selectedRole.dataScopeOptions?.includes(scope.value)"
-                disabled
-              >
-                {{ scope.label }}
-              </el-checkbox>
-            </div>
-          </div>
+            <el-tab-pane label="数据权限范围" name="data">
+              <div class="scope-options">
+                <el-checkbox
+                  v-for="scope in scopeModeOptions"
+                  :key="scope.value"
+                  :model-value="selectedRole.dataScopeOptions?.includes(scope.value)"
+                  disabled
+                >
+                  {{ scope.label }}
+                </el-checkbox>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </el-card>
       </template>
     </main>
@@ -128,6 +122,7 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const roles = ref<RoleItem[]>([])
 const selectedRole = ref<RoleItem | null>(null)
+const activeTab = ref('menu')
 
 const menuGroups = [
   {
@@ -344,14 +339,11 @@ function getScopeLabel(scope?: string): string {
 }
 
 /* 权限区域 */
-.perm-section {
-  margin-bottom: 8px;
+.role-tabs {
+  margin-top: 8px;
 }
 
-.perm-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
+.role-tabs :deep(.el-tabs__header) {
   margin-bottom: 16px;
 }
 
