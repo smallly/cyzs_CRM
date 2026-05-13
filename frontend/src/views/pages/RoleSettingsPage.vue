@@ -1,54 +1,167 @@
-﻿<template>
-  <el-card>
-    <template #header>
-      <div class="card-header">
-        <span>角色管理（默认角色）</span>
+<template>
+  <div class="role-settings-page">
+    <aside class="role-sidebar">
+      <div class="role-sidebar-header">
+        <span class="role-sidebar-title">默认角色</span>
       </div>
-    </template>
+      <div class="role-list">
+        <div
+          v-for="role in roles"
+          :key="role.code"
+          class="role-item"
+          :class="{ active: selectedRole?.code === role.code }"
+          @click="selectRole(role)"
+        >
+          <div class="role-item-name">{{ role.name }}</div>
+          <div class="role-item-meta">{{ role.code }}</div>
+        </div>
+      </div>
+    </aside>
 
-    <el-table :data="roles" v-loading="loading" border stripe>
-      <el-table-column prop="code" label="角色编码" width="160" />
-      <el-table-column prop="name" label="角色名称" width="150" />
-      <el-table-column label="业务角色" width="140">
-        <template #default="{ row }">{{ row.bizRole }}</template>
-      </el-table-column>
-      <el-table-column label="系统管理员" width="120">
-        <template #default="{ row }">
-          <el-tag :type="row.systemAdmin ? 'success' : 'info'">{{ row.systemAdmin ? '是' : '否' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="默认数据范围" width="170">
-        <template #default="{ row }">{{ getScopeLabel(row.defaultDataScope) }}</template>
-      </el-table-column>
-      <el-table-column prop="description" label="说明" min-width="260" />
-    </el-table>
-    <div class="pagination-wrap">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :background="false"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-      />
-    </div>
-  </el-card>
+    <main class="role-main" v-loading="loading">
+      <template v-if="selectedRole">
+        <el-card class="role-detail-card">
+          <template #header>
+            <div class="detail-header">
+              <span class="detail-title">{{ selectedRole.name }}</span>
+              <el-tag v-if="selectedRole.systemAdmin" type="success">系统管理员</el-tag>
+              <el-tag v-else type="info">普通角色</el-tag>
+            </div>
+          </template>
+
+          <!-- 基本信息 -->
+          <div class="info-section">
+            <div class="info-grid">
+              <div class="info-cell">
+                <span class="info-label">角色编码</span>
+                <span class="info-value">{{ selectedRole.code }}</span>
+              </div>
+              <div class="info-cell">
+                <span class="info-label">业务角色</span>
+                <span class="info-value">{{ getBizRoleLabel(selectedRole.bizRole) }}</span>
+              </div>
+              <div class="info-cell">
+                <span class="info-label">默认数据范围</span>
+                <span class="info-value">{{ getScopeLabel(selectedRole.defaultDataScope) }}</span>
+              </div>
+              <div class="info-cell wide">
+                <span class="info-label">说明</span>
+                <span class="info-value">{{ selectedRole.description || '-' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <!-- 权限矩阵 -->
+          <div class="perm-section">
+            <div class="perm-section-title">菜单访问权限</div>
+
+            <div class="perm-group" v-for="group in menuGroups" :key="group.name">
+              <div class="perm-group-title">{{ group.name }}</div>
+              <div class="perm-table">
+                <div class="perm-table-header">
+                  <div class="perm-col perm-col-module">模块</div>
+                  <div class="perm-col perm-col-access">访问权限</div>
+                  <div class="perm-col perm-col-function">功能权限</div>
+                </div>
+                <div
+                  v-for="menu in group.menus"
+                  :key="menu.key"
+                  class="perm-table-row"
+                >
+                  <div class="perm-col perm-col-module">{{ menu.label }}</div>
+                  <div class="perm-col perm-col-access">
+                    <el-checkbox :model-value="hasMenu(menu.key)" disabled>
+                      {{ menu.label }}
+                    </el-checkbox>
+                  </div>
+                  <div class="perm-col perm-col-function">
+                    <el-checkbox :model-value="hasMenu(menu.key)" disabled>
+                      查看
+                    </el-checkbox>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <!-- 数据权限 -->
+          <div class="perm-section">
+            <div class="perm-section-title">数据权限范围</div>
+            <div class="scope-options">
+              <el-checkbox
+                v-for="scope in scopeModeOptions"
+                :key="scope.value"
+                :model-value="selectedRole.dataScopeOptions?.includes(scope.value)"
+                disabled
+              >
+                {{ scope.label }}
+              </el-checkbox>
+            </div>
+          </div>
+        </el-card>
+      </template>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
-import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+
+interface RoleItem {
+  code: string
+  name: string
+  bizRole: 'SALES' | 'PROJECT_ADMIN'
+  systemAdmin: boolean
+  description?: string
+  menuPermissions?: string[]
+  dataScopeOptions?: string[]
+  defaultDataScope?: string
+}
 
 const authStore = useAuthStore()
 const loading = ref(false)
-const roles = ref<any[]>([])
-const page = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
+const roles = ref<RoleItem[]>([])
+const selectedRole = ref<RoleItem | null>(null)
+
+const menuGroups = [
+  {
+    name: '业务模块',
+    menus: [
+      { key: 'workbench', label: '工作台' },
+      { key: 'contacts', label: '联系人' },
+      { key: 'projects', label: '项目' },
+      { key: 'followups', label: '跟进记录' },
+      { key: 'contracts', label: '合同' },
+      { key: 'payments', label: '回款' },
+    ]
+  },
+  {
+    name: '系统模块',
+    menus: [
+      { key: 'users', label: '成员管理' },
+      { key: 'departments', label: '部门管理' },
+      { key: 'roles', label: '角色管理' },
+      { key: 'scope', label: '数据范围' },
+      { key: 'dicts', label: '数据字典' },
+      { key: 'audit', label: '审计日志' },
+      { key: 'events', label: '实时事件' },
+    ]
+  }
+]
+
+const scopeModeOptions = [
+  { value: 'ALL', label: '全部数据' },
+  { value: 'SELF', label: '仅本人' },
+  { value: 'SELF_AND_SUBORDINATES', label: '本人及下属' },
+  { value: 'DEPT', label: '本部门' },
+  { value: 'DEPT_AND_SUBTREE', label: '本部门及以下' }
+]
 
 onMounted(async () => {
   await loadRoles()
@@ -57,11 +170,11 @@ onMounted(async () => {
 async function loadRoles() {
   loading.value = true
   try {
-    const query = buildPageQuery(page.value, pageSize.value)
-    const res = await authStore.api<PageResult<any> | any[]>(`/api/roles?${query}`)
-    const pageData = normalizePageResult<any>(res)
-    roles.value = pageData.records
-    total.value = pageData.total
+    const res = await authStore.api<RoleItem[]>('/api/roles')
+    roles.value = Array.isArray(res) ? res : []
+    if (roles.value.length > 0 && !selectedRole.value) {
+      selectedRole.value = roles.value[0]
+    }
   } catch (error: any) {
     ElMessage.error(error.message || '加载角色失败')
   } finally {
@@ -69,15 +182,20 @@ async function loadRoles() {
   }
 }
 
-function handlePageChange(nextPage: number) {
-  page.value = nextPage
-  void loadRoles()
+function selectRole(role: RoleItem) {
+  selectedRole.value = role
 }
 
-function handleSizeChange(nextSize: number) {
-  pageSize.value = nextSize
-  page.value = 1
-  void loadRoles()
+function hasMenu(key: string): boolean {
+  return selectedRole.value?.menuPermissions?.includes(key) ?? false
+}
+
+function getBizRoleLabel(bizRole?: string): string {
+  const map: Record<string, string> = {
+    SALES: '招商人员',
+    PROJECT_ADMIN: '项目管理员'
+  }
+  return map[bizRole || ''] || bizRole || '-'
 }
 
 function getScopeLabel(scope?: string): string {
@@ -93,15 +211,207 @@ function getScopeLabel(scope?: string): string {
 </script>
 
 <style scoped>
-.card-header {
+.role-settings-page {
   display: flex;
-  justify-content: space-between;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 左侧角色列表 */
+.role-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.role-sidebar-header {
+  padding: 16px 16px 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.role-sidebar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.role-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.role-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.role-item:hover {
+  background: #f8fafc;
+}
+
+.role-item.active {
+  background: #eff4ff;
+  border-left-color: #2f5cf6;
+}
+
+.role-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.role-item.active .role-item-name {
+  color: #2f5cf6;
+}
+
+.role-item-meta {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* 右侧详情 */
+.role-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.role-detail-card :deep(.el-card__header) {
+  padding: 14px 20px;
+}
+
+.role-detail-card :deep(.el-card__body) {
+  padding: 20px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* 基本信息 */
+.info-section {
+  margin-bottom: 8px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 24px;
+}
+
+.info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-cell.wide {
+  grid-column: 1 / -1;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #1e293b;
+  word-break: break-all;
+}
+
+/* 权限区域 */
+.perm-section {
+  margin-bottom: 8px;
+}
+
+.perm-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 16px;
+}
+
+.perm-group {
+  margin-bottom: 20px;
+}
+
+.perm-group:last-child {
+  margin-bottom: 0;
+}
+
+.perm-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 10px;
+  padding-left: 8px;
+  border-left: 3px solid #2f5cf6;
+}
+
+.perm-table {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.perm-table-header {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr;
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.perm-table-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr;
+  border-top: 1px solid #f1f5f9;
+  font-size: 13px;
+  color: #334155;
   align-items: center;
 }
 
-.pagination-wrap {
-  margin-top: 16px;
+.perm-col {
+  padding: 10px 16px;
+}
+
+.perm-col-module {
+  font-weight: 500;
+}
+
+/* 数据权限 */
+.scope-options {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+}
+
+.scope-options :deep(.el-checkbox__label) {
+  font-size: 13px;
 }
 </style>
