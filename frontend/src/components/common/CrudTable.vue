@@ -243,6 +243,10 @@ function getTagLabel(value: any, tagMap?: Record<string, { type: string; label: 
   font-size: 14px;
 }
 
+:deep(.el-table table) {
+  font-size: inherit;
+}
+
 :deep(.el-table__cell) {
   padding: 8px 12px !important;
 }
