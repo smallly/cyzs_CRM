@@ -8,7 +8,6 @@
     </template>
 
     <el-table :data="departmentRows" v-loading="loading" border stripe>
-      <el-table-column prop="id" label="ID" min-width="260" />
       <el-table-column prop="name" label="部门名称" min-width="160" />
       <el-table-column label="上级部门" min-width="150">
         <template #default="{ row }">
