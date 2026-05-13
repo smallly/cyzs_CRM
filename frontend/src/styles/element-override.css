@@ -488,7 +488,7 @@ body .el-select__tags .el-tag .el-tag__close:hover {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid #e2e8f0;
-  padding: 14px;
+  padding: 10px 14px;
 }
 
 /* Dialog关闭按钮悬停不改底色 */
