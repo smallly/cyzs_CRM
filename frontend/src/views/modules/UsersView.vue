@@ -9,9 +9,9 @@
 
     <div class="users-layout">
       <div class="dept-sidebar">
-        <div class="dept-sidebar-title">部门</div>
         <el-tree
           ref="deptTreeRef"
+          class="dept-tree"
           :data="deptTreeData"
           :props="{ label: 'name', children: 'children' }"
           node-key="id"
@@ -149,7 +149,7 @@ const enabledDepartments = computed(() =>
 )
 
 const deptTreeData = computed(() => {
-  const allNode = { id: '', name: '全部成员', children: [] as any[], parentId: null }
+  const allNode = { id: '', name: '全部', children: [] as any[], parentId: null }
   const list = departments.value.map((d) => ({ ...d, children: [] as any[] }))
   const map = new Map<string, any>()
   list.forEach((item) => map.set(item.id, item))
@@ -354,11 +354,28 @@ function getDeptHeadDisplayName(deptId?: string | null): string {
   padding-right: 12px;
 }
 
-.dept-sidebar-title {
-  font-weight: 600;
+.dept-tree :deep(.el-tree-node__content) {
+  height: 34px;
+  color: #334155;
   font-size: 14px;
-  margin-bottom: 8px;
-  color: #303133;
+  border-radius: 4px;
+  padding-left: 8px !important;
+}
+
+.dept-tree :deep(.el-tree-node__content:hover) {
+  background-color: #f1f5f9;
+}
+
+.dept-tree :deep(.el-tree-node.is-current > .el-tree-node__content) {
+  background-color: #eef2ff;
+  color: #2f5cf6;
+  font-weight: 500;
+}
+
+.dept-tree :deep(.el-tree-node__expand-icon) {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-right: 4px;
 }
 
 .users-table-wrap {
