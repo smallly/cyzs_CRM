@@ -1,30 +1,29 @@
 <template>
-  <div class="users-layout">
-    <el-card class="dept-tree-card" shadow="never">
-      <template #header>
-        <span>部门</span>
-      </template>
-      <el-tree
-        ref="deptTreeRef"
-        :data="deptTreeData"
-        :props="{ label: 'name', children: 'children' }"
-        node-key="id"
-        highlight-current
-        default-expand-all
-        :expand-on-click-node="false"
-        @node-click="handleDeptNodeClick"
-      />
-    </el-card>
+  <el-card>
+    <template #header>
+      <div class="card-header">
+        <span>成员管理</span>
+        <el-button type="primary" @click="openCreateDialog">新增成员</el-button>
+      </div>
+    </template>
 
-    <el-card class="users-table-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>成员管理</span>
-          <el-button type="primary" @click="openCreateDialog">新增成员</el-button>
-        </div>
-      </template>
+    <div class="users-layout">
+      <div class="dept-sidebar">
+        <div class="dept-sidebar-title">部门</div>
+        <el-tree
+          ref="deptTreeRef"
+          :data="deptTreeData"
+          :props="{ label: 'name', children: 'children' }"
+          node-key="id"
+          highlight-current
+          default-expand-all
+          :expand-on-click-node="false"
+          @node-click="handleDeptNodeClick"
+        />
+      </div>
 
-      <el-table :data="userRows" v-loading="loading" border stripe>
+      <div class="users-table-wrap">
+        <el-table :data="userRows" v-loading="loading" border stripe>
         <el-table-column prop="name" label="姓名" min-width="130" />
         <el-table-column prop="id" label="ID" min-width="260" />
         <el-table-column prop="phone" label="手机号" min-width="140" />
@@ -69,21 +68,22 @@
             </el-space>
           </template>
         </el-table-column>
-      </el-table>
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="pageSize"
-          :background="false"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @current-change="handlePageChange"
-          @size-change="handleSizeChange"
-        />
+        </el-table>
+        <div class="pagination-wrap">
+          <el-pagination
+            v-model:current-page="page"
+            v-model:page-size="pageSize"
+            :background="false"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @current-change="handlePageChange"
+            @size-change="handleSizeChange"
+          />
+        </div>
       </div>
-    </el-card>
-  </div>
+    </div>
+  </el-card>
 
   <el-dialog v-model="dialogVisible" :title="editingUserId ? '编辑成员' : '新增成员'" width="560px">
     <el-form :model="memberForm" label-width="90px">
@@ -347,12 +347,21 @@ function getDeptHeadDisplayName(deptId?: string | null): string {
   gap: 16px;
 }
 
-.dept-tree-card {
-  width: 260px;
+.dept-sidebar {
+  width: 220px;
   flex-shrink: 0;
+  border-right: 1px solid #e4e7ed;
+  padding-right: 12px;
 }
 
-.users-table-card {
+.dept-sidebar-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #303133;
+}
+
+.users-table-wrap {
   flex: 1;
   min-width: 0;
 }
