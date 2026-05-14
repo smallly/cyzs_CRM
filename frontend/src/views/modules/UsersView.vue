@@ -1,71 +1,89 @@
 <template>
-  <el-card>
-    <template #header>
-      <div class="card-header">
-        <span>成员管理</span>
-        <el-button type="primary" @click="openCreateDialog">新增成员</el-button>
-      </div>
-    </template>
-
-    <el-table :data="userRows" v-loading="loading" border stripe>
-      <el-table-column prop="name" label="姓名" min-width="130" />
-      <el-table-column prop="id" label="ID" min-width="260" />
-      <el-table-column prop="phone" label="手机号" min-width="140" />
-      <el-table-column label="部门归属" min-width="140">
-        <template #default="{ row }">
-          {{ getDeptDisplayName(row.deptId) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="部门负责人" min-width="130">
-        <template #default="{ row }">
-          {{ getDeptHeadDisplayName(row.deptId) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="直属上级" min-width="120">
-        <template #default="{ row }">
-          {{ getUserDisplayName(row.managerId) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="角色" min-width="140">
-        <template #default="{ row }">
-          {{ getRoleDisplay(row) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="状态" min-width="100">
-        <template #default="{ row }">
-          <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
-            {{ row.status === 'ENABLED' ? '启用' : '停用' }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
-        <template #default="{ row }">
-          <el-space>
-            <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
-            <el-button
-              size="small"
-              :type="row.status === 'ENABLED' ? 'warning' : 'success'"
-              @click="toggleStatus(row)"
-            >
-              {{ row.status === 'ENABLED' ? '停用' : '启用' }}
-            </el-button>
-          </el-space>
-        </template>
-      </el-table-column>
-    </el-table>
-    <div class="pagination-wrap">
-      <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="pageSize"
-        :background="false"
-        :page-sizes="[10, 20, 50, 100]"
-        :total="total"
-        layout="total, sizes, prev, pager, next, jumper"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
+  <div class="users-layout">
+    <el-card class="dept-tree-card" shadow="never">
+      <template #header>
+        <span>部门</span>
+      </template>
+      <el-tree
+        ref="deptTreeRef"
+        :data="deptTreeData"
+        :props="{ label: 'name', children: 'children' }"
+        node-key="id"
+        highlight-current
+        default-expand-all
+        :expand-on-click-node="false"
+        @node-click="handleDeptNodeClick"
       />
-    </div>
-  </el-card>
+    </el-card>
+
+    <el-card class="users-table-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>成员管理</span>
+          <el-button type="primary" @click="openCreateDialog">新增成员</el-button>
+        </div>
+      </template>
+
+      <el-table :data="userRows" v-loading="loading" border stripe>
+        <el-table-column prop="name" label="姓名" min-width="130" />
+        <el-table-column prop="id" label="ID" min-width="260" />
+        <el-table-column prop="phone" label="手机号" min-width="140" />
+        <el-table-column label="部门归属" min-width="140">
+          <template #default="{ row }">
+            {{ getDeptDisplayName(row.deptId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="部门负责人" min-width="130">
+          <template #default="{ row }">
+            {{ getDeptHeadDisplayName(row.deptId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="直属上级" min-width="120">
+          <template #default="{ row }">
+            {{ getUserDisplayName(row.managerId) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="角色" min-width="140">
+          <template #default="{ row }">
+            {{ getRoleDisplay(row) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" min-width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
+              {{ row.status === 'ENABLED' ? '启用' : '停用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="220" fixed="right">
+          <template #default="{ row }">
+            <el-space>
+              <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
+              <el-button
+                size="small"
+                :type="row.status === 'ENABLED' ? 'warning' : 'success'"
+                @click="toggleStatus(row)"
+              >
+                {{ row.status === 'ENABLED' ? '停用' : '启用' }}
+              </el-button>
+            </el-space>
+          </template>
+        </el-table-column>
+      </el-table>
+      <div class="pagination-wrap">
+        <el-pagination
+          v-model:current-page="page"
+          v-model:page-size="pageSize"
+          :background="false"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+        />
+      </div>
+    </el-card>
+  </div>
 
   <el-dialog v-model="dialogVisible" :title="editingUserId ? '编辑成员' : '新增成员'" width="560px">
     <el-form :model="memberForm" label-width="90px">
@@ -113,6 +131,8 @@ const pageSize = ref(10)
 const total = ref(0)
 const departments = ref<any[]>([])
 const roleOptions = ref<any[]>([])
+const selectedDeptId = ref<string>('')
+const deptTreeRef = ref<any>(null)
 
 const dialogVisible = ref(false)
 const editingUserId = ref<string>('')
@@ -127,6 +147,22 @@ const memberForm = reactive({
 const enabledDepartments = computed(() =>
   departments.value.filter((d) => d.status === 'ENABLED')
 )
+
+const deptTreeData = computed(() => {
+  const allNode = { id: '', name: '全部成员', children: [] as any[], parentId: null }
+  const list = departments.value.map((d) => ({ ...d, children: [] as any[] }))
+  const map = new Map<string, any>()
+  list.forEach((item) => map.set(item.id, item))
+  const roots: any[] = [allNode]
+  list.forEach((item) => {
+    if (item.parentId && map.has(item.parentId)) {
+      map.get(item.parentId)!.children.push(item)
+    } else {
+      roots.push(item)
+    }
+  })
+  return roots
+})
 
 onMounted(async () => {
   await loadAll()
@@ -143,7 +179,11 @@ async function loadUsers() {
 }
 
 async function loadUsersPage() {
-  const query = buildPageQuery(page.value, pageSize.value)
+  const extra: Record<string, string> = {}
+  if (selectedDeptId.value) {
+    extra.deptId = selectedDeptId.value
+  }
+  const query = buildPageQuery(page.value, pageSize.value, extra)
   const res = await authStore.api<PageResult<any> | any[]>(`/api/users?${query}`)
   const pageData = normalizePageResult<any>(res)
   userRows.value = pageData.records
@@ -156,6 +196,12 @@ async function loadDepartments() {
 
 async function loadRoles() {
   roleOptions.value = await authStore.api<any[]>('/api/roles')
+}
+
+function handleDeptNodeClick(data: any) {
+  selectedDeptId.value = data.id || ''
+  page.value = 1
+  void loadUsersPage()
 }
 
 function getRoleConfigByCode(code?: string) {
@@ -293,10 +339,24 @@ function getDeptHeadDisplayName(deptId?: string | null): string {
   const dept = departments.value.find((d) => d.id === deptId)
   return getUserDisplayName(dept?.headUserId)
 }
-
 </script>
 
 <style scoped>
+.users-layout {
+  display: flex;
+  gap: 16px;
+}
+
+.dept-tree-card {
+  width: 260px;
+  flex-shrink: 0;
+}
+
+.users-table-card {
+  flex: 1;
+  min-width: 0;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;

@@ -24,9 +24,10 @@ public class UserController {
     @GetMapping
     public ApiResponse<?> list(
             @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "size", required = false) Integer size
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "deptId", required = false) String deptId
     ) {
-        return ApiResponse.ok(PageUtils.maybePaginate(userService.listMembers(sessionService.requireUser()), page, size));
+        return ApiResponse.ok(PageUtils.maybePaginate(userService.listMembers(sessionService.requireUser(), deptId), page, size));
     }
 
     @PostMapping
