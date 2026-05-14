@@ -68,10 +68,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
             }
-            filterChain.doFilter(request, response);
         } catch (Exception e) {
             response.setStatus(401);
-            response.getWriter().write("Unauthorized");
+            response.setContentType("application/json");
+            response.getWriter().write("{\"code\":401,\"message\":\"请先登录\",\"data\":null}");
+            AuthContext.clear();
+            return;
+        }
+        try {
+            filterChain.doFilter(request, response);
         } finally {
             AuthContext.clear();
         }

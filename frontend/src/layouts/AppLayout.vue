@@ -155,6 +155,7 @@ import { useAuthStore } from '../stores/auth'
 import {
   Expand,
   Fold,
+  HomeFilled,
   User,
   Files,
   ChatLineRound,
@@ -223,6 +224,7 @@ const userAvatarText = computed(() => {
 })
 
 const businessMenuItems = [
+  { key: 'workbench', label: '工作台', route: '/', icon: HomeFilled },
   { key: 'projects', label: '项目', route: '/projects', icon: Files },
   { key: 'contracts', label: '合同', route: '/contracts', icon: Document },
   { key: 'payments', label: '回款', route: '/payments', icon: Coin },
@@ -327,6 +329,9 @@ function handleUserCommand(command: string | number | object) {
 }
 
 function isMenuActive(menuRoute: string): boolean {
+  if (menuRoute === '/') {
+    return currentRoute.value === '/'
+  }
   return currentRoute.value === menuRoute || currentRoute.value.startsWith(menuRoute + '/')
 }
 </script>

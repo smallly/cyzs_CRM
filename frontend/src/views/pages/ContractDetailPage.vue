@@ -291,6 +291,23 @@ async function handleDelete() {
   margin-top: 0;
 }
 
+.detail-card :deep(.el-descriptions__table) {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.detail-card :deep(.el-descriptions__label) {
+  width: 120px;
+  min-width: 120px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.detail-card :deep(.el-descriptions__content) {
+  min-width: 0;
+  word-break: break-word;
+}
+
 .attachment-inline-list {
   display: flex;
   flex-direction: column;
