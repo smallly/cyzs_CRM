@@ -149,11 +149,10 @@ const enabledDepartments = computed(() =>
 )
 
 const deptTreeData = computed(() => {
-  const allNode = { id: '', name: '全部', children: [] as any[], parentId: null }
   const list = departments.value.map((d) => ({ ...d, children: [] as any[] }))
   const map = new Map<string, any>()
   list.forEach((item) => map.set(item.id, item))
-  const roots: any[] = [allNode]
+  const roots: any[] = []
   list.forEach((item) => {
     if (item.parentId && map.has(item.parentId)) {
       map.get(item.parentId)!.children.push(item)
