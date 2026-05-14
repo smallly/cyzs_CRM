@@ -87,18 +87,30 @@ public class DepartmentService {
         Department dept = getTenantDepartment(actor, id);
         String trimmedName = normalizeName(name);
 
-        Department parent = null;
-        if (parentId != null && !parentId.isBlank()) {
-            parent = getTenantDepartment(actor, parentId);
-            if (parent.status != DepartmentStatus.ENABLED) {
-                throw new BizException(ErrorCode.BIZ_422, "Parent department is disabled");
+        if (isRootDepartment(dept)) {
+            dept.name = trimmedName;
+            dept.updatedAt = LocalDateTime.now();
+            if (dept.status == null) {
+                dept.status = DepartmentStatus.ENABLED;
             }
-            if (id.equals(parent.id)) {
-                throw new BizException(ErrorCode.BIZ_422, "Department parent cannot be itself");
-            }
-            if (isDescendant(actor.tenantId, parent.id, id)) {
-                throw new BizException(ErrorCode.BIZ_422, "Department parent cannot be its child");
-            }
+            departmentMapper.updateById(dept);
+            auditService.log(actor, "DEPARTMENT_UPDATE", "Department", dept.id, "name=" + dept.name);
+            return dept;
+        }
+
+        if (parentId == null || parentId.isBlank()) {
+            throw new BizException(ErrorCode.BIZ_422, "Parent department is required");
+        }
+
+        Department parent = getTenantDepartment(actor, parentId);
+        if (parent.status != DepartmentStatus.ENABLED) {
+            throw new BizException(ErrorCode.BIZ_422, "Parent department is disabled");
+        }
+        if (id.equals(parent.id)) {
+            throw new BizException(ErrorCode.BIZ_422, "Department parent cannot be itself");
+        }
+        if (isDescendant(actor.tenantId, parent.id, id)) {
+            throw new BizException(ErrorCode.BIZ_422, "Department parent cannot be its child");
         }
 
         String resolvedHeadUserId = normalizeHeadUser(actor, headUserId);
@@ -123,6 +135,9 @@ public class DepartmentService {
             throw new BizException(ErrorCode.BIZ_422, "Department status is required");
         }
         Department dept = getTenantDepartment(actor, id);
+        if (isRootDepartment(dept) && status == DepartmentStatus.DISABLED) {
+            throw new BizException(ErrorCode.BIZ_422, "Root department cannot be disabled");
+        }
         dept.status = status;
         dept.updatedAt = LocalDateTime.now();
         departmentMapper.updateById(dept);
@@ -186,5 +201,9 @@ public class DepartmentService {
             parentId = current.parentId;
         }
         return false;
+    }
+
+    private boolean isRootDepartment(Department dept) {
+        return dept.parentId == null || dept.parentId.isBlank();
     }
 }

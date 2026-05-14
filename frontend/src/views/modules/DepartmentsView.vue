@@ -36,6 +36,7 @@
           <el-space>
             <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
             <el-button
+              v-if="!isRootDepartment(row)"
               size="small"
               :type="row.status === 'ENABLED' ? 'warning' : 'success'"
               @click="toggleDepartmentStatus(row)"
@@ -65,7 +66,7 @@
       <el-form-item label="部门名称" required>
         <el-input v-model="departmentForm.name" placeholder="请输入部门名称" />
       </el-form-item>
-      <el-form-item label="上级部门" required>
+      <el-form-item v-if="!isEditingRootDepartment" label="上级部门" required>
         <el-select v-model="departmentForm.parentId" placeholder="请选择上级部门">
           <el-option
             v-for="d in enabledDepartmentsExceptSelf"
@@ -75,7 +76,7 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="部门负责人">
+      <el-form-item v-if="!isEditingRootDepartment" label="部门负责人">
         <el-select v-model="departmentForm.headUserId" placeholder="未设置" clearable>
           <el-option label="未设置" value="" />
           <el-option v-for="u in users" :key="u.id" :label="u.name" :value="u.id" />
@@ -117,6 +118,11 @@ const departmentForm = reactive({
 const enabledDepartmentsExceptSelf = computed(() =>
   departments.value.filter((d) => d.status === 'ENABLED' && d.id !== departmentEditingId.value)
 )
+
+const isEditingRootDepartment = computed(() => {
+  const dept = [...departments.value, ...departmentRows.value].find((d) => d.id === departmentEditingId.value)
+  return !!dept && isRootDepartment(dept)
+})
 
 onMounted(async () => {
   await loadAll()
@@ -167,20 +173,28 @@ function openEditDialog(dept: any) {
 
 async function saveDepartment() {
   if (!departmentForm.name.trim()) return ElMessage.warning('请输入部门名称')
-  if (!departmentForm.parentId) return ElMessage.warning('请选择上级部门')
+  if (!isEditingRootDepartment.value && !departmentForm.parentId) return ElMessage.warning('请选择上级部门')
+
+  const payload = isEditingRootDepartment.value
+    ? { name: departmentForm.name.trim() }
+    : {
+        name: departmentForm.name.trim(),
+        parentId: departmentForm.parentId,
+        headUserId: departmentForm.headUserId
+      }
 
   saving.value = true
   try {
     if (departmentEditingId.value) {
       await authStore.api(`/api/departments/${departmentEditingId.value}`, {
         method: 'PUT',
-        body: JSON.stringify(departmentForm)
+        body: JSON.stringify(payload)
       })
       ElMessage.success('部门已更新')
     } else {
       await authStore.api('/api/departments', {
         method: 'POST',
-        body: JSON.stringify(departmentForm)
+        body: JSON.stringify(payload)
       })
       ElMessage.success('部门已创建')
     }
@@ -234,6 +248,10 @@ function getDeptDisplayName(deptId?: string | null): string {
   if (!deptId) return '-'
   const dept = departments.value.find((d) => d.id === deptId)
   return dept?.name || deptId
+}
+
+function isRootDepartment(dept: any): boolean {
+  return !dept?.parentId
 }
 
 function formatDateTime(value?: string | null): string {
