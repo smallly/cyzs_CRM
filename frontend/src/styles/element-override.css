@@ -210,9 +210,11 @@ body,
 
 .el-table th.el-table__cell {
   background: #f7f9fc;
-  color: #334155;
-  font-size: 15px;
-  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
 }
 
 .el-table td.el-table__cell {
