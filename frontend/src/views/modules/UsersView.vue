@@ -17,6 +17,7 @@
           node-key="id"
           highlight-current
           default-expand-all
+          :default-expanded-keys="deptExpandedKeys"
           :expand-on-click-node="false"
           @node-click="handleDeptNodeClick"
         />
@@ -115,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
@@ -163,6 +164,8 @@ const deptTreeData = computed(() => {
   return roots
 })
 
+const deptExpandedKeys = computed(() => departments.value.map((d) => d.id))
+
 onMounted(async () => {
   await loadAll()
 })
@@ -191,6 +194,13 @@ async function loadUsersPage() {
 
 async function loadDepartments() {
   departments.value = await authStore.api<any[]>('/api/departments')
+  if (selectedDeptId.value && !departments.value.some((dept) => dept.id === selectedDeptId.value)) {
+    selectedDeptId.value = ''
+    page.value = 1
+    await loadUsersPage()
+  }
+  await nextTick()
+  deptTreeRef.value?.setCurrentKey(selectedDeptId.value || undefined)
 }
 
 async function loadRoles() {
@@ -338,6 +348,14 @@ function getDeptHeadDisplayName(deptId?: string | null): string {
   const dept = departments.value.find((d) => d.id === deptId)
   return getUserDisplayName(dept?.headUserId)
 }
+
+async function refreshDepartments() {
+  await loadDepartments()
+}
+
+defineExpose({
+  refreshDepartments
+})
 </script>
 
 <style scoped>

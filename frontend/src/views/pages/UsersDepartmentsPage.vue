@@ -8,7 +8,7 @@
 
     <el-tabs v-model="activeTab" @tab-change="handleTabChange">
       <el-tab-pane label="成员" name="users" lazy>
-        <UsersView />
+        <UsersView ref="usersViewRef" />
       </el-tab-pane>
       <el-tab-pane label="部门" name="departments" lazy>
         <DepartmentsView />
@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UsersView from '../modules/UsersView.vue'
 import DepartmentsView from '../modules/DepartmentsView.vue'
@@ -29,6 +29,7 @@ const route = useRoute()
 const router = useRouter()
 
 const activeTab = ref<TabKey>(getTabFromQuery(route.query.tab))
+const usersViewRef = ref<InstanceType<typeof UsersView> | null>(null)
 
 watch(
   () => route.query.tab,
@@ -45,6 +46,9 @@ function getTabFromQuery(tab: unknown): TabKey {
 function handleTabChange(tab: string | number) {
   const nextTab: TabKey = tab === 'departments' ? 'departments' : 'users'
   router.replace({ path: '/settings/org', query: { tab: nextTab } })
+  if (nextTab === 'users') {
+    void nextTick(() => usersViewRef.value?.refreshDepartments())
+  }
 }
 </script>
 
