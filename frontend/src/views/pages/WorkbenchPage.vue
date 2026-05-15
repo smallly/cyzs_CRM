@@ -30,7 +30,6 @@
             <span class="quick-actions-title">快捷入口</span>
             <span class="quick-actions-subtitle">常用业务快速跳转</span>
           </div>
-          <span class="quick-actions-badge">高频</span>
         </div>
       </template>
       <div class="quick-actions-grid">
@@ -157,18 +156,6 @@ onMounted(async () => {
 .quick-actions-subtitle {
   font-size: 12px;
   color: #64748b;
-}
-
-.quick-actions-badge {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #eff4ff;
-  border: 1px solid #dbe6fb;
-  color: #35558f;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
 }
 
 .quick-actions-grid {
