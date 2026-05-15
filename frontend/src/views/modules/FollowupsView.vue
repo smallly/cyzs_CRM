@@ -5,7 +5,7 @@
       :data="followups"
       :columns="columns"
       :loading="loading"
-      :show-add="true"
+      :show-add="false"
       :show-edit="true"
       :show-delete="true"
       :show-pagination="true"
@@ -18,21 +18,31 @@
       @refresh="loadFollowups"
       @page-change="handlePageChange"
     >
-      <template #header-actions>
-        <el-select
-          v-model="filterProjectId"
-          clearable
-          placeholder="按项目筛选"
-          style="width: 260px"
-          @change="handleProjectFilterChange"
-        >
-          <el-option
-            v-for="project in projects"
-            :key="project.id"
-            :label="`${project.name} (${project.code})`"
-            :value="project.id"
-          />
-        </el-select>
+      <template #header>
+        <div class="followup-table-header">
+          <div class="followup-table-title">跟进记录</div>
+          <div class="followup-table-toolbar">
+            <div class="followup-table-search" @keyup.enter="submitProjectFilter">
+              <el-select
+                v-model="filterProjectId"
+                clearable
+                filterable
+                placeholder="按项目筛选"
+                class="followup-project-filter"
+                @change="handleProjectFilterChange"
+                @clear="handleProjectFilterChange"
+              >
+                <el-option
+                  v-for="project in projects"
+                  :key="project.id"
+                  :label="`${project.name} (${project.code})`"
+                  :value="project.id"
+                />
+              </el-select>
+            </div>
+            <el-button type="primary" @click="goCreate">新增</el-button>
+          </div>
+        </div>
       </template>
 
       <template #code="{ row }">
@@ -144,6 +154,11 @@ function handleProjectFilterChange() {
   void loadFollowups()
 }
 
+function submitProjectFilter() {
+  page.value = 1
+  void loadFollowups()
+}
+
 function handlePageChange(nextPage: number, nextSize: number) {
   page.value = nextPage
   pageSize.value = nextSize
@@ -210,4 +225,43 @@ function formatDateTime(value?: string | null): string {
 </script>
 
 <style scoped>
+.followup-table-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.followup-table-title {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.followup-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.followup-table-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.followup-project-filter {
+  width: min(360px, 100%);
+}
+
+@media (max-width: 720px) {
+  .followup-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .followup-project-filter {
+    width: 100%;
+  }
+}
 </style>
