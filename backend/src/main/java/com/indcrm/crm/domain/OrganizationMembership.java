@@ -18,7 +18,7 @@ public class OrganizationMembership {
     @TableField("role_id")
     public String roleId;
     @TableField("is_primary")
-    public boolean primary;
+    public boolean isPrimary;
     @TableField("joined_at")
     public LocalDateTime joinedAt;
     @TableField("left_at")

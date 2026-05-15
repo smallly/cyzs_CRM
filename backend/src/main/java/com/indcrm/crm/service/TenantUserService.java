@@ -84,7 +84,7 @@ public class TenantUserService {
         membership.departmentId = department.id;
         membership.position = normalizeBlank(position);
         membership.roleId = normalizeBlank(roleId);
-        membership.primary = true;
+        membership.isPrimary = true;
         membership.joinedAt = now;
         membership.leftAt = null;
         membership.status = MembershipStatus.ACTIVE;

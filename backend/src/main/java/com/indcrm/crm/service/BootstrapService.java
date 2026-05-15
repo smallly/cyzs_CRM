@@ -598,7 +598,7 @@ public class BootstrapService {
             membership.departmentId = departmentId;
             membership.position = null;
             membership.roleId = user.bizRole == null ? null : user.bizRole.name();
-            membership.primary = primary;
+            membership.isPrimary = primary;
             membership.joinedAt = tenantUser.createdAt;
             membership.leftAt = null;
             membership.status = MembershipStatus.ACTIVE;

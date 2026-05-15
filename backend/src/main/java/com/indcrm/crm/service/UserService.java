@@ -341,7 +341,7 @@ public class UserService {
             membership = new OrganizationMembership();
             membership.id = IdGenerator.nextId();
             membership.tenantUserId = tenantUser.id;
-            membership.primary = true;
+            membership.isPrimary = true;
             membership.createdAt = LocalDateTime.now();
             membership.joinedAt = membership.createdAt;
         }

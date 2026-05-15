@@ -67,7 +67,7 @@ public class MembershipService {
         membership.departmentId = department.id;
         membership.position = normalizeBlank(position);
         membership.roleId = normalizeBlank(roleId);
-        membership.primary = isPrimary;
+        membership.isPrimary = isPrimary;
         membership.joinedAt = now;
         membership.leftAt = null;
         membership.status = MembershipStatus.ACTIVE;
@@ -97,12 +97,12 @@ public class MembershipService {
         membership.departmentId = department.id;
         membership.position = normalizeBlank(position);
         membership.roleId = normalizeBlank(roleId);
-        membership.primary = isPrimary;
+        membership.isPrimary = isPrimary;
         membership.updatedAt = LocalDateTime.now();
         organizationMembershipMapper.updateById(membership);
 
         auditService.log(actor, "MEMBERSHIP_UPDATE", "OrganizationMembership", membership.id,
-                "departmentId=" + membership.departmentId + ",isPrimary=" + membership.primary);
+                "departmentId=" + membership.departmentId + ",isPrimary=" + membership.isPrimary);
         return toView(membership);
     }
 
@@ -113,7 +113,7 @@ public class MembershipService {
             throw new BizException(ErrorCode.BIZ_422, "status is required");
         }
         OrganizationMembership membership = requireMembership(actor, membershipId);
-        if (membership.primary && status != MembershipStatus.ACTIVE) {
+        if (membership.isPrimary && status != MembershipStatus.ACTIVE) {
             long activePrimaryCount = organizationMembershipMapper.selectCount(
                     new QueryWrapper<OrganizationMembership>()
                             .eq("tenant_user_id", membership.tenantUserId)
@@ -139,7 +139,7 @@ public class MembershipService {
         view.put("departmentId", membership.departmentId);
         view.put("position", membership.position == null ? "" : membership.position);
         view.put("roleId", membership.roleId == null ? "" : membership.roleId);
-        view.put("isPrimary", membership.primary);
+        view.put("isPrimary", membership.isPrimary);
         view.put("joinedAt", membership.joinedAt);
         view.put("leftAt", membership.leftAt);
         view.put("status", membership.status.name());
