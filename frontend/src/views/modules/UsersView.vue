@@ -392,16 +392,19 @@ defineExpose({
   background-color: transparent;
 }
 
-.dept-tree :deep(.el-tree-node.is-current > .el-tree-node__content .dept-tree-label) {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
+.dept-tree :deep(.dept-tree-label) {
+  display: inline-block;
+  padding: 2px 6px;
   border-radius: 4px;
+  background-color: transparent;
+  color: #334155;
+  font-weight: 500;
+}
+
+.dept-tree :deep(.el-tree-node.is-current > .el-tree-node__content .dept-tree-label) {
   background-color: #f5f7fa;
   color: #1f2937;
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .dept-tree :deep(.el-tree-node__expand-icon) {
