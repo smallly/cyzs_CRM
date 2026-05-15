@@ -17,6 +17,7 @@
           node-key="id"
           highlight-current
           default-expand-all
+          :indent="28"
           :default-expanded-keys="deptExpandedKeys"
           :expand-on-click-node="false"
           @node-click="handleDeptNodeClick"
@@ -376,7 +377,6 @@ defineExpose({
   color: #334155;
   font-size: 14px;
   border-radius: 4px;
-  padding-left: 8px !important;
 }
 
 .dept-tree :deep(.el-tree-node__content:hover) {
