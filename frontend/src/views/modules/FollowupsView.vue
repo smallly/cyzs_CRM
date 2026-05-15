@@ -27,8 +27,10 @@
                 v-model="filterProjectId"
                 clearable
                 filterable
+                default-first-option
                 placeholder="按项目筛选"
                 class="followup-project-filter"
+                @keyup.enter="submitProjectFilter"
                 @change="handleProjectFilterChange"
                 @clear="handleProjectFilterChange"
               >
@@ -99,6 +101,7 @@ const total = ref(0)
 const projects = ref<any[]>([])
 const users = ref<any[]>([])
 const contacts = ref<any[]>([])
+let followupRequestSeq = 0
 
 const columns: TableColumn[] = [
   { prop: 'code', label: '跟进编号', width: 170, fixed: 'left', slot: 'code' },
@@ -140,10 +143,12 @@ async function loadContacts() {
 }
 
 async function loadFollowups() {
+  const requestSeq = ++followupRequestSeq
   const query = buildPageQuery(page.value, pageSize.value, {
     projectId: filterProjectId.value
   })
   const res = await authStore.api<PageResult<any> | any[]>(`/api/followups?${query}`)
+  if (requestSeq !== followupRequestSeq) return
   const pageData = normalizePageResult<any>(res)
   followups.value = pageData.records
   total.value = pageData.total
@@ -251,7 +256,7 @@ function formatDateTime(value?: string | null): string {
 }
 
 .followup-project-filter {
-  width: min(360px, 100%);
+  width: min(300px, 100%);
 }
 
 @media (max-width: 720px) {
