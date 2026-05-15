@@ -1,18 +1,11 @@
 ﻿<template>
   <div>
-    <SearchPanel
-      v-model="searchForm"
-      :fields="searchFields"
-      @search="handleSearch"
-      @reset="resetSearch"
-    />
-
     <CrudTable
       title="联系人管理"
       :data="contacts"
       :columns="columns"
       :loading="loading"
-      :show-add="true"
+      :show-add="false"
       :show-edit="true"
       :show-delete="true"
       :show-pagination="true"
@@ -25,6 +18,58 @@
       @refresh="loadContacts"
       @page-change="handlePageChange"
     >
+      <template #header>
+        <div class="contact-table-header">
+          <div class="contact-table-title">联系人管理</div>
+          <div class="contact-table-toolbar">
+            <div class="contact-search-fields">
+              <label class="contact-search-field">
+                <span>姓名</span>
+                <el-input
+                  v-model="searchForm.name"
+                  clearable
+                  placeholder="请输入姓名"
+                  @keyup.enter="handleSearch"
+                  @clear="handleSearch"
+                />
+              </label>
+              <label class="contact-search-field">
+                <span>企业名称</span>
+                <el-input
+                  v-model="searchForm.enterpriseName"
+                  clearable
+                  placeholder="请输入企业名称"
+                  @keyup.enter="handleSearch"
+                  @clear="handleSearch"
+                />
+              </label>
+              <label class="contact-search-field">
+                <span>手机号1</span>
+                <el-input
+                  v-model="searchForm.phone1"
+                  clearable
+                  placeholder="请输入手机号1"
+                  @keyup.enter="handleSearch"
+                  @clear="handleSearch"
+                />
+              </label>
+              <label class="contact-search-field">
+                <span>手机号2</span>
+                <el-input
+                  v-model="searchForm.phone2"
+                  clearable
+                  placeholder="请输入手机号2"
+                  @keyup.enter="handleSearch"
+                  @clear="handleSearch"
+                />
+              </label>
+              <el-button class="contact-reset-button" @click="resetSearch">重置</el-button>
+            </div>
+            <el-button type="primary" @click="goCreate">新增</el-button>
+          </div>
+        </div>
+      </template>
+
       <template #name="{ row }">
         <el-button link @click="goDetail(row)">{{ row.name || '-' }}</el-button>
       </template>
@@ -74,8 +119,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import FormDialog from '../../components/common/FormDialog.vue'
-import SearchPanel from '../../components/common/SearchPanel.vue'
-import type { SearchField } from '../../components/common/SearchPanel.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import type { FormField } from '../../components/common/FormDialog.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
@@ -91,6 +134,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const users = ref<any[]>([])
 const projects = ref<any[]>([])
+let contactRequestSeq = 0
 
 const searchForm = reactive({
   name: undefined as string | undefined,
@@ -116,13 +160,6 @@ const formData = reactive({
   projectIds: [] as string[],
   remark: ''
 })
-
-const searchFields: SearchField[] = [
-  { prop: 'name', label: '姓名', span: 6 },
-  { prop: 'enterpriseName', label: '企业名称', span: 6 },
-  { prop: 'phone1', label: '手机号1', span: 6 },
-  { prop: 'phone2', label: '手机号2', span: 6 }
-]
 
 const columns: TableColumn[] = [
   { prop: 'name', label: '姓名', width: 120, slot: 'name', fixed: 'left' },
@@ -204,6 +241,7 @@ onMounted(async () => {
 })
 
 async function loadContacts() {
+  const requestSeq = ++contactRequestSeq
   loading.value = true
   try {
     const query = buildPageQuery(page.value, pageSize.value, {
@@ -213,6 +251,7 @@ async function loadContacts() {
       phone2: searchForm.phone2
     })
     const res = await authStore.api<PageResult<any> | any[]>(`/api/contacts?${query}`)
+    if (requestSeq !== contactRequestSeq) return
     const pageData = normalizePageResult<any>(res)
     contacts.value = pageData.records
     total.value = pageData.total
@@ -410,4 +449,79 @@ function formatDateTime(value?: string | null): string {
 </script>
 
 <style scoped>
+.contact-table-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.contact-table-title {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.contact-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contact-search-fields {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  min-width: 0;
+}
+
+.contact-search-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.contact-search-field span {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.contact-search-field :deep(.el-input) {
+  width: 180px;
+}
+
+.contact-search-field :deep(.el-input__inner::placeholder) {
+  color: #94a3b8;
+}
+
+.contact-reset-button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 960px) {
+  .contact-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contact-search-fields {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contact-search-field {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .contact-search-field :deep(.el-input) {
+    width: 100%;
+  }
+}
 </style>
