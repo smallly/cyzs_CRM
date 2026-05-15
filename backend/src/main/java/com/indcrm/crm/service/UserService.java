@@ -10,7 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import com.indcrm.crm.common.IdGenerator;
 
 @Service
@@ -51,7 +54,8 @@ public class UserService {
                 .collect(java.util.stream.Collectors.toList());
         QueryWrapper<User> query = new QueryWrapper<User>().in("id", userIds);
         if (deptId != null && !deptId.isBlank()) {
-            query.eq("dept_id", deptId);
+            List<String> deptIds = collectDepartmentAndDescendantIds(actor, deptId);
+            query.in("dept_id", deptIds);
         }
         List<User> list = userMapper.selectList(query);
         list.sort((a, b) -> {
@@ -63,6 +67,28 @@ public class UserService {
             user.password = null;
         }
         return list;
+    }
+
+    private List<String> collectDepartmentAndDescendantIds(User actor, String deptId) {
+        Department root = departmentMapper.selectById(deptId);
+        if (root == null || !actor.tenantId.equals(root.tenantId)) {
+            throw new BizException(ErrorCode.BIZ_422, "department not found");
+        }
+        List<Department> departments = departmentMapper.selectList(
+                new QueryWrapper<Department>().eq("tenant_id", actor.tenantId)
+        );
+        Set<String> result = new HashSet<>();
+        result.add(root.id);
+        boolean changed;
+        do {
+            changed = false;
+            for (Department department : departments) {
+                if (department.parentId != null && result.contains(department.parentId) && result.add(department.id)) {
+                    changed = true;
+                }
+            }
+        } while (changed);
+        return new ArrayList<>(result);
     }
 
     @Transactional
