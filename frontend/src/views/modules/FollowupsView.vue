@@ -256,7 +256,15 @@ function formatDateTime(value?: string | null): string {
 }
 
 .followup-project-filter {
-  width: min(300px, 100%);
+  width: min(260px, 100%);
+}
+
+.followup-project-filter :deep(.el-select__placeholder.is-transparent) {
+  color: #94a3b8 !important;
+}
+
+.followup-project-filter :deep(.el-select__input::placeholder) {
+  color: #94a3b8 !important;
 }
 
 @media (max-width: 720px) {
