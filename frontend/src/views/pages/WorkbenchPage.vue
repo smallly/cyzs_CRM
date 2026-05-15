@@ -3,11 +3,6 @@
     <el-row :gutter="16">
       <el-col :span="6">
         <el-card>
-          <el-statistic title="联系人" :value="stats.contacts" />
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card>
           <el-statistic title="项目" :value="stats.projects" />
         </el-card>
       </el-col>
@@ -18,7 +13,12 @@
       </el-col>
       <el-col :span="6">
         <el-card>
-          <el-statistic title="回款记录" :value="stats.payments" />
+          <el-statistic title="跟进记录" :value="stats.followups" />
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card>
+          <el-statistic title="联系人" :value="stats.contacts" />
         </el-card>
       </el-col>
     </el-row>
@@ -94,24 +94,24 @@ const shortcutItems = [
   }
 ] as const
 const stats = ref({
-  contacts: 0,
   projects: 0,
   contracts: 0,
-  payments: 0
+  followups: 0,
+  contacts: 0
 })
 
 onMounted(async () => {
   try {
-    const contacts = await authStore.api<any[]>('/api/contacts')
     const projects = await authStore.api<any[]>('/api/projects')
     const contracts = await authStore.api<any[]>('/api/contracts')
-    const payments = await authStore.api<any[]>('/api/payments')
+    const followups = await authStore.api<any[]>('/api/followups')
+    const contacts = await authStore.api<any[]>('/api/contacts')
 
     stats.value = {
-      contacts: contacts.length,
       projects: projects.length,
       contracts: contracts.length,
-      payments: payments.length
+      followups: followups.length,
+      contacts: contacts.length
     }
   } catch (error) {
     console.error('Load stats failed', error)
