@@ -20,7 +20,7 @@
           :indent="28"
           :default-expanded-keys="deptExpandedKeys"
           :expand-on-click-node="false"
-          @node-click="handleDeptNodeClick"
+          @current-change="handleDeptCurrentChange"
         >
           <template #default="{ data }">
             <span class="dept-tree-label">{{ data.name }}</span>
@@ -171,6 +171,22 @@ const deptTreeData = computed(() => {
 
 const deptExpandedKeys = computed(() => departments.value.map((d) => d.id))
 
+const selectedDeptIds = computed(() => {
+  if (!selectedDeptId.value) return []
+  const ids = new Set<string>([selectedDeptId.value])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const dept of departments.value) {
+      if (dept.parentId && ids.has(dept.parentId) && !ids.has(dept.id)) {
+        ids.add(dept.id)
+        changed = true
+      }
+    }
+  }
+  return Array.from(ids)
+})
+
 onMounted(async () => {
   await loadAll()
 })
@@ -193,8 +209,11 @@ async function loadUsersPage() {
   const query = buildPageQuery(page.value, pageSize.value, extra)
   const res = await authStore.api<PageResult<any> | any[]>(`/api/users?${query}`)
   const pageData = normalizePageResult<any>(res)
-  userRows.value = pageData.records
-  total.value = pageData.total
+  const filteredRecords = selectedDeptIds.value.length
+    ? pageData.records.filter((user) => selectedDeptIds.value.includes(user.deptId))
+    : pageData.records
+  userRows.value = filteredRecords
+  total.value = selectedDeptIds.value.length ? filteredRecords.length : pageData.total
 }
 
 async function loadDepartments() {
@@ -212,8 +231,8 @@ async function loadRoles() {
   roleOptions.value = await authStore.api<any[]>('/api/roles')
 }
 
-function handleDeptNodeClick(data: any) {
-  selectedDeptId.value = data.id || ''
+function handleDeptCurrentChange(data: any) {
+  selectedDeptId.value = data?.id || ''
   page.value = 1
   void loadUsersPage()
 }
