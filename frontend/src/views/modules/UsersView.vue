@@ -30,50 +30,44 @@
 
       <div class="users-table-wrap">
         <el-table :data="userRows" v-loading="loading" border stripe>
-        <el-table-column prop="name" label="姓名" min-width="130" />
-        <el-table-column prop="id" label="ID" min-width="260" />
-        <el-table-column prop="phone" label="手机号" min-width="140" />
-        <el-table-column label="部门归属" min-width="140">
-          <template #default="{ row }">
-            {{ getDeptDisplayName(row.deptId) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="部门负责人" min-width="130">
-          <template #default="{ row }">
-            {{ getDeptHeadDisplayName(row.deptId) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="直属上级" min-width="120">
-          <template #default="{ row }">
-            {{ getUserDisplayName(row.managerId) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="角色" min-width="140">
-          <template #default="{ row }">
-            {{ getRoleDisplay(row) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" min-width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
-              {{ row.status === 'ENABLED' ? '启用' : '停用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
-          <template #default="{ row }">
-            <el-space>
-              <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
-              <el-button
-                size="small"
-                :type="row.status === 'ENABLED' ? 'warning' : 'success'"
-                @click="toggleStatus(row)"
-              >
-                {{ row.status === 'ENABLED' ? '停用' : '启用' }}
-              </el-button>
-            </el-space>
-          </template>
-        </el-table-column>
+          <el-table-column prop="name" label="姓名" min-width="140" />
+          <el-table-column prop="phone" label="手机号" min-width="150" />
+          <el-table-column label="所属部门" min-width="150">
+            <template #default="{ row }">
+              {{ getDeptDisplayName(row.deptId) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="直属上级" min-width="150">
+            <template #default="{ row }">
+              {{ getUserDisplayName(row.managerId) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="角色" min-width="140">
+            <template #default="{ row }">
+              {{ getRoleDisplay(row) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'ENABLED' ? 'success' : 'danger'">
+                {{ row.status === 'ENABLED' ? '启用' : '停用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="220" fixed="right">
+            <template #default="{ row }">
+              <el-space>
+                <el-button size="small" @click="openEditDialog(row)">编辑</el-button>
+                <el-button
+                  size="small"
+                  :type="row.status === 'ENABLED' ? 'warning' : 'success'"
+                  @click="toggleStatus(row)"
+                >
+                  {{ row.status === 'ENABLED' ? '停用' : '启用' }}
+                </el-button>
+              </el-space>
+            </template>
+          </el-table-column>
         </el-table>
         <div class="pagination-wrap">
           <el-pagination
@@ -346,12 +340,6 @@ function getDeptDisplayName(deptId?: string | null): string {
   if (!deptId) return '-'
   const dept = departments.value.find((d) => d.id === deptId)
   return dept?.name || deptId
-}
-
-function getDeptHeadDisplayName(deptId?: string | null): string {
-  if (!deptId) return '-'
-  const dept = departments.value.find((d) => d.id === deptId)
-  return getUserDisplayName(dept?.headUserId)
 }
 
 async function refreshDepartments() {
