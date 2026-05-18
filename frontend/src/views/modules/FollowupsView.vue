@@ -88,6 +88,7 @@ import { useAuthStore } from '../../stores/auth'
 import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -208,9 +209,7 @@ function getProjectDisplayName(projectId?: string): string {
 }
 
 function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((item) => item.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId)
 }
 
 function getContactDisplayName(contactId?: string): string {

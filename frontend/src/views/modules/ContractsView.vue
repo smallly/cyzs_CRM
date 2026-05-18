@@ -28,7 +28,7 @@
         {{ getProjectName(row.projectId) }}
       </template>
       <template #creatorId="{ row }">
-        {{ getUserDisplayName(row.creatorId || row.ownerId) }}
+        {{ getUserDisplayName(row.creatorId || row.ownerId, row.creatorName || row.ownerName) }}
       </template>
       <template #createdAt="{ row }">
         {{ formatDateTime(row.createdAt) }}
@@ -56,6 +56,7 @@ import CrudTable from '../../components/common/CrudTable.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
 import { getStoredAttachmentName, openStoredAttachment } from '../../utils/attachment'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -127,10 +128,8 @@ function getProjectName(projectId: string): string {
   return project?.name || projectId
 }
 
-function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+function getUserDisplayName(userId?: string, displayName?: string): string {
+  return resolveUserDisplayName(users.value, userId, displayName)
 }
 
 function formatDateTime(value?: string | null): string {

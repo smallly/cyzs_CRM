@@ -66,6 +66,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,9 +141,7 @@ function handleBack() {
 }
 
 function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId)
 }
 
 function formatGender(value?: string): string {

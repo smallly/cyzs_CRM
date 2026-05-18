@@ -95,6 +95,7 @@ import { ref, computed, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const authStore = useAuthStore()
 
@@ -239,9 +240,7 @@ function handleSizeChange(nextSize: number) {
 }
 
 function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId)
 }
 
 function getDeptDisplayName(deptId?: string | null): string {

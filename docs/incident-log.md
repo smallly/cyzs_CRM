@@ -143,5 +143,34 @@ List<String> previousSources = existing == null ? DEFAULT_PROJECT_SOURCES : exis
 
 1. **浏览器行为有坑**：`window.open`、iframe、`<a>` 标签对不同 URL 类型（data URL、blob URL、http URL）的行为差异很大，大文件/新标签页场景务必测试 Chrome、Edge、Firefox。
 2. **base64 不是银弹**：前端 base64 适合小图标、缩略图；大文件（> 100KB）一律走 Blob URL 或后端文件接口。
-3. **迁移逻辑要考虑 null 默认值**：任何涉及"旧值 → 新值"迁移的代码，都要考虑用户从未配置过（使用默认值）的场景。
+3. **迁移逻辑要考虑 null 默认值**：任何涉及“旧值 → 新值”迁移的代码，都要考虑用户从未配置过（使用默认值）的场景。
 4. **改完要全局验证**：一个功能在 A 页面改了，要去 B、C、D 页面确认是否也需要同步改（如附件预览涉及合同详情、跟进详情、项目详情等多个页面）。
+
+---
+
+## 2026-05-18 | 人员字段反复显示 UUID 而不是中文名
+
+### 现象
+项目列表“负责人”、合同列表“创建人”等人员字段偶发显示 UUID，例如 `96c27a60-...`，而不是成员中文名称。
+
+### 迭代过程
+此前只在单个页面局部修过 `getUserDisplayName` 或给项目接口补过 `ownerName/creatorName`，但合同、回款、跟进、详情页仍各自保留一套 `users.find(...) || userId` 的兜底逻辑。后续页面重构或接口字段不完整时，同类问题又会从其他入口出现。
+
+### 根因分析
+1. 前端把业务存储字段 `ownerId/creatorId/updatedBy` 同时当作展示字段使用，名称解析失败后直接兜底为 ID。
+2. 人员名称解析逻辑分散在多个 Vue 文件里，没有统一规则。
+3. 后端只给部分实体补充了 `ownerName/creatorName`，合同等实体仍依赖前端再查 `/api/users`。
+4. UUID 在 UI 上不应该作为人员字段兜底。即使名称暂时无法解析，也应显示“未知用户”或 `-`，避免把内部 ID 暴露给业务用户。
+
+### 正确做法
+1. 人员字段展示必须走统一工具 `frontend/src/utils/userDisplay.ts`。
+2. 展示优先级固定为：接口返回的显式名称（如 `creatorName`）→ 当前用户列表解析出的名称 → `未知用户`（UUID）/ 原始非 UUID 文本。
+3. 新增业务列表或详情页时，禁止写 `return user?.name || userId`。
+4. 后端业务 DTO/实体如果返回人员 ID，应同步返回对应名称字段，尤其是列表页字段。
+
+### 相关文件
+- `frontend/src/utils/userDisplay.ts`
+- `frontend/src/views/modules/ProjectsListView.vue`
+- `frontend/src/views/modules/ContractsView.vue`
+- `backend/src/main/java/com/indcrm/crm/service/ContractService.java`
+- `backend/src/main/java/com/indcrm/crm/domain/Contract.java`

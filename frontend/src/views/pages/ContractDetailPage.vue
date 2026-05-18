@@ -52,9 +52,9 @@
 
         <div class="section-title">系统信息</div>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="创建人">{{ getUserDisplayName(contract.creatorId || contract.ownerId) }}</el-descriptions-item>
+          <el-descriptions-item label="创建人">{{ getUserDisplayName(contract.creatorId || contract.ownerId, contract.creatorName || contract.ownerName) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDateTime(contract.createdAt) }}</el-descriptions-item>
-          <el-descriptions-item label="最后编辑人">{{ getUserDisplayName(contract.updatedBy || contract.creatorId || contract.ownerId) }}</el-descriptions-item>
+          <el-descriptions-item label="最后编辑人">{{ getUserDisplayName(contract.updatedBy || contract.creatorId || contract.ownerId, contract.updatedByName || contract.creatorName || contract.ownerName) }}</el-descriptions-item>
           <el-descriptions-item label="最后编辑时间">{{ formatDateTime(contract.updatedAt) }}</el-descriptions-item>
         </el-descriptions>
       </template>
@@ -89,6 +89,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 import { downloadStoredAttachment, getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList, openInNewTab } from '../../utils/attachment'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const route = useRoute()
 const router = useRouter()
@@ -158,10 +159,8 @@ async function loadUsers() {
   }
 }
 
-function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+function getUserDisplayName(userId?: string, displayName?: string): string {
+  return resolveUserDisplayName(users.value, userId, displayName)
 }
 
 function formatAmount(value?: number | string | null): string {

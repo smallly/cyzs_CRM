@@ -122,6 +122,7 @@ import FormDialog from '../../components/common/FormDialog.vue'
 import type { TableColumn } from '../../components/common/CrudTable.vue'
 import type { FormField } from '../../components/common/FormDialog.vue'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -426,9 +427,7 @@ async function deleteContact(id: string) {
 }
 
 function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId)
 }
 
 function getLinkedProjectNames(contact: any): string {

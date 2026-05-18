@@ -47,4 +47,11 @@ public class Contract {
     public LocalDateTime updatedAt;
     @TableField("deleted_at")
     public LocalDateTime deletedAt;
+
+    @TableField(exist = false)
+    public String ownerName;
+    @TableField(exist = false)
+    public String creatorName;
+    @TableField(exist = false)
+    public String updatedByName;
 }

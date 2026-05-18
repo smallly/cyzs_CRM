@@ -1406,7 +1406,7 @@ function setError(err: unknown) {
 function getUserDisplayName(userId?: string, displayName?: string): string {
   if (!userId) return "-";
   if (displayName) return displayName;
-  return userNameById.value[userId] || userId;
+  return userNameById.value[userId] || (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) ? "未知用户" : userId);
 }
 function getDeptDisplayName(deptId?: string | null): string {
   if (!deptId) return "-";

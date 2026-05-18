@@ -6,6 +6,7 @@ import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.*;
 import com.indcrm.crm.mapper.ContractMapper;
 import com.indcrm.crm.mapper.ProjectMapper;
+import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,13 +19,15 @@ import com.indcrm.crm.common.IdGenerator;
 public class ContractService {
     private final ContractMapper contractMapper;
     private final ProjectMapper projectMapper;
+    private final UserMapper userMapper;
     private final PermissionService permissionService;
     private final AuditService auditService;
 
-    public ContractService(ContractMapper contractMapper, ProjectMapper projectMapper,
+    public ContractService(ContractMapper contractMapper, ProjectMapper projectMapper, UserMapper userMapper,
                            PermissionService permissionService, AuditService auditService) {
         this.contractMapper = contractMapper;
         this.projectMapper = projectMapper;
+        this.userMapper = userMapper;
         this.permissionService = permissionService;
         this.auditService = auditService;
     }
@@ -80,6 +83,7 @@ public class ContractService {
         c.updatedBy = actor.id;
         c.updatedAt = c.createdAt;
         contractMapper.insert(c);
+        hydrateUserNames(c);
 
         p.stage = ProjectStage.SIGNING;
         projectMapper.updateById(p);
@@ -94,6 +98,9 @@ public class ContractService {
                         .eq("deleted", false)
         );
         all.removeIf(c -> !permissionService.canOperateByOwner(actor, c.ownerId));
+        for (Contract contract : all) {
+            hydrateUserNames(contract);
+        }
         all.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
             LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
@@ -107,6 +114,7 @@ public class ContractService {
         if (c == null || c.deleted || !actor.tenantId.equals(c.tenantId)) {
             throw new BizException(ErrorCode.BIZ_422, "合同不存在");
         }
+        hydrateUserNames(c);
         return c;
     }
 
@@ -129,6 +137,7 @@ public class ContractService {
         c.signDate = signDate;
         c.updatedAt = LocalDateTime.now();
         contractMapper.updateById(c);
+        hydrateUserNames(c);
         auditService.log(actor, "CONTRACT_UPDATE_SIGN_DATE", "Contract", c.id, c.contractNo);
         return c;
     }
@@ -180,6 +189,7 @@ public class ContractService {
         c.attachment = requireAttachment(attachment);
         c.updatedAt = LocalDateTime.now();
         contractMapper.updateById(c);
+        hydrateUserNames(c);
         auditService.log(actor, "CONTRACT_UPDATE", "Contract", c.id, c.contractNo);
         return c;
     }
@@ -210,5 +220,19 @@ public class ContractService {
         }
         String trimmed = text.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private void hydrateUserNames(Contract c) {
+        c.ownerName = resolveUserName(c.ownerId);
+        c.creatorName = resolveUserName(c.creatorId);
+        c.updatedByName = resolveUserName(c.updatedBy);
+    }
+
+    private String resolveUserName(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+        User user = userMapper.selectById(userId);
+        return user == null ? null : user.name;
     }
 }

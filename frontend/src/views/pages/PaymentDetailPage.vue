@@ -101,6 +101,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 import { downloadStoredAttachment, getStoredAttachmentData, getStoredAttachmentKind, getStoredAttachmentList } from '../../utils/attachment'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const route = useRoute()
 const router = useRouter()
@@ -186,9 +187,7 @@ async function loadUsers() {
 }
 
 function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId)
 }
 
 function formatAmount(value?: number | string | null): string {

@@ -837,6 +837,7 @@ import { useAuthStore } from '../../stores/auth'
 import { normalizePageResult, type PageResult } from '../../api/page'
 import { AttachmentUploadField } from '../../components/common'
 import { parseStoredAttachmentList, type StoredAttachment, openInNewTab } from '../../utils/attachment'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 interface DictRes {
   projectLevels: string[]
@@ -1160,10 +1161,7 @@ function getUserAvatarText(userId?: string): string {
 }
 
 function getUserDisplayName(userId?: string, ownerName?: string): string {
-  if (!userId) return '-'
-  if (ownerName) return ownerName
-  const user = users.value.find(u => u.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId, ownerName)
 }
 
 function getContactDisplayName(contactId?: string): string {
@@ -2693,4 +2691,3 @@ button.attachment-image-tile:hover {
   white-space: nowrap;
 }
 </style>
-
