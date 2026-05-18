@@ -11,8 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import com.indcrm.crm.common.IdGenerator;
 
@@ -52,12 +54,24 @@ public class UserService {
                 .map(tu -> tu.userId)
                 .distinct()
                 .collect(java.util.stream.Collectors.toList());
+        Map<String, String> primaryDeptByUserId = resolvePrimaryDeptByUserId(tenantUsers);
+        Set<String> deptIds = deptId == null || deptId.isBlank()
+                ? Set.of()
+                : new HashSet<>(collectDepartmentAndDescendantIds(actor, deptId));
         QueryWrapper<User> query = new QueryWrapper<User>().in("id", userIds);
-        if (deptId != null && !deptId.isBlank()) {
-            List<String> deptIds = collectDepartmentAndDescendantIds(actor, deptId);
-            query.in("dept_id", deptIds);
-        }
         List<User> list = userMapper.selectList(query);
+        if (!deptIds.isEmpty()) {
+            list.removeIf(user -> {
+                String effectiveDeptId = primaryDeptByUserId.getOrDefault(user.id, user.deptId);
+                return effectiveDeptId == null || !deptIds.contains(effectiveDeptId);
+            });
+        }
+        for (User user : list) {
+            String primaryDeptId = primaryDeptByUserId.get(user.id);
+            if (primaryDeptId != null && !primaryDeptId.isBlank()) {
+                user.deptId = primaryDeptId;
+            }
+        }
         list.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
             LocalDateTime bt = b.createdAt == null ? LocalDateTime.MIN : b.createdAt;
@@ -67,6 +81,38 @@ public class UserService {
             user.password = null;
         }
         return list;
+    }
+
+    private Map<String, String> resolvePrimaryDeptByUserId(List<TenantUser> tenantUsers) {
+        List<String> tenantUserIds = tenantUsers.stream()
+                .map(tu -> tu.id)
+                .collect(java.util.stream.Collectors.toList());
+        if (tenantUserIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        Map<String, String> userIdByTenantUserId = new HashMap<>();
+        for (TenantUser tenantUser : tenantUsers) {
+            if (tenantUser.userId != null && !tenantUser.userId.isBlank()) {
+                userIdByTenantUserId.put(tenantUser.id, tenantUser.userId);
+            }
+        }
+        if (userIdByTenantUserId.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<OrganizationMembership> memberships = organizationMembershipMapper.selectList(
+                new QueryWrapper<OrganizationMembership>()
+                        .in("tenant_user_id", tenantUserIds)
+                        .eq("is_primary", 1)
+                        .eq("status", MembershipStatus.ACTIVE.name())
+        );
+        Map<String, String> result = new HashMap<>();
+        for (OrganizationMembership membership : memberships) {
+            String userId = userIdByTenantUserId.get(membership.tenantUserId);
+            if (userId != null && membership.departmentId != null && !membership.departmentId.isBlank()) {
+                result.put(userId, membership.departmentId);
+            }
+        }
+        return result;
     }
 
     private List<String> collectDepartmentAndDescendantIds(User actor, String deptId) {

@@ -171,22 +171,6 @@ const deptTreeData = computed(() => {
 
 const deptExpandedKeys = computed(() => departments.value.map((d) => d.id))
 
-const selectedDeptIds = computed(() => {
-  if (!selectedDeptId.value) return []
-  const ids = new Set<string>([selectedDeptId.value])
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const dept of departments.value) {
-      if (dept.parentId && ids.has(dept.parentId) && !ids.has(dept.id)) {
-        ids.add(dept.id)
-        changed = true
-      }
-    }
-  }
-  return Array.from(ids)
-})
-
 onMounted(async () => {
   await loadAll()
 })
@@ -209,11 +193,8 @@ async function loadUsersPage() {
   const query = buildPageQuery(page.value, pageSize.value, extra)
   const res = await authStore.api<PageResult<any> | any[]>(`/api/users?${query}`)
   const pageData = normalizePageResult<any>(res)
-  const filteredRecords = selectedDeptIds.value.length
-    ? pageData.records.filter((user) => selectedDeptIds.value.includes(user.deptId))
-    : pageData.records
-  userRows.value = filteredRecords
-  total.value = selectedDeptIds.value.length ? filteredRecords.length : pageData.total
+  userRows.value = pageData.records
+  total.value = pageData.total
 }
 
 async function loadDepartments() {
