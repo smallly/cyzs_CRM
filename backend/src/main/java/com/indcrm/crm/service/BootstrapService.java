@@ -385,20 +385,20 @@ public class BootstrapService {
         if (admin == null || admin.id == null) {
             return;
         }
-        List<String> staleTenantIds = jdbcTemplate.queryForList(
-                "SELECT id FROM tenants WHERE admin_phone = ? AND (admin_user_id IS NULL OR admin_user_id != ?)",
+        List<String> tenantIds = jdbcTemplate.queryForList(
+                "SELECT id FROM tenants WHERE admin_phone = ?",
                 String.class,
-                admin.phone, admin.id
+                admin.phone
         );
-        for (String tenantId : staleTenantIds) {
+        for (String tenantId : tenantIds) {
             jdbcTemplate.update("UPDATE tenants SET admin_user_id = ? WHERE id = ?", admin.id, tenantId);
-            long exists = tenantUserMapper.selectCount(
+            TenantUser tu = tenantUserMapper.selectOne(
                     new QueryWrapper<TenantUser>()
                             .eq("tenant_id", tenantId)
                             .eq("user_id", admin.id)
             );
-            if (exists == 0) {
-                TenantUser tu = new TenantUser();
+            if (tu == null) {
+                tu = new TenantUser();
                 tu.id = IdGenerator.nextId();
                 tu.tenantId = tenantId;
                 tu.userId = admin.id;
@@ -411,7 +411,43 @@ public class BootstrapService {
                 tu.updatedAt = tu.createdAt;
                 tenantUserMapper.insert(tu);
             }
+            // 确保管理员在该租户下有主部门归属
+            ensureAdminMembership(tu);
         }
+    }
+
+    private void ensureAdminMembership(TenantUser tu) {
+        if (tu == null || tu.id == null) {
+            return;
+        }
+        long membershipExists = organizationMembershipMapper.selectCount(
+                new QueryWrapper<OrganizationMembership>()
+                        .eq("tenant_user_id", tu.id)
+                        .eq("is_primary", 1)
+                        .eq("status", MembershipStatus.ACTIVE.name())
+        );
+        if (membershipExists > 0) {
+            return;
+        }
+        Department rootDept = departmentMapper.selectOne(
+                new QueryWrapper<Department>()
+                        .eq("tenant_id", tu.tenantId)
+                        .isNull("parent_id")
+                        .last("LIMIT 1")
+        );
+        if (rootDept == null) {
+            return;
+        }
+        OrganizationMembership membership = new OrganizationMembership();
+        membership.id = IdGenerator.nextId();
+        membership.tenantUserId = tu.id;
+        membership.departmentId = rootDept.id;
+        membership.isPrimary = true;
+        membership.joinedAt = tu.createdAt != null ? tu.createdAt : LocalDateTime.now();
+        membership.status = MembershipStatus.ACTIVE;
+        membership.createdAt = LocalDateTime.now();
+        membership.updatedAt = membership.createdAt;
+        organizationMembershipMapper.insert(membership);
     }
 
     private void ensureTenantsForExistingUsers() {

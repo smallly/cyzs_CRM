@@ -60,17 +60,15 @@ public class UserService {
                 : new HashSet<>(collectDepartmentAndDescendantIds(actor, deptId));
         QueryWrapper<User> query = new QueryWrapper<User>().in("id", userIds);
         List<User> list = userMapper.selectList(query);
-        if (!deptIds.isEmpty()) {
-            list.removeIf(user -> {
-                String effectiveDeptId = primaryDeptByUserId.getOrDefault(user.id, user.deptId);
-                return effectiveDeptId == null || !deptIds.contains(effectiveDeptId);
-            });
-        }
+        // 先用当前租户的 primary department 覆盖 user.deptId，避免使用其他租户的过时 deptId
         for (User user : list) {
             String primaryDeptId = primaryDeptByUserId.get(user.id);
-            if (primaryDeptId != null && !primaryDeptId.isBlank()) {
-                user.deptId = primaryDeptId;
-            }
+            user.deptId = (primaryDeptId != null && !primaryDeptId.isBlank()) ? primaryDeptId : null;
+        }
+        if (!deptIds.isEmpty()) {
+            list.removeIf(user -> {
+                return user.deptId == null || !deptIds.contains(user.deptId);
+            });
         }
         list.sort((a, b) -> {
             LocalDateTime at = a.createdAt == null ? LocalDateTime.MIN : a.createdAt;
