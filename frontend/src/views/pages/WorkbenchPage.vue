@@ -57,7 +57,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Coin, Document, FolderOpened, Plus, User } from '@element-plus/icons-vue'
+import { Coin, Document, FolderOpened, User } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
@@ -69,16 +69,10 @@ const shortcutItems = [
     icon: User
   },
   {
-    label: '项目列表',
+    label: '项目',
     desc: '进入项目管理页面',
     path: '/projects',
     icon: FolderOpened
-  },
-  {
-    label: '新增项目',
-    desc: '快速创建新项目',
-    path: '/projects/create',
-    icon: Plus
   },
   {
     label: '合同',
@@ -160,7 +154,7 @@ onMounted(async () => {
 
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
