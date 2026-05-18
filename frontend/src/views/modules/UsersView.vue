@@ -100,7 +100,7 @@
       </el-form-item>
       <el-form-item label="部门" required>
         <el-select v-model="memberForm.deptId" placeholder="请选择部门">
-          <el-option v-for="d in enabledDepartments" :key="d.id" :label="d.name" :value="d.id" />
+          <el-option v-for="d in deptSelectOptions" :key="d.id" :label="d.name" :value="d.id" />
         </el-select>
       </el-form-item>
       <el-form-item label="角色" required>
@@ -150,6 +150,15 @@ const memberForm = reactive({
 const enabledDepartments = computed(() =>
   departments.value.filter((d) => d.status === 'ENABLED')
 )
+
+const deptSelectOptions = computed(() => {
+  const list = [...enabledDepartments.value]
+  if (memberForm.deptId && !list.some((d) => d.id === memberForm.deptId)) {
+    const current = departments.value.find((d) => d.id === memberForm.deptId)
+    if (current) list.unshift(current)
+  }
+  return list
+})
 
 const deptTreeData = computed(() => {
   const list = departments.value.map((d) => ({ ...d, children: [] as any[] }))
