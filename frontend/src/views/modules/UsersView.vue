@@ -29,7 +29,8 @@
       </div>
 
       <div class="users-table-wrap">
-        <el-table :data="userRows" v-loading="loading" border stripe>
+        <div class="users-table-scroll">
+          <el-table :data="userRows" v-loading="loading" border stripe height="100%">
           <el-table-column prop="name" label="姓名" min-width="140" />
           <el-table-column prop="phone" label="手机号" min-width="150" />
           <el-table-column label="所属部门" min-width="150">
@@ -68,7 +69,8 @@
               </el-space>
             </template>
           </el-table-column>
-        </el-table>
+          </el-table>
+        </div>
         <div class="pagination-wrap">
           <el-pagination
             v-model:current-page="page"
@@ -119,6 +121,7 @@ import { ref, computed, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { buildPageQuery, normalizePageResult, type PageResult } from '../../api/page'
+import { getUserDisplayName as resolveUserDisplayName } from '../../utils/userDisplay'
 
 const authStore = useAuthStore()
 
@@ -331,9 +334,7 @@ function handleSizeChange(nextSize: number) {
 }
 
 function getUserDisplayName(userId?: string): string {
-  if (!userId) return '-'
-  const user = users.value.find((u) => u.id === userId)
-  return user?.name || userId
+  return resolveUserDisplayName(users.value, userId)
 }
 
 function getDeptDisplayName(deptId?: string | null): string {
@@ -355,6 +356,8 @@ defineExpose({
 .users-layout {
   display: flex;
   gap: 16px;
+  height: 560px;
+  overflow: hidden;
 }
 
 .dept-sidebar {
@@ -362,6 +365,8 @@ defineExpose({
   flex-shrink: 0;
   border-right: 1px solid #e4e7ed;
   padding-right: 12px;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 .dept-tree :deep(.el-tree-node__content) {
@@ -404,6 +409,14 @@ defineExpose({
 .users-table-wrap {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.users-table-scroll {
+  flex: 1;
+  min-height: 0;
 }
 
 .card-header {
@@ -416,5 +429,6 @@ defineExpose({
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 </style>
