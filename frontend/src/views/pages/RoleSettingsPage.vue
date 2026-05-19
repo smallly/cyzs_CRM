@@ -13,7 +13,6 @@
           @click="selectRole(role)"
         >
           <div class="role-item-name">{{ role.name }}</div>
-          <div class="role-item-meta">{{ role.code }}</div>
         </div>
       </div>
     </aside>
@@ -331,12 +330,6 @@ function getScopeLabel(scope?: ScopeMode): string {
 
 .role-item.active .role-item-name {
   color: #2f5cf6;
-}
-
-.role-item-meta {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 2px;
 }
 
 /* 右侧详情 */
