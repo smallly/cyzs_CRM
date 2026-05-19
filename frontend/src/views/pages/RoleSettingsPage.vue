@@ -51,72 +51,74 @@
 
           <el-divider />
 
-          <div class="perm-section">
-            <div class="perm-section-title">数据权限范围</div>
-            <div v-if="selectedRole.dataScopeEditable" class="scope-editor">
-              <div class="scope-row">
-                <span class="scope-label">当前范围</span>
-                <el-select v-model="selectedScope" class="scope-select" placeholder="请选择数据范围">
-                  <el-option
-                    v-for="scope in scopeOptions"
-                    :key="scope.value"
-                    :label="scope.label"
-                    :value="scope.value"
-                  />
-                </el-select>
-              </div>
-              <div class="scope-actions">
-                <el-button :disabled="!scopeDirty" @click="resetScope">恢复默认</el-button>
-                <el-button
-                  type="primary"
-                  :loading="saving"
-                  :disabled="!scopeDirty"
-                  @click="saveScope"
-                >
-                  保存配置
-                </el-button>
-              </div>
-              <div class="scope-hint">
-                默认值为“本人及下属”，修改后点击保存立即生效。
-              </div>
-            </div>
-            <div v-else class="scope-fixed">
-              <el-checkbox :model-value="true" disabled>
-                {{ getScopeLabel(selectedRole.defaultDataScope) }}
-              </el-checkbox>
-              <div class="scope-hint">该角色范围固定为全部数据，不允许修改。</div>
-            </div>
-          </div>
-
-          <el-divider />
-
-          <div class="perm-section">
-            <div class="perm-section-title">菜单访问权限</div>
-
-            <div class="perm-group" v-for="group in menuGroups" :key="group.name">
-              <div class="perm-group-title">{{ group.name }}</div>
-              <div class="perm-table">
-                <div class="perm-table-header">
-                  <div class="perm-col perm-col-module">模块</div>
-                  <div class="perm-col perm-col-access">访问权限</div>
-                  <div class="perm-col perm-col-function">功能权限</div>
-                </div>
-                <div v-for="menu in group.menus" :key="menu.key" class="perm-table-row">
-                  <div class="perm-col perm-col-module">{{ menu.label }}</div>
-                  <div class="perm-col perm-col-access">
-                    <el-checkbox :model-value="hasMenu(menu.key)" disabled>
-                      {{ menu.label }}
-                    </el-checkbox>
-                  </div>
-                  <div class="perm-col perm-col-function">
-                    <el-checkbox :model-value="hasMenu(menu.key)" disabled>
-                      查看
-                    </el-checkbox>
+          <el-tabs v-model="activeTab" class="role-tabs">
+            <el-tab-pane label="菜单访问权限" name="menu">
+              <div class="perm-section">
+                <div class="perm-group" v-for="group in menuGroups" :key="group.name">
+                  <div class="perm-group-title">{{ group.name }}</div>
+                  <div class="perm-table">
+                    <div class="perm-table-header">
+                      <div class="perm-col perm-col-module">模块</div>
+                      <div class="perm-col perm-col-access">访问权限</div>
+                      <div class="perm-col perm-col-function">功能权限</div>
+                    </div>
+                    <div v-for="menu in group.menus" :key="menu.key" class="perm-table-row">
+                      <div class="perm-col perm-col-module">{{ menu.label }}</div>
+                      <div class="perm-col perm-col-access">
+                        <el-checkbox :model-value="hasMenu(menu.key)" disabled>
+                          {{ menu.label }}
+                        </el-checkbox>
+                      </div>
+                      <div class="perm-col perm-col-function">
+                        <el-checkbox :model-value="hasMenu(menu.key)" disabled>
+                          查看
+                        </el-checkbox>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="数据权限范围" name="data">
+              <div class="perm-section">
+                <div class="perm-section-title">数据权限范围</div>
+                <div v-if="selectedRole.dataScopeEditable" class="scope-editor">
+                  <div class="scope-row">
+                    <span class="scope-label">当前范围</span>
+                    <el-select v-model="selectedScope" class="scope-select" placeholder="请选择数据范围">
+                      <el-option
+                        v-for="scope in scopeOptions"
+                        :key="scope.value"
+                        :label="scope.label"
+                        :value="scope.value"
+                      />
+                    </el-select>
+                  </div>
+                  <div class="scope-actions">
+                    <el-button :disabled="!scopeDirty" @click="resetScope">恢复默认</el-button>
+                    <el-button
+                      type="primary"
+                      :loading="saving"
+                      :disabled="!scopeDirty"
+                      @click="saveScope"
+                    >
+                      保存配置
+                    </el-button>
+                  </div>
+                  <div class="scope-hint">
+                    默认值为“本人及下属”，修改后点击保存立即生效。
+                  </div>
+                </div>
+                <div v-else class="scope-fixed">
+                  <el-checkbox :model-value="true" disabled>
+                    {{ getScopeLabel(selectedRole.defaultDataScope) }}
+                  </el-checkbox>
+                  <div class="scope-hint">该角色范围固定为全部数据，不允许修改。</div>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </el-card>
       </template>
     </main>
@@ -150,6 +152,7 @@ const saving = ref(false)
 const roles = ref<RoleItem[]>([])
 const selectedRole = ref<RoleItem | null>(null)
 const selectedScope = ref<ScopeMode>(DEFAULT_SALES_SCOPE)
+const activeTab = ref<'menu' | 'data'>('menu')
 
 const menuGroups = [
   {
@@ -212,6 +215,7 @@ async function loadRoles() {
 function selectRole(role: RoleItem) {
   selectedRole.value = role
   selectedScope.value = getInitialScope(role)
+  activeTab.value = 'menu'
 }
 
 function getInitialScope(role: RoleItem): ScopeMode {
