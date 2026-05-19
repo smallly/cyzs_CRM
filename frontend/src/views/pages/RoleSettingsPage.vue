@@ -3,25 +3,17 @@
     <aside class="role-sidebar">
       <div class="role-sidebar-header">
         <span class="role-sidebar-title">默认角色</span>
-        <span class="role-sidebar-note">选择角色后配置数据范围</span>
       </div>
       <div class="role-list">
-        <button
+        <div
           v-for="role in roles"
           :key="role.code"
-          type="button"
           class="role-item"
           :class="{ active: selectedRole?.code === role.code }"
           @click="selectRole(role)"
         >
-          <div class="role-item-main">
-            <span class="role-item-name">{{ role.name }}</span>
-            <el-tag v-if="role.systemAdmin" type="success" size="small">固定</el-tag>
-            <el-tag v-else-if="role.dataScopeEditable" type="warning" size="small">可编辑</el-tag>
-            <el-tag v-else type="info" size="small">只读</el-tag>
-          </div>
-          <div class="role-item-meta">{{ getBizRoleLabel(role.bizRole) }}</div>
-        </button>
+          <div class="role-item-name">{{ role.name }}</div>
+        </div>
       </div>
     </aside>
 
@@ -30,55 +22,54 @@
         <el-card class="role-detail-card">
           <template #header>
             <div class="detail-header">
-              <div>
-                <div class="detail-title">{{ selectedRole.name }}</div>
-                <div class="detail-subtitle">{{ selectedRole.description || '角色详情' }}</div>
-              </div>
-              <div class="detail-badges">
-                <el-tag v-if="selectedRole.systemAdmin" type="success">系统管理员</el-tag>
-                <el-tag v-else-if="selectedRole.dataScopeEditable" type="warning">招商人员可编辑</el-tag>
-                <el-tag v-else type="info">固定配置</el-tag>
-              </div>
+              <span class="detail-title">{{ selectedRole.name }}</span>
+              <el-tag v-if="selectedRole.systemAdmin" type="success">系统管理员</el-tag>
+              <el-tag v-else type="info">普通角色</el-tag>
             </div>
           </template>
 
-          <div class="info-grid">
-            <div class="info-cell">
-              <span class="info-label">角色编码</span>
-              <span class="info-value">{{ selectedRole.code }}</span>
-            </div>
-            <div class="info-cell">
-              <span class="info-label">业务角色</span>
-              <span class="info-value">{{ getBizRoleLabel(selectedRole.bizRole) }}</span>
-            </div>
-            <div class="info-cell">
-              <span class="info-label">默认数据范围</span>
-              <span class="info-value">{{ getScopeLabel(selectedRole.defaultDataScope) }}</span>
-            </div>
-            <div class="info-cell wide">
-              <span class="info-label">说明</span>
-              <span class="info-value">{{ selectedRole.description || '-' }}</span>
+          <!-- 基本信息 -->
+          <div class="info-section">
+            <div class="info-grid">
+              <div class="info-cell">
+                <span class="info-label">角色编码</span>
+                <span class="info-value">{{ selectedRole.code }}</span>
+              </div>
+              <div class="info-cell">
+                <span class="info-label">业务角色</span>
+                <span class="info-value">{{ getBizRoleLabel(selectedRole.bizRole) }}</span>
+              </div>
+              <div class="info-cell">
+                <span class="info-label">默认数据范围</span>
+                <span class="info-value">{{ getScopeLabel(selectedRole.defaultDataScope) }}</span>
+              </div>
+              <div class="info-cell wide">
+                <span class="info-label">说明</span>
+                <span class="info-value">{{ selectedRole.description || '-' }}</span>
+              </div>
             </div>
           </div>
 
+          <!-- Tab 切换 -->
           <el-tabs v-model="activeTab" class="role-tabs">
             <el-tab-pane label="菜单访问权限" name="menu">
-              <div class="perm-hint">
-                这里只展示角色可访问的菜单范围，数据范围配置请切换到下方的“数据权限范围”。
-              </div>
               <div class="perm-group" v-for="group in menuGroups" :key="group.name">
                 <div class="perm-group-title">{{ group.name }}</div>
                 <div class="perm-table">
                   <div class="perm-table-header">
                     <div class="perm-col perm-col-module">模块</div>
-                    <div class="perm-col perm-col-access">菜单访问</div>
-                    <div class="perm-col perm-col-function">功能查看</div>
+                    <div class="perm-col perm-col-access">访问权限</div>
+                    <div class="perm-col perm-col-function">功能权限</div>
                   </div>
-                  <div v-for="menu in group.menus" :key="menu.key" class="perm-table-row">
+                  <div
+                    v-for="menu in group.menus"
+                    :key="menu.key"
+                    class="perm-table-row"
+                  >
                     <div class="perm-col perm-col-module">{{ menu.label }}</div>
                     <div class="perm-col perm-col-access">
                       <el-checkbox :model-value="hasMenu(menu.key)" disabled>
-                        {{ hasMenu(menu.key) ? '可访问' : '不可访问' }}
+                        {{ menu.label }}
                       </el-checkbox>
                     </div>
                     <div class="perm-col perm-col-function">
@@ -92,70 +83,40 @@
             </el-tab-pane>
 
             <el-tab-pane label="数据权限范围" name="data">
-              <div class="scope-panel">
-                <div class="scope-panel-header">
-                  <div>
-                    <div class="scope-title">角色数据范围</div>
-                    <div class="scope-subtitle">
-                      招商人员默认可编辑，系统管理员和项目管理员固定为全部数据。
-                    </div>
-                  </div>
-                  <el-tag v-if="selectedRole.dataScopeEditable" type="warning">可编辑</el-tag>
-                  <el-tag v-else type="info">固定</el-tag>
-                </div>
-
-                <div class="scope-form">
-                  <div class="scope-field">
-                    <span class="scope-field-label">当前范围</span>
-                    <el-select
-                      v-model="selectedScope"
-                      class="scope-select"
-                      placeholder="请选择数据范围"
-                      :disabled="!selectedRole.dataScopeEditable"
+              <div class="scope-options">
+                <template v-if="selectedRole.dataScopeEditable">
+                  <el-radio-group v-model="selectedScope">
+                    <el-radio
+                      v-for="scope in scopeOptions"
+                      :key="scope.value"
+                      :label="scope.value"
                     >
-                      <el-option
-                        v-for="option in availableScopeOptions"
-                        :key="option.value"
-                        :label="option.label"
-                        :value="option.value"
-                      />
-                    </el-select>
-                    <div class="scope-field-help">
-                      <template v-if="selectedRole.dataScopeEditable">
-                        默认值为“本人及下属”，修改后点击保存立即生效。
-                      </template>
-                      <template v-else>
-                        该角色范围固定为全部数据，不允许修改。
-                      </template>
-                    </div>
-                  </div>
+                      {{ scope.label }}
+                    </el-radio>
+                  </el-radio-group>
+                </template>
+                <template v-else>
+                  <el-checkbox :model-value="true" disabled>
+                    {{ getScopeLabel(selectedRole.defaultDataScope) }}
+                  </el-checkbox>
+                </template>
+              </div>
 
-                  <div class="scope-actions">
-                    <el-button
-                      type="primary"
-                      :loading="saving"
-                      :disabled="!selectedRole.dataScopeEditable || !scopeDirty"
-                      @click="saveScope"
-                    >
-                      保存范围
-                    </el-button>
-                  </div>
-                </div>
+              <div v-if="selectedRole.dataScopeEditable" class="scope-actions">
+                <el-button type="primary" :loading="saving" :disabled="selectedScope === selectedRole.defaultDataScope" @click="saveScope">
+                  保存配置
+                </el-button>
               </div>
             </el-tab-pane>
           </el-tabs>
         </el-card>
-      </template>
-
-      <template v-else>
-        <el-empty description="暂无角色数据" />
       </template>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 
@@ -174,13 +135,14 @@ interface RoleItem {
 }
 
 const DEFAULT_SALES_SCOPE: ScopeMode = 'SELF_AND_SUBORDINATES'
-const DEFAULT_SCOPE_OPTIONS: { value: ScopeMode; label: string }[] = [
-  { value: 'ALL', label: '全部数据' },
-  { value: 'SELF', label: '仅本人' },
-  { value: 'SELF_AND_SUBORDINATES', label: '本人及下属' },
-  { value: 'DEPT', label: '本部门' },
-  { value: 'DEPT_AND_SUBTREE', label: '本部门及以下' }
-]
+
+const authStore = useAuthStore()
+const loading = ref(false)
+const saving = ref(false)
+const roles = ref<RoleItem[]>([])
+const selectedRole = ref<RoleItem | null>(null)
+const selectedScope = ref<ScopeMode>(DEFAULT_SALES_SCOPE)
+const activeTab = ref('menu')
 
 const menuGroups = [
   {
@@ -207,32 +169,14 @@ const menuGroups = [
   }
 ]
 
-const authStore = useAuthStore()
-const loading = ref(false)
-const saving = ref(false)
-const roles = ref<RoleItem[]>([])
-const selectedRole = ref<RoleItem | null>(null)
-const selectedScope = ref<ScopeMode>(DEFAULT_SALES_SCOPE)
-const activeTab = ref('data')
-
-const availableScopeOptions = computed(() => {
-  if (!selectedRole.value) {
-    return DEFAULT_SCOPE_OPTIONS
-  }
-  const options = selectedRole.value.dataScopeOptions && selectedRole.value.dataScopeOptions.length > 0
+const scopeOptions = computed(() => {
+  const options = selectedRole.value?.dataScopeOptions?.length
     ? selectedRole.value.dataScopeOptions
-    : DEFAULT_SCOPE_OPTIONS.map((item) => item.value)
+    : (['ALL', 'SELF', 'SELF_AND_SUBORDINATES', 'DEPT', 'DEPT_AND_SUBTREE'] as ScopeMode[])
   return options.map((value) => ({
     value,
     label: getScopeLabel(value)
   }))
-})
-
-const scopeDirty = computed(() => {
-  if (!selectedRole.value || !selectedRole.value.dataScopeEditable) {
-    return false
-  }
-  return selectedScope.value !== getPersistedScope(selectedRole.value)
 })
 
 onMounted(async () => {
@@ -243,11 +187,9 @@ async function loadRoles() {
   loading.value = true
   try {
     const res = await authStore.api<RoleItem[]>('/api/roles')
-    const items = Array.isArray(res) ? res : []
-    roles.value = items
-    const initialRole = items.find((item) => item.code === 'SALES') || items[0] || null
-    if (initialRole) {
-      selectRole(initialRole)
+    roles.value = Array.isArray(res) ? res : []
+    if (roles.value.length > 0 && !selectedRole.value) {
+      selectRole(roles.value.find((role) => role.code === 'SALES') || roles.value[0])
     }
   } catch (error: any) {
     ElMessage.error(error.message || '加载角色失败')
@@ -258,11 +200,11 @@ async function loadRoles() {
 
 function selectRole(role: RoleItem) {
   selectedRole.value = role
-  selectedScope.value = getPersistedScope(role)
-  activeTab.value = 'data'
+  selectedScope.value = getInitialScope(role)
+  activeTab.value = 'menu'
 }
 
-function getPersistedScope(role: RoleItem): ScopeMode {
+function getInitialScope(role: RoleItem): ScopeMode {
   if (role.systemAdmin) {
     return 'ALL'
   }
@@ -291,9 +233,9 @@ async function saveScope() {
         ? { ...role, defaultDataScope: selectedScope.value }
         : role
     )
-    ElMessage.success('数据范围已保存')
+    ElMessage.success('数据权限范围已保存')
   } catch (error: any) {
-    ElMessage.error(error.message || '保存数据范围失败')
+    ElMessage.error(error.message || '保存失败')
   } finally {
     saving.value = false
   }
@@ -331,52 +273,42 @@ function getScopeLabel(scope?: ScopeMode): string {
   min-height: 0;
 }
 
+/* 左侧角色列表 */
 .role-sidebar {
-  width: 260px;
+  width: 240px;
   flex-shrink: 0;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .role-sidebar-header {
-  padding: 16px 16px 12px;
+  padding: 16px 16px 8px;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .role-sidebar-title {
-  display: block;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: #0f172a;
 }
 
-.role-sidebar-note {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #64748b;
-}
-
 .role-list {
-  padding: 10px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   overflow-y: auto;
 }
 
 .role-item {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  text-align: left;
+  border-left: 3px solid transparent;
   transition: all 0.15s ease;
 }
 
@@ -386,28 +318,27 @@ function getScopeLabel(scope?: ScopeMode): string {
 
 .role-item.active {
   background: #eff4ff;
-  border-color: #c7d2fe;
-}
-
-.role-item-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  border-left-color: #2f5cf6;
 }
 
 .role-item-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: #1e293b;
+  line-height: 1.4;
+}
+
+.role-item.active .role-item-name {
+  color: #2f5cf6;
 }
 
 .role-item-meta {
-  margin-top: 6px;
   font-size: 12px;
-  color: #64748b;
+  color: #94a3b8;
+  margin-top: 2px;
 }
 
+/* 右侧详情 */
 .role-main {
   flex: 1;
   min-width: 0;
@@ -415,7 +346,7 @@ function getScopeLabel(scope?: ScopeMode): string {
 }
 
 .role-detail-card :deep(.el-card__header) {
-  padding: 16px 20px;
+  padding: 14px 20px;
 }
 
 .role-detail-card :deep(.el-card__body) {
@@ -424,34 +355,25 @@ function getScopeLabel(scope?: ScopeMode): string {
 
 .detail-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
 }
 
 .detail-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: #0f172a;
 }
 
-.detail-subtitle {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.detail-badges {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+/* 基本信息 */
+.info-section {
+  margin-bottom: 8px;
 }
 
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 16px 24px;
-  margin-bottom: 20px;
 }
 
 .info-cell {
@@ -476,17 +398,12 @@ function getScopeLabel(scope?: ScopeMode): string {
   word-break: break-all;
 }
 
+/* 权限区域 */
 .role-tabs {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
-.perm-hint {
-  padding: 12px 14px;
-  border: 1px solid #dbeafe;
-  border-radius: 10px;
-  background: #f8fbff;
-  color: #475569;
-  font-size: 13px;
+.role-tabs :deep(.el-tabs__header) {
   margin-bottom: 16px;
 }
 
@@ -494,29 +411,28 @@ function getScopeLabel(scope?: ScopeMode): string {
   margin-bottom: 20px;
 }
 
+.perm-group:last-child {
+  margin-bottom: 0;
+}
+
 .perm-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
   margin-bottom: 10px;
   padding-left: 8px;
   border-left: 3px solid #2f5cf6;
-  font-size: 13px;
-  font-weight: 700;
-  color: #334155;
 }
 
 .perm-table {
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
-.perm-table-header,
-.perm-table-row {
-  display: grid;
-  grid-template-columns: 180px 1fr 1fr;
-  align-items: center;
-}
-
 .perm-table-header {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr;
   background: #f8fafc;
   font-size: 13px;
   font-weight: 600;
@@ -524,100 +440,45 @@ function getScopeLabel(scope?: ScopeMode): string {
 }
 
 .perm-table-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr;
   border-top: 1px solid #f1f5f9;
   font-size: 13px;
   color: #334155;
+  align-items: center;
 }
 
 .perm-col {
-  padding: 12px 16px;
+  padding: 10px 16px;
 }
 
 .perm-col-module {
-  font-weight: 600;
+  font-weight: 500;
 }
 
-.scope-panel {
-  padding: 4px 0 0;
-}
-
-.scope-panel-header {
+/* 数据权限 */
+.scope-options {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 0 0 16px;
+  flex-wrap: wrap;
+  gap: 16px 32px;
 }
 
-.scope-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+.scope-options :deep(.el-radio-group) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
 }
 
-.scope-subtitle {
-  margin-top: 6px;
+.scope-options :deep(.el-radio) {
+  margin-right: 0;
+}
+
+.scope-options :deep(.el-checkbox__label),
+.scope-options :deep(.el-radio__label) {
   font-size: 13px;
-  color: #64748b;
-}
-
-.scope-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 720px;
-}
-
-.scope-field {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.scope-field-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.scope-select {
-  width: 100%;
-}
-
-.scope-field-help {
-  font-size: 12px;
-  color: #64748b;
 }
 
 .scope-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
-@media (max-width: 1280px) {
-  .info-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1024px) {
-  .role-settings-page {
-    flex-direction: column;
-  }
-
-  .role-sidebar {
-    width: 100%;
-  }
-}
-
-@media (max-width: 768px) {
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .perm-table-header,
-  .perm-table-row {
-    grid-template-columns: 1fr;
-  }
+  margin-top: 16px;
 }
 </style>
