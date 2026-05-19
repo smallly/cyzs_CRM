@@ -425,10 +425,10 @@ function getScopeLabel(scope?: ScopeMode): string {
 
 .scope-editor,
 .scope-fixed {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #fff;
-  padding: 16px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .scope-row {
