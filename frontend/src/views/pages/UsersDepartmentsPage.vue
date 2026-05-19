@@ -63,10 +63,10 @@ function handleTabChange(tab: string | number) {
 }
 
 .users-departments-page :deep(.el-tabs__content) {
-  padding-top: 8px;
+  padding-top: 4px;
 }
 
 .users-departments-page :deep(.el-tabs__header) {
-  padding-left: 12px;
+  padding-left: 6px;
 }
 </style>
