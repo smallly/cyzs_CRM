@@ -50,7 +50,47 @@
             </div>
           </div>
 
-          <!-- Tab 切换 -->
+          <el-divider />
+
+          <!-- 数据权限 -->
+          <div class="perm-section">
+            <div class="perm-section-title">数据权限范围</div>
+            <div class="scope-options">
+              <template v-if="selectedRole.dataScopeEditable">
+                <div class="scope-edit-row">
+                  <el-select
+                    v-model="selectedScope"
+                    class="scope-select"
+                    placeholder="请选择数据范围"
+                  >
+                    <el-option
+                      v-for="scope in scopeOptions"
+                      :key="scope.value"
+                      :label="scope.label"
+                      :value="scope.value"
+                    />
+                  </el-select>
+                  <el-button
+                    type="primary"
+                    :loading="saving"
+                    :disabled="selectedScope === selectedRole.defaultDataScope"
+                    @click="saveScope"
+                  >
+                    保存配置
+                  </el-button>
+                </div>
+              </template>
+              <template v-else>
+                <el-checkbox :model-value="true" disabled>
+                  {{ getScopeLabel(selectedRole.defaultDataScope) }}
+                </el-checkbox>
+              </template>
+            </div>
+          </div>
+
+          <el-divider />
+
+          <!-- 菜单权限 -->
           <el-tabs v-model="activeTab" class="role-tabs">
             <el-tab-pane label="菜单访问权限" name="menu">
               <div class="perm-group" v-for="group in menuGroups" :key="group.name">
@@ -79,40 +119,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </el-tab-pane>
-
-            <el-tab-pane label="数据权限范围" name="data">
-              <div class="scope-options">
-                <template v-if="selectedRole.dataScopeEditable">
-                  <div class="scope-edit-row">
-                    <el-select
-                      v-model="selectedScope"
-                      class="scope-select"
-                      placeholder="请选择数据范围"
-                    >
-                      <el-option
-                        v-for="scope in scopeOptions"
-                        :key="scope.value"
-                        :label="scope.label"
-                        :value="scope.value"
-                      />
-                    </el-select>
-                    <el-button
-                      type="primary"
-                      :loading="saving"
-                      :disabled="selectedScope === selectedRole.defaultDataScope"
-                      @click="saveScope"
-                    >
-                      保存配置
-                    </el-button>
-                  </div>
-                </template>
-                <template v-else>
-                  <el-checkbox :model-value="true" disabled>
-                    {{ getScopeLabel(selectedRole.defaultDataScope) }}
-                  </el-checkbox>
-                </template>
               </div>
             </el-tab-pane>
           </el-tabs>
@@ -405,6 +411,17 @@ function getScopeLabel(scope?: ScopeMode): string {
 }
 
 .role-tabs :deep(.el-tabs__header) {
+  margin-bottom: 16px;
+}
+
+.perm-section {
+  margin-bottom: 8px;
+}
+
+.perm-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
   margin-bottom: 16px;
 }
 
