@@ -81,40 +81,42 @@
             </el-tab-pane>
 
             <el-tab-pane label="数据权限范围" name="data">
-              <div class="perm-section">
+              <div class="perm-section scope-panel">
                 <div class="perm-section-title">数据权限范围</div>
-                <div v-if="selectedRole.dataScopeEditable" class="scope-editor">
-                  <div class="scope-row">
-                    <span class="scope-label">当前范围</span>
-                    <el-select v-model="selectedScope" class="scope-select" placeholder="请选择数据范围">
-                      <el-option
-                        v-for="scope in scopeOptions"
-                        :key="scope.value"
-                        :label="scope.label"
-                        :value="scope.value"
-                      />
-                    </el-select>
+                <div class="scope-box">
+                  <div v-if="selectedRole.dataScopeEditable" class="scope-editor">
+                    <div class="scope-row">
+                      <span class="scope-label">当前范围</span>
+                      <el-select v-model="selectedScope" class="scope-select" placeholder="请选择数据范围">
+                        <el-option
+                          v-for="scope in scopeOptions"
+                          :key="scope.value"
+                          :label="scope.label"
+                          :value="scope.value"
+                        />
+                      </el-select>
+                    </div>
+                    <div class="scope-actions">
+                      <el-button :disabled="!scopeDirty" @click="resetScope">恢复默认</el-button>
+                      <el-button
+                        type="primary"
+                        :loading="saving"
+                        :disabled="!scopeDirty"
+                        @click="saveScope"
+                      >
+                        保存配置
+                      </el-button>
+                    </div>
+                    <div class="scope-hint">
+                      默认值为“本人及下属”，修改后点击保存立即生效。
+                    </div>
                   </div>
-                  <div class="scope-actions">
-                    <el-button :disabled="!scopeDirty" @click="resetScope">恢复默认</el-button>
-                    <el-button
-                      type="primary"
-                      :loading="saving"
-                      :disabled="!scopeDirty"
-                      @click="saveScope"
-                    >
-                      保存配置
-                    </el-button>
+                  <div v-else class="scope-fixed">
+                    <el-checkbox :model-value="true" disabled>
+                      {{ getScopeLabel(selectedRole.defaultDataScope) }}
+                    </el-checkbox>
+                    <div class="scope-hint">该角色范围固定为全部数据，不允许修改。</div>
                   </div>
-                  <div class="scope-hint">
-                    默认值为“本人及下属”，修改后点击保存立即生效。
-                  </div>
-                </div>
-                <div v-else class="scope-fixed">
-                  <el-checkbox :model-value="true" disabled>
-                    {{ getScopeLabel(selectedRole.defaultDataScope) }}
-                  </el-checkbox>
-                  <div class="scope-hint">该角色范围固定为全部数据，不允许修改。</div>
                 </div>
               </div>
             </el-tab-pane>
@@ -421,6 +423,15 @@ function getScopeLabel(scope?: ScopeMode): string {
   margin-bottom: 16px;
 }
 
+.scope-panel {
+  max-width: 560px;
+}
+
+.scope-box {
+  width: 100%;
+  max-width: 520px;
+}
+
 .scope-editor,
 .scope-fixed {
   border: 1px solid #e2e8f0;
@@ -433,7 +444,6 @@ function getScopeLabel(scope?: ScopeMode): string {
   display: flex;
   align-items: center;
   gap: 12px;
-  max-width: 620px;
 }
 
 .scope-label {
