@@ -126,8 +126,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
-
-type ScopeMode = 'ALL' | 'SELF' | 'SELF_AND_SUBORDINATES' | 'DEPT' | 'DEPT_AND_SUBTREE'
+import { saveRoleScopeWithFallback, type ScopeMode } from '../../api/roleScope'
 
 interface RoleItem {
   code: string
@@ -243,10 +242,7 @@ async function saveScope() {
   }
   saving.value = true
   try {
-    await authStore.api(`/api/roles/${selectedRole.value.code}/scope`, {
-      method: 'PUT',
-      body: JSON.stringify({ mode: selectedScope.value })
-    })
+    await saveRoleScopeWithFallback(authStore.api, selectedRole.value.code, selectedScope.value)
     selectedRole.value.defaultDataScope = selectedScope.value
     roles.value = roles.value.map((role) =>
       role.code === selectedRole.value?.code
