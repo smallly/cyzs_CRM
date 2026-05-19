@@ -84,7 +84,7 @@
               <div class="perm-section scope-panel">
                 <div class="perm-section-title">数据权限范围</div>
                 <div class="scope-box">
-                  <div v-if="selectedRole.dataScopeEditable" class="scope-editor">
+                  <div v-if="canEditScope" class="scope-editor">
                     <div class="scope-row">
                       <span class="scope-label">当前范围</span>
                       <el-select v-model="selectedScope" class="scope-select" placeholder="请选择数据范围">
@@ -195,6 +195,8 @@ const scopeDirty = computed(() => {
   return selectedScope.value !== getInitialScope(selectedRole.value)
 })
 
+const canEditScope = computed(() => selectedRole.value?.code === 'SALES')
+
 onMounted(async () => {
   await loadRoles()
 })
@@ -241,7 +243,7 @@ function resetScope() {
 }
 
 async function saveScope() {
-  if (!selectedRole.value || !selectedRole.value.dataScopeEditable) {
+  if (!selectedRole.value || !canEditScope.value) {
     return
   }
   saving.value = true
