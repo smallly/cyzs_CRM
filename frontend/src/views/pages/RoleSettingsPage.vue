@@ -85,27 +85,34 @@
             <el-tab-pane label="数据权限范围" name="data">
               <div class="scope-options">
                 <template v-if="selectedRole.dataScopeEditable">
-                  <el-radio-group v-model="selectedScope">
-                    <el-radio
-                      v-for="scope in scopeOptions"
-                      :key="scope.value"
-                      :label="scope.value"
+                  <div class="scope-edit-row">
+                    <el-select
+                      v-model="selectedScope"
+                      class="scope-select"
+                      placeholder="请选择数据范围"
                     >
-                      {{ scope.label }}
-                    </el-radio>
-                  </el-radio-group>
+                      <el-option
+                        v-for="scope in scopeOptions"
+                        :key="scope.value"
+                        :label="scope.label"
+                        :value="scope.value"
+                      />
+                    </el-select>
+                    <el-button
+                      type="primary"
+                      :loading="saving"
+                      :disabled="selectedScope === selectedRole.defaultDataScope"
+                      @click="saveScope"
+                    >
+                      保存配置
+                    </el-button>
+                  </div>
                 </template>
                 <template v-else>
                   <el-checkbox :model-value="true" disabled>
                     {{ getScopeLabel(selectedRole.defaultDataScope) }}
                   </el-checkbox>
                 </template>
-              </div>
-
-              <div v-if="selectedRole.dataScopeEditable" class="scope-actions">
-                <el-button type="primary" :loading="saving" :disabled="selectedScope === selectedRole.defaultDataScope" @click="saveScope">
-                  保存配置
-                </el-button>
               </div>
             </el-tab-pane>
           </el-tabs>
@@ -457,22 +464,20 @@ function getScopeLabel(scope?: ScopeMode): string {
   gap: 16px 32px;
 }
 
-.scope-options :deep(.el-radio-group) {
+.scope-edit-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px 32px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 560px;
 }
 
-.scope-options :deep(.el-radio) {
-  margin-right: 0;
+.scope-select {
+  flex: 1;
+  min-width: 0;
 }
 
-.scope-options :deep(.el-checkbox__label),
-.scope-options :deep(.el-radio__label) {
+.scope-options :deep(.el-checkbox__label) {
   font-size: 13px;
-}
-
-.scope-actions {
-  margin-top: 16px;
 }
 </style>
