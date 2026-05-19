@@ -82,7 +82,6 @@
 
             <el-tab-pane label="数据权限范围" name="data">
               <div class="perm-section scope-panel">
-                <div class="perm-section-title">数据权限范围</div>
                 <div class="scope-box">
                   <div v-if="canEditScope" class="scope-editor">
                     <div class="scope-row">
@@ -107,15 +106,11 @@
                         保存配置
                       </el-button>
                     </div>
-                    <div class="scope-hint">
-                      默认值为“本人及下属”，修改后点击保存立即生效。
-                    </div>
                   </div>
                   <div v-else class="scope-fixed">
                     <el-checkbox :model-value="true" disabled>
                       {{ getScopeLabel(selectedRole.defaultDataScope) }}
                     </el-checkbox>
-                    <div class="scope-hint">该角色范围固定为全部数据，不允许修改。</div>
                   </div>
                 </div>
               </div>
@@ -418,12 +413,6 @@ function getScopeLabel(scope?: ScopeMode): string {
   margin-bottom: 8px;
 }
 
-.perm-section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 16px;
-}
 
 .scope-panel {
   max-width: 560px;

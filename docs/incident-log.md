@@ -174,3 +174,25 @@ List<String> previousSources = existing == null ? DEFAULT_PROJECT_SOURCES : exis
 - `frontend/src/views/modules/ContractsView.vue`
 - `backend/src/main/java/com/indcrm/crm/service/ContractService.java`
 - `backend/src/main/java/com/indcrm/crm/domain/Contract.java`
+
+## 2026-05-19 | 角色管理页数据权限范围红框内容清理
+
+### 现象
+角色管理页的“数据权限范围”Tab 里，仍显示标题“数据权限范围”和固定态说明文案，用户要求红框内这些内容全部去掉，只保留真正可操作的控件。
+
+### 迭代过程
+1. 先确认问题只在前端展示层，不涉及后端权限逻辑。
+2. 先删掉 Tab 内的标题块，再删掉固定态说明块。
+3. 构建验证通过后，保留编辑控件和固定复选框本体。
+
+### 根因分析
+前一次修改时，把“编辑容器”和“说明文案”一起保留了，导致视觉上仍然占据大块区域，和用户要求的“只展示控件”不一致。
+
+### 正确做法
+这类页面收口时，要先明确“容器是否保留”和“文案是否保留”是两个独立决策：
+- 仅移除标题、提示、说明等文本
+- 保留输入控件、Tab、边框和最小必要布局
+- 修改后立刻核对截图，避免只删了一半
+
+### 相关文件
+- `frontend/src/views/pages/RoleSettingsPage.vue`
