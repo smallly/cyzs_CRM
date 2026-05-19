@@ -13,6 +13,7 @@
           @click="selectRole(role)"
         >
           <div class="role-item-name">{{ role.name }}</div>
+          <div class="role-item-meta">{{ role.code }}</div>
         </div>
       </div>
     </aside>
