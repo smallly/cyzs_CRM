@@ -6,10 +6,8 @@ import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.DataScopeMode;
 import com.indcrm.crm.domain.Project;
 import com.indcrm.crm.domain.ProjectDictConfig;
-import com.indcrm.crm.domain.ScopeConfig;
 import com.indcrm.crm.mapper.ProjectMapper;
 import com.indcrm.crm.mapper.ProjectDictConfigMapper;
-import com.indcrm.crm.mapper.ScopeConfigMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,37 +28,22 @@ public class SystemConfigService {
             "\u5176\u4ed6"
     );
 
-    private final ScopeConfigMapper scopeConfigMapper;
     private final ProjectDictConfigMapper projectDictConfigMapper;
     private final ProjectMapper projectMapper;
+    private final RoleScopeService roleScopeService;
 
-    public SystemConfigService(ScopeConfigMapper scopeConfigMapper, ProjectDictConfigMapper projectDictConfigMapper, ProjectMapper projectMapper) {
-        this.scopeConfigMapper = scopeConfigMapper;
+    public SystemConfigService(ProjectDictConfigMapper projectDictConfigMapper, ProjectMapper projectMapper, RoleScopeService roleScopeService) {
         this.projectDictConfigMapper = projectDictConfigMapper;
         this.projectMapper = projectMapper;
+        this.roleScopeService = roleScopeService;
     }
 
     public DataScopeMode getMode(String tenantId) {
-        ScopeConfig config = scopeConfigMapper.selectById(tenantId);
-        if (config == null || config.mode == null) {
-            return DataScopeMode.DEPT_AND_SUBTREE;
-        }
-        if (config.mode == DataScopeMode.SUBTREE) {
-            return DataScopeMode.DEPT_AND_SUBTREE;
-        }
-        return config.mode;
+        return roleScopeService.getMode(tenantId, "SALES");
     }
 
     public void setMode(String tenantId, DataScopeMode mode) {
-        ScopeConfig config = new ScopeConfig();
-        config.tenantId = tenantId;
-        config.mode = mode;
-        ScopeConfig existing = scopeConfigMapper.selectById(tenantId);
-        if (existing != null) {
-            scopeConfigMapper.updateById(config);
-        } else {
-            scopeConfigMapper.insert(config);
-        }
+        roleScopeService.setMode(tenantId, "SALES", mode);
     }
 
     public DictOptions getDictOptions(String tenantId) {

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS state_store (
+﻿CREATE TABLE IF NOT EXISTS state_store (
   entity_type VARCHAR(64) NOT NULL,
   entity_id VARCHAR(64) NOT NULL,
   payload JSON NOT NULL,
@@ -313,6 +313,18 @@ CREATE TABLE IF NOT EXISTS scope_configs (
   mode VARCHAR(32) NOT NULL DEFAULT 'SELF' COMMENT '数据范围模式: SELF/ SUBORDINATES',
   PRIMARY KEY (tenant_id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='数据范围配置表';
+
+
+CREATE TABLE IF NOT EXISTS role_scope_configs (
+  id VARCHAR(64) NOT NULL COMMENT 'role data scope id',
+  tenant_id VARCHAR(64) NOT NULL COMMENT 'tenant id',
+  role_code VARCHAR(32) NOT NULL COMMENT 'role code',
+  mode VARCHAR(32) NOT NULL DEFAULT 'DEPT_AND_SUBTREE' COMMENT 'data scope mode',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'created at',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'updated at',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_role_scope_tenant_role (tenant_id, role_code)
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='role data scope config';
 
 CREATE TABLE IF NOT EXISTS project_dict_configs (
   tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',

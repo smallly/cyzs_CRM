@@ -21,7 +21,8 @@
 
 ## Key APIs
 - Members: `/api/users`
-- Scope mode: `/api/system/scope-mode`
+- Role data scope: `/api/roles` and `/api/roles/{code}/scope`
+- Legacy scope alias: `/api/system/scope-mode`
 - Dict config: `/api/system/dicts`
 - Contacts: `/api/contacts`
 - Projects: `/api/projects`
@@ -39,8 +40,8 @@
 - Contract creation auto-updates project stage to `SIGNING`
 - Soft delete project cascades to followup/contract/payment
 - Contact cannot be deleted when referenced by project
-- Data scope config (tenant-global): `SELF` / `SUBTREE`
-- Sales data operations bound by scope; project admin/system admin full access
+- Data scope config (role-level): system admin fixed `ALL`, sales configurable
+- Sales data operations bound by role scope; project admin/system admin full access
 - Member status: `ENABLED`/`DISABLED` (disabled cannot login)
 - Audit logging for persisted mutation operations
 

@@ -40,6 +40,7 @@ public class BootstrapService {
     private final ContractMapper contractMapper;
     private final PaymentMapper paymentMapper;
     private final ScopeConfigMapper scopeConfigMapper;
+    private final RoleScopeConfigMapper roleScopeConfigMapper;
     private final ProjectDictConfigMapper projectDictConfigMapper;
     private final VendorAdminMapper vendorAdminMapper;
     private final VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper;
@@ -53,6 +54,7 @@ public class BootstrapService {
                             ContactMapper contactMapper, ProjectMapper projectMapper,
                             FollowupMapper followupMapper, ContractMapper contractMapper,
                             PaymentMapper paymentMapper, ScopeConfigMapper scopeConfigMapper,
+                            RoleScopeConfigMapper roleScopeConfigMapper,
                             ProjectDictConfigMapper projectDictConfigMapper,
                             VendorAdminMapper vendorAdminMapper,
                             VendorAdminAuthenticationMapper vendorAdminAuthenticationMapper,
@@ -70,6 +72,7 @@ public class BootstrapService {
         this.contractMapper = contractMapper;
         this.paymentMapper = paymentMapper;
         this.scopeConfigMapper = scopeConfigMapper;
+        this.roleScopeConfigMapper = roleScopeConfigMapper;
         this.projectDictConfigMapper = projectDictConfigMapper;
         this.vendorAdminMapper = vendorAdminMapper;
         this.vendorAdminAuthenticationMapper = vendorAdminAuthenticationMapper;
@@ -151,6 +154,7 @@ public class BootstrapService {
         jdbcTemplate.update("DELETE FROM tenant_orders WHERE tenant_id = ?", "vendor-default");
         jdbcTemplate.update("DELETE FROM project_dict_configs WHERE tenant_id = ?", "vendor-default");
         jdbcTemplate.update("DELETE FROM scope_configs WHERE tenant_id = ?", "vendor-default");
+        jdbcTemplate.update("DELETE FROM role_scope_configs WHERE tenant_id = ?", "vendor-default");
         jdbcTemplate.update("DELETE FROM audit_logs WHERE tenant_id = ?", "vendor-default");
         jdbcTemplate.update("DELETE FROM tenants WHERE id = ?", "vendor-default");
     }
@@ -188,6 +192,20 @@ public class BootstrapService {
                 "voucher",
                 "longtext",
                 "ALTER TABLE payments MODIFY COLUMN voucher LONGTEXT DEFAULT NULL COMMENT '????'"
+        );
+        jdbcTemplate.execute(
+                """
+                CREATE TABLE IF NOT EXISTS role_scope_configs (
+                  id VARCHAR(64) NOT NULL COMMENT '角色数据范围ID',
+                  tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
+                  role_code VARCHAR(32) NOT NULL COMMENT '角色编码',
+                  mode VARCHAR(32) NOT NULL DEFAULT 'DEPT_AND_SUBTREE' COMMENT '数据范围模式',
+                  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  PRIMARY KEY (id),
+                  UNIQUE KEY uk_role_scope_tenant_role (tenant_id, role_code)
+                ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT='角色数据范围配置表'
+                """
         );
     }
 
@@ -283,6 +301,35 @@ public class BootstrapService {
         migrateEntity("Payment", Payment.class, paymentMapper);
         migrateEntity("ScopeConfig", ScopeConfig.class, scopeConfigMapper);
         migrateEntity("ProjectDictConfig", ProjectDictConfig.class, projectDictConfigMapper);
+        migrateLegacyScopeConfigs();
+    }
+
+    private void migrateLegacyScopeConfigs() {
+        List<ScopeConfig> legacyConfigs = scopeConfigMapper.selectList(null);
+        if (legacyConfigs == null || legacyConfigs.isEmpty()) {
+            return;
+        }
+        for (ScopeConfig legacyConfig : legacyConfigs) {
+            if (legacyConfig == null || legacyConfig.tenantId == null || legacyConfig.tenantId.isBlank()) {
+                continue;
+            }
+            long exists = roleScopeConfigMapper.selectCount(
+                    new QueryWrapper<RoleScopeConfig>()
+                            .eq("tenant_id", legacyConfig.tenantId)
+                            .eq("role_code", BizRole.SALES.name())
+            );
+            if (exists > 0) {
+                continue;
+            }
+            RoleScopeConfig config = new RoleScopeConfig();
+            config.id = IdGenerator.nextId();
+            config.tenantId = legacyConfig.tenantId;
+            config.roleCode = BizRole.SALES.name();
+            config.mode = legacyConfig.mode == DataScopeMode.SUBTREE ? DataScopeMode.DEPT_AND_SUBTREE : legacyConfig.mode;
+            config.createdAt = LocalDateTime.now();
+            config.updatedAt = config.createdAt;
+            roleScopeConfigMapper.insert(config);
+        }
     }
 
     private <T> void migrateEntity(String entityType, Class<T> clazz, com.baomidou.mybatisplus.core.mapper.BaseMapper<T> mapper) {

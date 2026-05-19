@@ -1,5 +1,7 @@
 package com.indcrm.crm.service;
 
+import com.indcrm.crm.common.BizException;
+import com.indcrm.crm.common.ErrorCode;
 import com.indcrm.crm.domain.BizRole;
 import com.indcrm.crm.domain.DataScopeMode;
 import org.springframework.stereotype.Service;
@@ -19,25 +21,38 @@ public class RoleService {
         return List.of(
                 new RoleItem(
                         "SYSTEM_ADMIN",
-                        "系统管理员",
+                        "\u7cfb\u7edf\u7ba1\u7406\u5458",
                         BizRole.PROJECT_ADMIN,
                         true,
-                        "全局管理角色，默认拥有全部菜单与全部数据权限",
+                        "\u5168\u5c40\u7ba1\u7406\u89d2\u8272\uff0c\u9ed8\u8ba4\u62e5\u6709\u5168\u90e8\u83dc\u5355\u4e0e\u5168\u90e8\u6570\u636e\u6743\u9650",
                         List.of("workbench", "contacts", "projects", "followups", "contracts", "payments", "users", "departments", "roles", "scope", "dicts", "audit", "events"),
-                        List.of(DataScopeMode.ALL, DataScopeMode.SELF, DataScopeMode.SELF_AND_SUBORDINATES, DataScopeMode.DEPT, DataScopeMode.DEPT_AND_SUBTREE),
-                        DataScopeMode.ALL
+                        List.of(DataScopeMode.ALL),
+                        DataScopeMode.ALL,
+                        false
                 ),
                 new RoleItem(
                         "SALES",
-                        "招商人员",
+                        "\u62db\u5546\u4eba\u5458",
                         BizRole.SALES,
                         false,
-                        "业务执行角色",
+                        "\u4e1a\u52a1\u6267\u884c\u89d2\u8272",
                         List.of("workbench", "contacts", "projects", "followups", "contracts", "payments"),
-                        List.of(DataScopeMode.SELF, DataScopeMode.SELF_AND_SUBORDINATES, DataScopeMode.DEPT, DataScopeMode.DEPT_AND_SUBTREE),
-                        salesDefaultScope
+                        List.of(DataScopeMode.ALL, DataScopeMode.SELF, DataScopeMode.SELF_AND_SUBORDINATES, DataScopeMode.DEPT, DataScopeMode.DEPT_AND_SUBTREE),
+                        salesDefaultScope,
+                        true
                 )
         );
+    }
+
+    public void updateBuiltInRoleScope(String tenantId, String roleCode, DataScopeMode mode) {
+        if (!isDataScopeEditable(roleCode)) {
+            throw new BizException(ErrorCode.BIZ_422, "role data scope is not editable");
+        }
+        configService.setMode(tenantId, mode);
+    }
+
+    public boolean isDataScopeEditable(String roleCode) {
+        return BizRole.SALES.name().equals(roleCode);
     }
 
     public record RoleItem(
@@ -48,6 +63,7 @@ public class RoleService {
             String description,
             List<String> menuPermissions,
             List<DataScopeMode> dataScopeOptions,
-            DataScopeMode defaultDataScope
+            DataScopeMode defaultDataScope,
+            boolean dataScopeEditable
     ) {}
 }
