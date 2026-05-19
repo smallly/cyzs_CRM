@@ -80,14 +80,14 @@ public class RoleScopeService {
     private DataScopeMode readLegacyMode(String tenantId) {
         ScopeConfig legacy = legacyScopeConfigMapper.selectById(tenantId);
         if (legacy == null || legacy.mode == null) {
-            return DataScopeMode.DEPT_AND_SUBTREE;
+            return DataScopeMode.SELF_AND_SUBORDINATES;
         }
         return normalize(legacy.mode);
     }
 
     private DataScopeMode normalize(DataScopeMode mode) {
         if (mode == null) {
-            return DataScopeMode.DEPT_AND_SUBTREE;
+            return DataScopeMode.SELF_AND_SUBORDINATES;
         }
         if (mode == DataScopeMode.SUBTREE) {
             return DataScopeMode.DEPT_AND_SUBTREE;

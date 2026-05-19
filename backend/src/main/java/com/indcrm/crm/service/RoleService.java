@@ -25,7 +25,7 @@ public class RoleService {
                         BizRole.PROJECT_ADMIN,
                         true,
                         "\u5168\u5c40\u7ba1\u7406\u89d2\u8272\uff0c\u9ed8\u8ba4\u62e5\u6709\u5168\u90e8\u83dc\u5355\u4e0e\u5168\u90e8\u6570\u636e\u6743\u9650",
-                        List.of("workbench", "contacts", "projects", "followups", "contracts", "payments", "users", "departments", "roles", "scope", "dicts", "audit", "events"),
+                        List.of("workbench", "contacts", "projects", "followups", "contracts", "payments", "users", "departments", "roles", "dicts", "audit", "events"),
                         List.of(DataScopeMode.ALL),
                         DataScopeMode.ALL,
                         false

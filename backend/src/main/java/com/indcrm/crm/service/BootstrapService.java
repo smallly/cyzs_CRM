@@ -199,7 +199,7 @@ public class BootstrapService {
                   id VARCHAR(64) NOT NULL COMMENT '角色数据范围ID',
                   tenant_id VARCHAR(64) NOT NULL COMMENT '租户ID',
                   role_code VARCHAR(32) NOT NULL COMMENT '角色编码',
-                  mode VARCHAR(32) NOT NULL DEFAULT 'DEPT_AND_SUBTREE' COMMENT '数据范围模式',
+                  mode VARCHAR(32) NOT NULL DEFAULT 'SELF_AND_SUBORDINATES' COMMENT '数据范围模式',
                   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                   PRIMARY KEY (id),

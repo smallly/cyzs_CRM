@@ -131,9 +131,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'settings/scope',
-        name: 'ScopeModeSettings',
-        component: () => import('../views/pages/ScopeModePage.vue'),
-        meta: { title: '角色数据范围' }
+        redirect: '/settings/roles'
       },
       {
         path: 'settings/dicts',

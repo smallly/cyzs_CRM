@@ -163,7 +163,6 @@ import {
   Coin,
   UserFilled,
   Avatar,
-  Key,
   CollectionTag,
   Lock,
   SwitchButton,
@@ -235,7 +234,6 @@ const businessMenuItems = [
 const systemMenuItems = [
   { key: 'users-departments', label: '成员与部门', route: '/settings/org', icon: UserFilled },
   { key: 'roles', label: '角色管理', route: '/settings/roles', icon: Avatar },
-  { key: 'scope', label: '数据范围', route: '/settings/scope', icon: Key },
   { key: 'dicts', label: '数据字典', route: '/settings/dicts', icon: CollectionTag }
 ]
 
