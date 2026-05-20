@@ -38,10 +38,6 @@
                 <span class="info-label">业务角色</span>
                 <span class="info-value">{{ getBizRoleLabel(selectedRole.bizRole) }}</span>
               </div>
-              <div class="info-cell">
-                <span class="info-label">默认数据范围</span>
-                <span class="info-value">{{ getScopeLabel(selectedRole.defaultDataScope) }}</span>
-              </div>
               <div class="info-cell wide">
                 <span class="info-label">说明</span>
                 <span class="info-value">{{ selectedRole.description || '-' }}</span>
