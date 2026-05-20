@@ -3,6 +3,7 @@ package com.indcrm.crm.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.indcrm.crm.domain.*;
 import com.indcrm.crm.mapper.DepartmentMapper;
+import com.indcrm.crm.mapper.OrganizationMembershipMapper;
 import com.indcrm.crm.mapper.TenantUserMapper;
 import com.indcrm.crm.mapper.UserMapper;
 import org.springframework.stereotype.Service;
@@ -14,13 +15,17 @@ public class PermissionService {
     private final UserMapper userMapper;
     private final DepartmentMapper departmentMapper;
     private final TenantUserMapper tenantUserMapper;
+    private final OrganizationMembershipMapper organizationMembershipMapper;
     private final SystemConfigService configService;
 
     public PermissionService(UserMapper userMapper, DepartmentMapper departmentMapper,
-                             TenantUserMapper tenantUserMapper, SystemConfigService configService) {
+                             TenantUserMapper tenantUserMapper,
+                             OrganizationMembershipMapper organizationMembershipMapper,
+                             SystemConfigService configService) {
         this.userMapper = userMapper;
         this.departmentMapper = departmentMapper;
         this.tenantUserMapper = tenantUserMapper;
+        this.organizationMembershipMapper = organizationMembershipMapper;
         this.configService = configService;
     }
 
@@ -68,11 +73,13 @@ public class PermissionService {
             return Collections.emptySet();
         }
         Set<String> deptScope = getDepartmentSubtreeIds(user.tenantId, managedDeptIds, allDepts);
+        Map<String, String> effectiveDeptByUserId = resolveEffectiveDeptIds(user.tenantId);
         Set<String> ids = new HashSet<>();
         List<User> members = listTenantUsers(user.tenantId);
         for (User member : members) {
             if (member == null) continue;
-            if (member.deptId != null && deptScope.contains(member.deptId) && !user.id.equals(member.id)) {
+            String memberDeptId = effectiveDeptByUserId.get(member.id);
+            if (memberDeptId != null && deptScope.contains(memberDeptId) && !user.id.equals(member.id)) {
                 ids.add(member.id);
             }
         }
@@ -80,14 +87,17 @@ public class PermissionService {
     }
 
     private Set<String> getCurrentDepartmentUserIds(User user) {
-        if (user.deptId == null || user.deptId.isBlank()) {
+        Map<String, String> effectiveDeptByUserId = resolveEffectiveDeptIds(user.tenantId);
+        String currentDeptId = effectiveDeptByUserId.get(user.id);
+        if (currentDeptId == null || currentDeptId.isBlank()) {
             return Set.of(user.id);
         }
         Set<String> ids = new HashSet<>();
         List<User> members = listTenantUsers(user.tenantId);
         for (User member : members) {
             if (member == null) continue;
-            if (user.deptId.equals(member.deptId)) {
+            String memberDeptId = effectiveDeptByUserId.get(member.id);
+            if (currentDeptId.equals(memberDeptId)) {
                 ids.add(member.id);
             }
         }
@@ -96,7 +106,9 @@ public class PermissionService {
     }
 
     private Set<String> getCurrentDepartmentAndSubtreeUserIds(User user) {
-        if (user.deptId == null || user.deptId.isBlank()) {
+        Map<String, String> effectiveDeptByUserId = resolveEffectiveDeptIds(user.tenantId);
+        String currentDeptId = effectiveDeptByUserId.get(user.id);
+        if (currentDeptId == null || currentDeptId.isBlank()) {
             return Set.of(user.id);
         }
         List<Department> allDepts = departmentMapper.selectList(
@@ -104,12 +116,13 @@ public class PermissionService {
                         .eq("tenant_id", user.tenantId)
                         .eq("status", DepartmentStatus.ENABLED.name())
         );
-        Set<String> deptIds = getDepartmentSubtreeIds(user.tenantId, Set.of(user.deptId), allDepts);
+        Set<String> deptIds = getDepartmentSubtreeIds(user.tenantId, Set.of(currentDeptId), allDepts);
         Set<String> userIds = new HashSet<>();
         List<User> members = listTenantUsers(user.tenantId);
         for (User member : members) {
             if (member == null) continue;
-            if (member.deptId != null && deptIds.contains(member.deptId)) {
+            String memberDeptId = effectiveDeptByUserId.get(member.id);
+            if (memberDeptId != null && deptIds.contains(memberDeptId)) {
                 userIds.add(member.id);
             }
         }
@@ -129,6 +142,58 @@ public class PermissionService {
                 .collect(java.util.stream.Collectors.toList());
         return userMapper.selectList(
                 new QueryWrapper<User>().in("id", userIds));
+    }
+
+    private Map<String, String> resolveEffectiveDeptIds(String tenantId) {
+        List<TenantUser> tenantUsers = tenantUserMapper.selectList(
+                new QueryWrapper<TenantUser>().eq("tenant_id", tenantId));
+        if (tenantUsers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> userIdByTenantUserId = new HashMap<>();
+        List<String> tenantUserIds = new ArrayList<>();
+        for (TenantUser tenantUser : tenantUsers) {
+            if (tenantUser == null || tenantUser.userId == null || tenantUser.userId.isBlank()) {
+                continue;
+            }
+            userIdByTenantUserId.put(tenantUser.id, tenantUser.userId);
+            tenantUserIds.add(tenantUser.id);
+        }
+        if (tenantUserIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, String> result = new HashMap<>();
+        List<OrganizationMembership> memberships = organizationMembershipMapper.selectList(
+                new QueryWrapper<OrganizationMembership>()
+                        .in("tenant_user_id", tenantUserIds)
+                        .eq("is_primary", 1)
+                        .eq("status", MembershipStatus.ACTIVE.name())
+        );
+        for (OrganizationMembership membership : memberships) {
+            if (membership == null || membership.departmentId == null || membership.departmentId.isBlank()) {
+                continue;
+            }
+            String userId = userIdByTenantUserId.get(membership.tenantUserId);
+            if (userId != null) {
+                result.put(userId, membership.departmentId);
+            }
+        }
+        List<String> unresolvedUserIds = new ArrayList<>();
+        for (String userId : new HashSet<>(userIdByTenantUserId.values())) {
+            if (!result.containsKey(userId)) {
+                unresolvedUserIds.add(userId);
+            }
+        }
+        if (unresolvedUserIds.isEmpty()) {
+            return result;
+        }
+        List<User> users = userMapper.selectList(new QueryWrapper<User>().in("id", unresolvedUserIds));
+        for (User user : users) {
+            if (user != null && user.deptId != null && !user.deptId.isBlank()) {
+                result.putIfAbsent(user.id, user.deptId);
+            }
+        }
+        return result;
     }
 
     private Set<String> getDepartmentSubtreeIds(String tenantId, Set<String> roots, List<Department> allDepts) {

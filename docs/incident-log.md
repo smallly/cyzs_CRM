@@ -195,3 +195,10 @@ List<String> previousSources = existing == null ? DEFAULT_PROJECT_SOURCES : exis
 ### 相关文件
 - `backend/src/main/java/com/indcrm/crm/service/UserService.java`
 - `frontend/src/views/modules/UsersView.vue`
+
+## 2026-05-20 - 租户上下文与权限范围
+- 现象：切换租户后，成员列表的部门显示修过了，但项目、联系人、合同等数据范围在部分场景下仍可能按旧部门计算。
+- 迭代过程：先修了成员同步和列表展示；复查后发现权限服务仍直接读取 AuthContext 里的 `user.deptId`。
+- 根因分析：`user.deptId` 是全局镜像字段，不是当前租户的唯一真值；切租户后如果不重新按当前租户装载主成员关系，就会拿到上一个租户的部门。
+- 正确做法：权限判断优先读取当前租户的 `organization_memberships` 主部门，缺失时才回退 `users.deptId`。
+- 相关文件：`backend/src/main/java/com/indcrm/crm/service/PermissionService.java`
