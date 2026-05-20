@@ -55,6 +55,7 @@ public class UserService {
                 .distinct()
                 .collect(java.util.stream.Collectors.toList());
         Map<String, String> primaryDeptByUserId = resolvePrimaryDeptByUserId(tenantUsers);
+        Map<String, String> deptByUserId = resolveDeptByUserId(userIds);
         Set<String> deptIds = deptId == null || deptId.isBlank()
                 ? Set.of()
                 : new HashSet<>(collectDepartmentAndDescendantIds(actor, deptId));
@@ -63,7 +64,11 @@ public class UserService {
         // 先用当前租户的 primary department 覆盖 user.deptId，避免使用其他租户的过时 deptId
         for (User user : list) {
             String primaryDeptId = primaryDeptByUserId.get(user.id);
-            user.deptId = (primaryDeptId != null && !primaryDeptId.isBlank()) ? primaryDeptId : null;
+            String effectiveDeptId = primaryDeptId;
+            if (effectiveDeptId == null || effectiveDeptId.isBlank()) {
+                effectiveDeptId = deptByUserId.get(user.id);
+            }
+            user.deptId = (effectiveDeptId != null && !effectiveDeptId.isBlank()) ? effectiveDeptId : null;
         }
         if (!deptIds.isEmpty()) {
             list.removeIf(user -> {
@@ -108,6 +113,20 @@ public class UserService {
             String userId = userIdByTenantUserId.get(membership.tenantUserId);
             if (userId != null && membership.departmentId != null && !membership.departmentId.isBlank()) {
                 result.put(userId, membership.departmentId);
+            }
+        }
+        return result;
+    }
+
+    private Map<String, String> resolveDeptByUserId(List<String> userIds) {
+        if (userIds.isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        List<User> users = userMapper.selectList(new QueryWrapper<User>().in("id", userIds));
+        Map<String, String> result = new HashMap<>();
+        for (User user : users) {
+            if (user.deptId != null && !user.deptId.isBlank()) {
+                result.put(user.id, user.deptId);
             }
         }
         return result;
@@ -187,6 +206,8 @@ public class UserService {
 
         userMapper.insert(user);
         syncIdentityStructures(user);
+        syncPrimaryMembershipDepartment(user, user.deptId);
+        syncPrimaryMembershipRole(user);
         auditService.log(actor, "USER_CREATE", "User", user.id, "name=" + user.name + ",phone=" + user.phone);
         return user;
     }
