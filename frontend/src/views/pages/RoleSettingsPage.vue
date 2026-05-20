@@ -92,7 +92,7 @@
                     <div class="scope-actions">
                       <el-button :disabled="!scopeDirty" @click="resetScope">恢复默认</el-button>
                       <el-button
-                        type="primary"
+                        class="save-scope-button"
                         :loading="saving"
                         :disabled="!scopeDirty"
                         @click="saveScope"
@@ -447,6 +447,23 @@ function getScopeLabel(scope?: ScopeMode): string {
   display: flex;
   gap: 12px;
   margin-top: 12px;
+}
+
+.save-scope-button {
+  --el-button-bg-color: #f1f5f9;
+  --el-button-border-color: #e2e8f0;
+  --el-button-text-color: #374151;
+  --el-button-hover-bg-color: #e5e7eb;
+  --el-button-hover-border-color: #d1d5db;
+  --el-button-hover-text-color: #1f2937;
+  --el-button-active-bg-color: #d1d5db;
+  --el-button-active-border-color: #cbd5e1;
+  --el-button-active-text-color: #111827;
+  --el-button-disabled-bg-color: #eef2f7;
+  --el-button-disabled-border-color: #e2e8f0;
+  --el-button-disabled-text-color: #4b5563;
+  font-weight: 600;
+  box-shadow: none;
 }
 
 .scope-hint {
