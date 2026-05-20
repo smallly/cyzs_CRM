@@ -49,8 +49,6 @@
             </div>
           </div>
 
-          <el-divider />
-
           <el-tabs v-model="activeTab" class="role-tabs">
             <el-tab-pane label="菜单访问权限" name="menu">
               <div class="perm-section">
@@ -409,6 +407,9 @@ function getScopeLabel(scope?: ScopeMode): string {
   margin-bottom: 8px;
 }
 
+.role-tabs {
+  margin-top: 4px;
+}
 
 .scope-panel {
   max-width: 560px;
