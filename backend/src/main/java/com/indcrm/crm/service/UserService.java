@@ -205,9 +205,9 @@ public class UserService {
         user.createdAt = now;
 
         userMapper.insert(user);
-        syncIdentityStructures(user);
-        syncPrimaryMembershipDepartment(user, user.deptId);
-        syncPrimaryMembershipRole(user);
+        syncIdentityStructures(actor.tenantId, user);
+        syncPrimaryMembershipDepartment(actor.tenantId, user, user.deptId);
+        syncPrimaryMembershipRole(actor.tenantId, user);
         auditService.log(actor, "USER_CREATE", "User", user.id, "name=" + user.name + ",phone=" + user.phone);
         return user;
     }
@@ -221,7 +221,7 @@ public class UserService {
         }
         user.status = status;
         userMapper.updateById(user);
-        syncTenantUserStatus(user);
+        syncTenantUserStatus(actor.tenantId, user);
         auditService.log(actor, "USER_STATUS", "User", user.id, "status=" + status.name());
     }
 
@@ -235,7 +235,7 @@ public class UserService {
         user.bizRole = bizRole;
         user.systemAdmin = systemAdmin;
         userMapper.updateById(user);
-        syncPrimaryMembershipRole(user);
+        syncPrimaryMembershipRole(actor.tenantId, user);
         auditService.log(actor, "USER_ROLE", "User", user.id, "bizRole=" + bizRole + ",systemAdmin=" + systemAdmin);
     }
 
@@ -247,7 +247,7 @@ public class UserService {
         user.deptId = dept.id;
         user.managerId = dept.headUserId;
         userMapper.updateById(user);
-        syncPrimaryMembershipDepartment(user, dept.id);
+        syncPrimaryMembershipDepartment(actor.tenantId, user, dept.id);
         auditService.log(actor, "USER_DEPT", "User", user.id, "deptId=" + dept.id);
     }
 
@@ -274,7 +274,7 @@ public class UserService {
         user.name = name.trim();
         user.phone = normalizedPhone;
         userMapper.updateById(user);
-        syncIdentityStructures(user);
+        syncIdentityStructures(actor.tenantId, user);
         auditService.log(actor, "USER_UPDATE", "User", user.id, "name=" + user.name + ",phone=" + user.phone);
         return user;
     }
@@ -312,9 +312,9 @@ public class UserService {
         return dept;
     }
 
-    private void syncIdentityStructures(User user) {
+    private void syncIdentityStructures(String tenantId, User user) {
         syncPhoneAuthentication(user);
-        syncTenantUser(user);
+        syncTenantUser(tenantId, user);
     }
 
     private void syncPhoneAuthentication(User user) {
@@ -342,16 +342,16 @@ public class UserService {
         }
     }
 
-    private void syncTenantUser(User user) {
+    private void syncTenantUser(String tenantId, User user) {
         TenantUser tenantUser = tenantUserMapper.selectOne(
                 new QueryWrapper<TenantUser>()
-                        .eq("tenant_id", user.tenantId)
+                        .eq("tenant_id", tenantId)
                         .eq("user_id", user.id)
         );
         if (tenantUser == null) {
             tenantUser = new TenantUser();
             tenantUser.id = IdGenerator.nextId();
-            tenantUser.tenantId = user.tenantId;
+            tenantUser.tenantId = tenantId;
             tenantUser.userId = user.id;
             tenantUser.createdAt = user.createdAt != null ? user.createdAt : LocalDateTime.now();
             tenantUser.firstLoginAt = tenantUser.createdAt;
@@ -369,10 +369,10 @@ public class UserService {
         }
     }
 
-    private void syncTenantUserStatus(User user) {
+    private void syncTenantUserStatus(String tenantId, User user) {
         TenantUser tenantUser = tenantUserMapper.selectOne(
                 new QueryWrapper<TenantUser>()
-                        .eq("tenant_id", user.tenantId)
+                        .eq("tenant_id", tenantId)
                         .eq("user_id", user.id)
         );
         if (tenantUser != null) {
@@ -382,13 +382,13 @@ public class UserService {
         }
     }
 
-    private void syncPrimaryMembershipDepartment(User user, String deptId) {
+    private void syncPrimaryMembershipDepartment(String tenantId, User user, String deptId) {
         if (deptId == null || deptId.isBlank()) {
             return;
         }
         TenantUser tenantUser = tenantUserMapper.selectOne(
                 new QueryWrapper<TenantUser>()
-                        .eq("tenant_id", user.tenantId)
+                        .eq("tenant_id", tenantId)
                         .eq("user_id", user.id)
         );
         if (tenantUser == null) {
@@ -418,10 +418,10 @@ public class UserService {
         }
     }
 
-    private void syncPrimaryMembershipRole(User user) {
+    private void syncPrimaryMembershipRole(String tenantId, User user) {
         TenantUser tenantUser = tenantUserMapper.selectOne(
                 new QueryWrapper<TenantUser>()
-                        .eq("tenant_id", user.tenantId)
+                        .eq("tenant_id", tenantId)
                         .eq("user_id", user.id)
         );
         if (tenantUser == null) {
