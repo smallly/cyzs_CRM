@@ -294,8 +294,6 @@ public class UserService {
     private void syncIdentityStructures(User user) {
         syncPhoneAuthentication(user);
         syncTenantUser(user);
-        syncPrimaryMembershipDepartment(user, user.deptId);
-        syncPrimaryMembershipRole(user);
     }
 
     private void syncPhoneAuthentication(User user) {

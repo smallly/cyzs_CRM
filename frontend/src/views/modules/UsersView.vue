@@ -283,23 +283,21 @@ async function submitMember() {
       })
       ElMessage.success('成员已新增')
     } else {
-      await Promise.all([
-        authStore.api(`/api/users/${editingUserId.value}`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            name: memberForm.name.trim(),
-            phone: memberForm.phone.trim()
-          })
-        }),
-        authStore.api(`/api/users/${editingUserId.value}/department`, {
-          method: 'PUT',
-          body: JSON.stringify({ deptId: memberForm.deptId })
-        }),
-        authStore.api(`/api/users/${editingUserId.value}/role`, {
-          method: 'PUT',
-          body: JSON.stringify({ bizRole: role.bizRole, systemAdmin: !!role.systemAdmin })
+      await authStore.api(`/api/users/${editingUserId.value}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: memberForm.name.trim(),
+          phone: memberForm.phone.trim()
         })
-      ])
+      })
+      await authStore.api(`/api/users/${editingUserId.value}/department`, {
+        method: 'PUT',
+        body: JSON.stringify({ deptId: memberForm.deptId })
+      })
+      await authStore.api(`/api/users/${editingUserId.value}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ bizRole: role.bizRole, systemAdmin: !!role.systemAdmin })
+      })
       ElMessage.success('成员已更新')
     }
     dialogVisible.value = false
